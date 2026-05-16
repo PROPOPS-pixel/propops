@@ -1,0 +1,4891 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PropOps.Trade — Hugo Receptionist for Australian Tradies</title>
+    <meta name="description" content="Hugo answers your job enquiries in 3 seconds, 24/7. Hugo-powered receptionist for Australian tradies. Plumbers, electricians, builders and 18 more trades. From $69/mo AUD. 14-day free trial.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/logo-square.svg">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --navy: #0f172a;
+            --navy-light: #1e293b;
+            --slate: #334155;
+            --slate-mid: #475569;
+            --slate-light: #64748b;
+            --muted: #94a3b8;
+            --border: #e2e8f0;
+            --bg-off: #f8fafc;
+            --bg-warm: #fffbeb;
+            --white: #ffffff;
+            --amber: #f59e0b;
+            --amber-dark: #d97706;
+            --amber-light: #fbbf24;
+            --amber-bg: #fef3c7;
+            --green: #059669;
+            --green-bg: #d1fae5;
+            --red: #dc2626;
+            --red-bg: #fee2e2;
+            --blue: #2563eb;
+            --blue-bg: #dbeafe;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+            font-size: 17.6px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--navy);
+            line-height: 1.6;
+            background: var(--white);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* ─── NAV ─── */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+        .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--navy);
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .logo span { color: var(--amber); }
+        .logo img { height: 34px; width: auto; display: block; }
+        /* Groups logo + nav links together on the left so they sit adjacent */
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 2.5rem;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .nav-links a {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--slate-mid);
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .nav-links a:hover { color: var(--navy); }
+        .nav-cta {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--white) !important;
+            background: var(--navy);
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            transition: all 0.15s;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            touch-action: manipulation;
+        }
+        .nav-cta:hover {
+            background: var(--navy-light) !important;
+            color: var(--white) !important;
+            transform: translateY(-1px);
+        }
+
+        /* ─── SUPPORT BAR ─── */
+
+        /* ─── HERO ─── */
+        .hero {
+            padding: 10rem 0 4rem;
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--amber-dark);
+            background: var(--amber-bg);
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            margin-bottom: 2rem;
+        }
+        .hero h1 {
+            font-size: clamp(2.25rem, 5vw, 3.5rem);
+            font-weight: 800;
+            line-height: 1.12;
+            letter-spacing: -1.5px;
+            color: var(--navy);
+            max-width: 780px;
+            margin: 0 auto 1.5rem;
+        }
+        .hero-sub {
+            font-size: clamp(0.95rem, 3vw, 1.15rem);
+            color: var(--slate-mid);
+            max-width: 560px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.7;
+        }
+
+        /* Email capture form */
+        .email-form {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 460px;
+            margin: 0 auto 1rem;
+        }
+        .email-form input {
+            flex: 1;
+            padding: 0.85rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            color: var(--navy);
+            background: var(--white);
+            outline: none;
+            transition: border-color 0.15s;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
+        .email-form input:focus {
+            border-color: var(--amber);
+        }
+        .email-form input::placeholder {
+            color: var(--muted);
+        }
+        .email-form button {
+            padding: 0.85rem 1.5rem;
+            background: var(--amber);
+            color: var(--navy);
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+        .email-form button:hover {
+            background: var(--amber-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245,158,11,0.3);
+        }
+        .email-form button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .form-note {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .form-success {
+            display: none;
+            color: var(--green);
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 1rem;
+            background: var(--green-bg);
+            border-radius: 10px;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+        .form-error {
+            display: none;
+            color: var(--red);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* ─── VIDEO SECTION ─── */
+        .video-section {
+            padding: 0 0 4rem;
+        }
+        .video-wrapper {
+            max-width: 820px;
+            margin: 0 auto;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 16px 64px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06);
+            position: relative;
+            background: var(--navy);
+        }
+        .video-aspect {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 */
+            height: 0;
+        }
+        .video-aspect iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        .video-caption {
+            text-align: center;
+            margin-top: 1.25rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .video-label {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: -0.01em;
+            margin-bottom: 1rem;
+        }
+        .video-secondary-wrap {
+            margin-top: 3.5rem;
+        }
+        /* ─── DASHBOARD SCREENSHOT ───
+           IMPORTANT: Do NOT remove or override these styles.
+           The screenshot image MUST fill its container edge-to-edge.
+           Image src is a static R2 CDN URL (Lead Pipeline screenshot).
+           See task #745409 — owner requested this exact hardcoded URL.
+        ─── */
+        .screenshot-wrap {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 3rem 0 0;
+            padding: 0 !important;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 16px 64px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+        .screenshot-wrap img {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            height: auto !important;
+            object-fit: cover;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .screenshot-caption {
+            text-align: center;
+            margin-top: 1.25rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        @media (max-width: 768px) {
+            .video-section {
+                padding: 0 0 3rem;
+            }
+            .video-wrapper {
+                border-radius: 12px;
+            }
+            .screenshot-wrap {
+                border-radius: 12px;
+            }
+        }
+
+        /* ─── FLOW VISUAL ─── */
+        .flow-section {
+            padding: 2rem 0 5rem;
+        }
+        .flow-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .flow-step {
+            flex: 1;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            position: relative;
+        }
+        .flow-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.75rem;
+            font-size: 1.4rem;
+        }
+        .flow-step:nth-child(1) .flow-icon { background: var(--blue-bg); }
+        .flow-step:nth-child(3) .flow-icon { background: var(--amber-bg); }
+        .flow-step:nth-child(5) .flow-icon { background: var(--green-bg); }
+        .flow-step h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 0.25rem;
+        }
+        .flow-step p {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+        .flow-arrow {
+            color: var(--border);
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            margin: 0 -0.25rem;
+        }
+
+        /* ─── STATS BAR ─── */
+        .stats-bar {
+            background: var(--navy);
+            padding: 1.5rem 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 0.75rem 0.5rem;
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--amber);
+            letter-spacing: -0.5px;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 0.25rem;
+            line-height: 1.3;
+        }
+
+        /* ─── PAIN SECTION ─── */
+        .pain-section {
+            padding: 6rem 0;
+        }
+        .pain-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .section-eyebrow {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--amber-dark);
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.2;
+            color: var(--navy);
+            max-width: 640px;
+            margin: 0 auto;
+        }
+        .pain-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+        .pain-content h3 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            line-height: 1.25;
+            margin-bottom: 1.5rem;
+        }
+        .pain-content h3 .highlight {
+            color: var(--red);
+        }
+        .pain-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .pain-stat {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-radius: 10px;
+            background: var(--bg-off);
+        }
+        .pain-stat-icon {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            background: var(--red-bg);
+        }
+        .pain-stat h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 0.15rem;
+        }
+        .pain-stat p {
+            font-size: 0.82rem;
+            color: var(--slate-light);
+            line-height: 1.5;
+        }
+        .pain-visual {
+            position: relative;
+        }
+        .pain-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        }
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+        .timeline-item:last-child { padding-bottom: 0; }
+        .timeline-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 6px;
+            position: relative;
+        }
+        .timeline-dot::after {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 4px;
+            width: 2px;
+            height: calc(100% + 14px);
+            background: var(--border);
+        }
+        .timeline-item:last-child .timeline-dot::after { display: none; }
+        .timeline-dot.red { background: var(--red); }
+        .timeline-dot.amber { background: var(--amber); }
+        .timeline-dot.green { background: var(--green); }
+        .timeline-time {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .timeline-text {
+            font-size: 0.85rem;
+            color: var(--slate);
+        }
+        .timeline-text strong {
+            color: var(--navy);
+        }
+
+        /* ─── HOW IT WORKS ─── */
+        .how-section {
+            padding: 6rem 0;
+            background: var(--bg-off);
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 4rem;
+        }
+        .step-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            transition: box-shadow 0.2s;
+        }
+        @media (hover: hover) {
+            .step-card:hover {
+                box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+            }
+        }
+        .step-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--amber-bg);
+            color: var(--amber-dark);
+            font-weight: 800;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+        .step-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 0.65rem;
+        }
+        .step-card p {
+            font-size: 0.9rem;
+            color: var(--slate-mid);
+            line-height: 1.65;
+        }
+        .step-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+        }
+        .step-tag.setup { background: var(--blue-bg); color: var(--blue); }
+        .step-tag.auto { background: var(--amber-bg); color: var(--amber-dark); }
+        .step-tag.result { background: var(--green-bg); color: var(--green); }
+
+        /* ─── FEATURES ─── */
+        .features-section {
+            padding: 6rem 0;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-top: 4rem;
+        }
+        .feature-card {
+            padding: 2rem;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: all 0.2s;
+        }
+        @media (hover: hover) {
+            .feature-card:hover {
+                border-color: var(--amber);
+                box-shadow: 0 4px 20px rgba(245,158,11,0.08);
+            }
+        }
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        .feature-card:nth-child(1) .feature-icon { background: var(--amber-bg); }
+        .feature-card:nth-child(2) .feature-icon { background: var(--blue-bg); }
+        .feature-card:nth-child(3) .feature-icon { background: var(--green-bg); }
+        .feature-card:nth-child(4) .feature-icon { background: #fae8ff; }
+        .feature-card:nth-child(5) .feature-icon { background: var(--red-bg); }
+        .feature-card:nth-child(6) .feature-icon { background: #d1fae5; }
+
+        /* Push notification featured card */
+        .feature-card.push-highlight {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, var(--amber-bg) 0%, #fffbf0 100%);
+            border-color: var(--amber);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        .push-highlight .push-main {}
+        .push-highlight .push-points {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            padding-top: 0.25rem;
+        }
+        .push-point {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            font-size: 0.88rem;
+            color: var(--slate);
+            line-height: 1.55;
+        }
+        .push-point-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: var(--amber-bg);
+            border: 1px solid rgba(245,158,11,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .push-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--amber-dark);
+            background: var(--white);
+            border: 1px solid var(--amber);
+            padding: 0.25rem 0.6rem;
+            border-radius: 100px;
+            margin-bottom: 0.85rem;
+        }
+        @media (max-width: 768px) {
+            .feature-card.push-highlight {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding: 1.5rem;
+            }
+            .push-highlight .push-points {
+                gap: 0.75rem;
+            }
+        }
+        @media (max-width: 390px) {
+            .feature-card.push-highlight {
+                padding: 1rem;
+                gap: 1rem;
+            }
+            .push-badge { font-size: 0.6rem; }
+            .push-main h3 { font-size: 0.95rem; }
+            .push-main p { font-size: 0.8rem; }
+            .push-point { font-size: 0.75rem; gap: 0.5rem; }
+        }
+        .feature-card h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+        }
+        .feature-card p {
+            font-size: 0.88rem;
+            color: var(--slate-mid);
+            line-height: 1.65;
+        }
+        .feature-bullets {
+            list-style: none;
+            padding: 0;
+            margin: 0.5rem 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .feature-bullets li {
+            font-size: 0.88rem;
+            color: var(--slate-mid);
+            line-height: 1.5;
+            padding-left: 1.2rem;
+            position: relative;
+        }
+        .feature-bullets li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--green);
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+        .feature-bullets-dark li {
+            color: var(--navy);
+        }
+
+        /* ─── HUGO SAMPLE ─── */
+        .ai-sample-section {
+            padding: 6rem 0;
+            background: var(--navy);
+            color: var(--white);
+        }
+        .ai-sample-section .section-eyebrow {
+            color: var(--amber);
+        }
+        .ai-sample-section .section-title {
+            color: var(--white);
+        }
+        .ai-sample-email-card {
+            max-width: 600px;
+            margin: 3.5rem auto 0;
+            background: #111827;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+        }
+        .ai-email-header {
+            background: #0f172a;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .ai-email-from-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .ai-email-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--amber);
+            color: var(--navy);
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .ai-email-from-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .ai-email-from-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--white);
+        }
+        .ai-email-from-agency {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.4);
+        }
+        .ai-email-subject {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.4);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: rgba(245,158,11,0.15);
+            color: var(--amber-light);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.3rem 0.75rem;
+            border-radius: 100px;
+            border: 1px solid rgba(245,158,11,0.25);
+            white-space: nowrap;
+        }
+        .ai-email-body {
+            background: #111827;
+            padding: 1.75rem 1.5rem;
+            font-size: 0.88rem;
+            line-height: 1.75;
+            color: rgba(255,255,255,0.85);
+        }
+        .ai-email-body p { margin-bottom: 1rem; }
+        .ai-email-body p:last-child { margin-bottom: 0; }
+        .ai-email-property {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(245,158,11,0.12);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            margin-bottom: 1.25rem;
+            color: var(--amber-light);
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .ai-email-property:hover { background: rgba(245,158,11,0.18); }
+        .ai-email-greeting {
+            color: var(--white);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .ai-email-section-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--amber);
+            margin-top: 1.25rem;
+            margin-bottom: 0.6rem;
+        }
+        .ai-email-questions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .ai-email-question {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            color: rgba(255,255,255,0.75);
+        }
+        .ai-email-question-bullet {
+            color: var(--amber);
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+        .ai-email-inspect {
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 10px;
+            padding: 0.85rem 1.1rem;
+            margin-top: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--amber-light);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .ai-email-inspect:hover { background: rgba(245,158,11,0.15); }
+        .ai-email-cross-sell {
+            border-left: 3px solid var(--amber);
+            padding: 0.75rem 1rem;
+            margin-top: 1.25rem;
+            background: rgba(245,158,11,0.06);
+            border-radius: 0 8px 8px 0;
+        }
+        .ai-email-cross-sell-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--amber);
+            margin-bottom: 0.5rem;
+        }
+        .ai-email-cross-sell-title {
+            font-weight: 700;
+            color: var(--white);
+            font-size: 0.88rem;
+        }
+        .ai-email-cross-sell-price {
+            color: var(--amber-light);
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-top: 0.2rem;
+        }
+        .ai-email-signature {
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+        }
+        .ai-email-signature strong {
+            color: var(--white);
+            font-weight: 600;
+        }
+        .ai-email-signature .agency {
+            color: var(--amber-light);
+            font-weight: 600;
+        }
+
+        /* ─── PRICING ─── */
+        .pricing-section {
+            padding: 6rem 0;
+            background: var(--bg-off);
+        }
+        .pricing-card {
+            max-width: 640px;
+            margin: 3rem auto 0;
+            background: var(--white);
+            border: 2px solid var(--amber);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 8px 40px rgba(245,158,11,0.1);
+        }
+        .pricing-popular {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--amber);
+            color: var(--navy);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 0.4rem 1.25rem;
+            border-radius: 100px;
+        }
+        .pricing-price {
+            margin: 1rem 0;
+        }
+        .pricing-price .currency {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--slate);
+            vertical-align: super;
+        }
+        .pricing-price .amount {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--navy);
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+        .pricing-price .period {
+            font-size: 1rem;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .pricing-subtitle {
+            font-size: 1rem;
+            color: var(--slate-mid);
+            margin-bottom: 2rem;
+        }
+        .pricing-features {
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        .pricing-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-size: 0.9rem;
+            color: var(--slate);
+        }
+        .pricing-check {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: var(--green-bg);
+            color: var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .pricing-cta {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background: var(--amber);
+            color: var(--navy);
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            text-align: center;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+        .pricing-cta:hover {
+            background: var(--amber-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245,158,11,0.3);
+        }
+        .pricing-note {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 1rem;
+        }
+
+        /* ─── BILLING TOGGLE ─── */
+        .billing-toggle-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin: 2rem 0 0;
+            flex-wrap: wrap;
+        }
+        .billing-toggle {
+            display: inline-flex;
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 100px;
+            padding: 4px;
+            gap: 4px;
+        }
+        .billing-toggle-btn {
+            padding: 0.55rem 1.35rem;
+            border-radius: 100px;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: var(--slate-mid);
+            white-space: nowrap;
+            min-height: 40px;
+            touch-action: manipulation;
+        }
+        .billing-toggle-btn.active {
+            background: var(--navy);
+            color: var(--white);
+        }
+        .billing-save-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: var(--green-bg);
+            color: var(--green);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.35rem 0.75rem;
+            border-radius: 100px;
+            white-space: nowrap;
+        }
+        .pricing-annual-note {
+            font-size: 0.82rem;
+            color: var(--green);
+            font-weight: 600;
+            min-height: 1.2em;
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+        }
+        .pricing-annual-note.hidden { display: none; }
+
+        /* ─── PRICING TIERS GRID ─── */
+        .pricing-tiers-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .pricing-tier-card {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem 1.1rem;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .pricing-tier-card:hover {
+            border-color: var(--amber);
+            box-shadow: 0 4px 24px rgba(245,158,11,0.1);
+            transform: translateY(-2px);
+        }
+        .pricing-tier-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--slate-mid);
+            background: var(--bg-off);
+            border: 1px solid var(--border);
+            padding: 0.2rem 0.6rem;
+            border-radius: 100px;
+            display: inline-block;
+            margin-bottom: 0.85rem;
+        }
+        .pricing-tier-badge.popular {
+            background: var(--amber-bg);
+            color: var(--amber-dark);
+            border-color: transparent;
+        }
+        .pricing-tier-badge.save {
+            background: var(--green-bg);
+            color: var(--green);
+            border-color: transparent;
+        }
+        .pricing-tier-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 0.2rem;
+        }
+        .pricing-tier-agents {
+            font-size: 0.78rem;
+            color: var(--slate-mid);
+            margin-bottom: 0.85rem;
+        }
+        .pricing-tier-price {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 0.1rem;
+            margin-bottom: 0.2rem;
+        }
+        .pricing-tier-price .currency {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--slate);
+            align-self: flex-start;
+            padding-top: 0.35rem;
+        }
+        .pricing-tier-price .amount {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--navy);
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+        .pricing-tier-price .period {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .pricing-tier-currency {
+            font-size: 0.7rem;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+        }
+        .pricing-tier-cta {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 0.5rem;
+            background: var(--amber);
+            color: var(--navy);
+            border: none;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            text-align: center;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+        .pricing-tier-cta:hover {
+            background: var(--amber-dark);
+            transform: translateY(-1px);
+        }
+        .pricing-tier-cta-annual {
+            display: flex;
+            width: 100%;
+            padding: 0.55rem 0.5rem;
+            background: transparent;
+            color: var(--amber);
+            border: 1.5px solid var(--amber);
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            text-align: center;
+            min-height: 38px;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            margin-top: 0.4rem;
+            box-sizing: border-box;
+        }
+        .pricing-tier-cta-annual:hover {
+            background: var(--amber);
+            color: var(--navy);
+            transform: translateY(-1px);
+        }
+        @media (max-width: 900px) {
+            .pricing-tiers-grid { grid-template-columns: repeat(2, 1fr); max-width: 640px; }
+        }
+        @media (max-width: 560px) {
+            .pricing-tiers-grid { grid-template-columns: 1fr; max-width: 420px; }
+        }
+
+        /* Competitor comparison */
+        .compare-table {
+            max-width: 700px;
+            margin: 3rem auto 0;
+            overflow: visible;
+            padding: 0 0.75rem;
+        }
+        .compare-table-inner {
+            min-width: 300px;
+        }
+        .compare-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            padding: 0.85rem 0;
+            font-size: 0.85rem;
+        }
+        .compare-row.header {
+            font-weight: 700;
+            color: var(--navy);
+            border-bottom: 2px solid var(--navy);
+        }
+        .compare-row .name {
+            color: var(--slate);
+            font-weight: 500;
+        }
+        .compare-row .price {
+            text-align: center;
+            color: var(--slate-mid);
+        }
+        .compare-row .propops-price {
+            text-align: center;
+            color: var(--green);
+            font-weight: 700;
+        }
+        .compare-row.highlight {
+            background: var(--green-bg);
+            border-radius: 8px;
+            padding: 0.85rem 0.75rem;
+            margin: 0;
+            border-bottom: none;
+        }
+
+        /* ─── SOCIAL PROOF ─── */
+        .proof-section {
+            padding: 5rem 0;
+        }
+        .proof-content {
+            text-align: center;
+        }
+        .proof-logos {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2.5rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            opacity: 0.5;
+        }
+        .proof-logo {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--slate-light);
+            letter-spacing: 0.5px;
+        }
+        .proof-quote {
+            max-width: 600px;
+            margin: 3rem auto 0;
+            padding: 2rem;
+            background: var(--bg-off);
+            border-radius: 16px;
+            border-left: 4px solid var(--amber);
+        }
+        .proof-quote p {
+            font-size: 1.05rem;
+            color: var(--slate);
+            font-style: italic;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+        .proof-quote cite {
+            font-size: 0.85rem;
+            color: var(--muted);
+            font-style: normal;
+            font-weight: 600;
+        }
+
+        /* ─── FAQ ─── */
+        .faq-section {
+            padding: 6rem 0;
+        }
+        .faq-list {
+            max-width: 720px;
+            margin: 4rem auto 0;
+        }
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+        }
+        .faq-item:first-child {
+            border-top: 1px solid var(--border);
+        }
+        .faq-question {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.35rem 0;
+            cursor: pointer;
+            user-select: none;
+            list-style: none;
+            touch-action: manipulation;
+            min-height: 56px;
+        }
+        .faq-question::-webkit-details-marker { display: none; }
+        .faq-question h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy);
+            line-height: 1.45;
+        }
+        .faq-chevron {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: var(--amber-bg);
+            color: var(--amber-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: transform 0.2s, background 0.15s;
+            line-height: 1;
+            touch-action: manipulation;
+        }
+        details[open] .faq-chevron {
+            transform: rotate(45deg);
+            background: var(--amber);
+            color: var(--navy);
+        }
+        .faq-answer {
+            padding: 0 0 1.35rem;
+            font-size: 0.92rem;
+            color: var(--slate-mid);
+            line-height: 1.7;
+        }
+
+        /* ─── FINAL CTA ─── */
+        .final-cta {
+            padding: 6rem 0;
+            background: var(--navy);
+            text-align: center;
+        }
+        .final-cta h2 {
+            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        .final-cta p {
+            font-size: 1.05rem;
+            color: rgba(255,255,255,0.6);
+            max-width: 480px;
+            margin: 0 auto 2.5rem;
+        }
+        .final-cta .email-form input {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.15);
+            color: var(--white);
+        }
+        .final-cta .email-form input::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+        .final-cta .email-form input:focus {
+            border-color: var(--amber);
+        }
+        .final-cta .form-note {
+            color: rgba(255,255,255,0.4);
+        }
+        .final-cta .form-success {
+            background: rgba(5,150,105,0.15);
+            color: #6ee7b7;
+        }
+
+        /* ─── FOOTER ─── */
+        footer {
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        .footer-logo {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        .footer-logo span { color: var(--amber); }
+        .footer-logo img { height: 28px; width: auto; display: block; }
+        footer p {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        footer a {
+            color: var(--muted);
+            text-decoration: none;
+        }
+        footer a:hover { color: var(--navy); }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .nav-left .nav-links { display: none; }
+            .ham-btn { display: flex; min-height: 44px; min-width: 44px; }
+            .hero { padding: 6.5rem 0 3rem; }
+            .email-form {
+                flex-direction: column;
+            }
+            .email-form button {
+                padding: 0.95rem;
+                min-height: 44px;
+            }
+            .flow-visual {
+                flex-direction: column;
+                gap: 0;
+            }
+            .flow-arrow {
+                transform: rotate(90deg);
+                margin: -0.25rem 0;
+                font-size: 1.2rem;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            .pain-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            .steps-grid {
+                grid-template-columns: 1fr;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .pricing-card {
+                padding: 2rem 1.5rem;
+            }
+            .compare-row {
+                font-size: 0.85rem;
+            }
+            .pain-section, .how-section, .features-section, .pricing-section {
+                padding: 4rem 0;
+            }
+        }
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 2rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat-number { font-size: 1.5rem; }
+            /* Prevent email subject overflow on small screens */
+            .ai-email-subject { max-width: 140px; font-size: 0.72rem; }
+            .ai-email-body { padding: 1.25rem 1rem; font-size: 0.82rem; }
+            .ai-email-property { font-size: 0.78rem; padding: 0.5rem 0.75rem; }
+            /* Pricing card — reduce padding to avoid cramping at 375px */
+            .pricing-card { padding: 2rem 1.5rem; }
+            /* Override inline-styled ROI math callout padding */
+            .pricing-section .container > div[style*="max-width:640px"] {
+                padding: 1.5rem !important;
+            }
+            /* Override inline-styled full-loop quote list */
+            .loop-quote-block ul {
+                padding-left: 1rem !important;
+                line-height: 1.8 !important;
+            }
+        }
+        @media (max-width: 360px) {
+            .container { padding: 0 1rem; }
+            .hero { padding: 5.5rem 0 2.5rem; }
+            .nav-inner { padding: 0 1rem; height: 56px; }
+            .logo { font-size: 1.25rem; }
+            .logo img { height: 28px; }
+            .section-title { font-size: 1.5rem; }
+            .pricing-card { padding: 1.5rem; }
+            .step-card { padding: 1.5rem; }
+            .feature-card { padding: 1.5rem; }
+            .pain-section, .how-section, .features-section, .pricing-section { padding: 3rem 0; }
+            .hero-badge { font-size: 0.7rem; padding: 0.3rem 0.8rem; }
+        }
+
+        /* ─── Push notification promo banner (above video) ─── */
+        .push-promo-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+            background: linear-gradient(135deg, var(--amber-bg) 0%, #fffcf0 100%);
+            border: 1.5px solid var(--amber);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 24px rgba(245,158,11,0.14);
+        }
+        .push-promo-inner {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+        .push-promo-emoji {
+            font-size: 2.4rem;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .push-promo-copy strong {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--navy);
+            letter-spacing: -0.3px;
+            margin-bottom: 0.3rem;
+        }
+        .push-promo-copy p {
+            font-size: 0.88rem;
+            color: var(--slate-mid);
+            line-height: 1.55;
+            margin: 0;
+        }
+        .push-promo-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: var(--amber);
+            color: var(--navy);
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 0.45rem 1rem;
+            border-radius: 100px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        @media (max-width: 600px) {
+            .push-promo-banner {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 1.25rem 1.5rem;
+                gap: 0.85rem;
+            }
+        }
+
+        /* ─── THE FULL LOOP ─── */
+        .full-loop-section {
+            padding: 5rem 0;
+            background: var(--navy);
+        }
+        .full-loop-eyebrow {
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--amber-light);
+            margin-bottom: 0.75rem;
+        }
+        .full-loop-headline {
+            text-align: center;
+            font-size: clamp(1.4rem, 2.8vw, 1.95rem);
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: -0.5px;
+            line-height: 1.25;
+            max-width: 760px;
+            margin: 0 auto 3rem;
+        }
+        .full-loop-headline em {
+            color: var(--amber);
+            font-style: normal;
+        }
+        .full-loop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+        .loop-quote-block {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(245,158,11,0.25);
+            border-left: 4px solid var(--amber);
+            border-radius: 16px;
+            padding: 2.5rem;
+        }
+        .loop-quote-mark {
+            font-size: 4rem;
+            line-height: 0.8;
+            color: var(--amber);
+            font-weight: 900;
+            margin-bottom: 0.75rem;
+        }
+        .loop-quote-block p {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.9);
+            line-height: 1.7;
+            font-style: italic;
+            margin: 0 0 1rem;
+        }
+        .loop-quote-attribution {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.45);
+            font-style: normal;
+        }
+        .loop-benefits {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .loop-benefit {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: border-color 0.2s;
+        }
+        .loop-benefit:hover {
+            border-color: rgba(245,158,11,0.3);
+        }
+        .loop-benefit-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .loop-benefit h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 0.35rem;
+        }
+        .loop-benefit p {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.6;
+            margin: 0;
+        }
+        @media (max-width: 768px) {
+            .full-loop-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+
+        /* Push notification inline callout in How It Works */
+        .push-step-callout {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--amber-bg);
+            border-left: 3px solid var(--amber);
+            border-radius: 0 8px 8px 0;
+            padding: 0.6rem 0.85rem;
+            margin-top: 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--amber-dark);
+        }
+
+        /* ─── LIVE DEMO SECTION ─── */
+        .demo-section {
+            padding: 4rem 0 5rem;
+            background: var(--bg-off);
+            border-bottom: 1px solid var(--border);
+        }
+        .demo-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .demo-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--green);
+            background: var(--green-bg);
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            margin-bottom: 1.25rem;
+        }
+        .demo-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: demo-live-pulse 1.5s infinite;
+            flex-shrink: 0;
+        }
+        @keyframes demo-live-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .demo-headline {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 800;
+            color: var(--navy);
+            letter-spacing: -0.5px;
+            margin-bottom: 0.75rem;
+        }
+        .demo-subtext {
+            font-size: 0.95rem;
+            color: var(--slate-mid);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+        .demo-container {
+            max-width: 820px;
+            margin: 0 auto;
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+            width: 100%;
+        }
+        .demo-chrome {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--navy);
+        }
+        .demo-chrome-dots {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .demo-chrome-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: block;
+        }
+        .demo-chrome-dots span:nth-child(1) { background: #ff5f57; }
+        .demo-chrome-dots span:nth-child(2) { background: #febc2e; }
+        .demo-chrome-dots span:nth-child(3) { background: #28c840; }
+        .demo-chrome-title {
+            flex: 1;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+        .demo-chrome-status {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--amber);
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        .demo-active-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--amber);
+            animation: demo-live-pulse 1.5s infinite;
+        }
+        .demo-table-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 0.8fr 1.2fr 0.55fr;
+            padding: 0.65rem 1.25rem;
+            background: var(--bg-off);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+        }
+        .demo-table-body { min-height: 280px; overflow-x: auto; }
+        .demo-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 0.8fr 1.2fr 0.55fr;
+            align-items: center;
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.4s;
+        }
+        .demo-row:last-child { border-bottom: none; }
+        .demo-row-animate {
+            background: #fffbf0;
+            animation: demo-row-in 0.35s ease-out;
+        }
+        @keyframes demo-row-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .demo-row-lead { display: flex; align-items: center; gap: 0.75rem; }
+        .demo-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--amber-bg);
+            color: var(--amber-dark);
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .demo-name { font-size: 0.875rem; font-weight: 600; color: var(--navy); line-height: 1.3; }
+        .demo-property {
+            font-size: 0.72rem;
+            color: var(--muted);
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+        .demo-type-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .type-buyer    { background: var(--blue-bg); color: var(--blue); }
+        .type-renter   { background: #ede9fe; color: #7c3aed; }
+        .type-seller   { background: var(--green-bg); color: var(--green); }
+        .type-landlord { background: var(--amber-bg); color: var(--amber-dark); }
+        .demo-portal { font-size: 0.8rem; color: var(--slate-mid); font-weight: 500; }
+        .demo-status-cell { display: flex; align-items: center; }
+        .demo-status-sent {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--green);
+            background: var(--green-bg);
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+        }
+        .demo-status-new {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--amber-dark);
+            background: var(--amber-bg);
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+        }
+        .demo-status-responding {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--blue);
+            background: var(--blue-bg);
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+        }
+        .demo-time { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+        .demo-pulse {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--amber-dark);
+            animation: demo-live-pulse 1s infinite;
+            flex-shrink: 0;
+        }
+        .demo-spinner {
+            width: 10px; height: 10px;
+            border: 2px solid var(--blue-bg);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: demo-spin 0.6s linear infinite;
+            flex-shrink: 0;
+        }
+        .demo-spinner-dark {
+            width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: var(--white);
+            border-radius: 50%;
+            animation: demo-spin 0.6s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        @keyframes demo-spin { to { transform: rotate(360deg); } }
+        .demo-cta-area { text-align: center; margin-top: 2rem; }
+        .demo-trigger-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.9rem 2rem;
+            background: var(--navy);
+            color: var(--white);
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-height: 48px;
+            touch-action: manipulation;
+        }
+        .demo-trigger-btn:hover:not(:disabled) {
+            background: var(--navy-light);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(15,23,42,0.2);
+        }
+        .demo-trigger-btn:disabled { opacity: 0.7; cursor: default; transform: none; }
+        .demo-play-icon { font-size: 0.8rem; }
+        .demo-cta-note { margin-top: 0.75rem; font-size: 0.8rem; color: var(--muted); }
+        .demo-post-cta {
+            max-width: 820px;
+            margin: 1.5rem auto 0;
+            background: var(--navy);
+            border-radius: 14px;
+            padding: 1.5rem 2rem;
+            display: none;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .demo-post-cta-visible { opacity: 1 !important; transform: translateY(0) !important; }
+        .demo-post-inner {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .demo-post-check {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--green); color: var(--white);
+            font-size: 1.1rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .demo-post-text { display: flex; flex-direction: column; flex: 1; min-width: 180px; }
+        .demo-post-text strong { color: var(--white); font-size: 0.95rem; font-weight: 700; }
+        .demo-post-text span { color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 0.15rem; }
+        .demo-post-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.85rem 1.75rem;
+            background: var(--amber);
+            color: var(--navy);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: all 0.15s;
+            min-height: 48px;
+            touch-action: manipulation;
+            flex-shrink: 0;
+        }
+        .demo-post-btn:hover { background: var(--amber-dark); transform: translateY(-1px); }
+        @media (max-width: 768px) {
+            .demo-table-header, .demo-row { grid-template-columns: 1.5fr 0.9fr 0.7fr 1.1fr 0.5fr; }
+            .demo-property { max-width: 100px; }
+        }
+        @media (max-width: 600px) {
+            .demo-table-header, .demo-row { grid-template-columns: 1.8fr 0.9fr 1.2fr 0.5fr; }
+            .demo-table-header span:nth-child(3), .demo-row .demo-portal { display: none; }
+            .demo-property { max-width: 80px; }
+            .demo-post-inner { flex-direction: column; text-align: center; }
+            .demo-post-text { min-width: 0; align-items: center; }
+            .demo-container { border-radius: 12px; }
+        }
+
+        /* ─── MOBILE HAMBURGER NAV ─── */
+        .ham-btn {
+            display: none;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--navy);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.25rem;
+            min-height: 44px;
+            min-width: 44px;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            line-height: 1;
+            padding: 0;
+            touch-action: manipulation;
+        }
+        .ham-btn:hover { background: var(--bg-off); }
+        .lp-mobile-menu {
+            display: none;
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border-bottom: 2px solid var(--border);
+            padding: 0.6rem 1.25rem 1rem;
+            z-index: 99;
+            flex-direction: column;
+            gap: 0.25rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+        }
+        .lp-mobile-menu.open { display: flex; }
+        .lp-mobile-menu a {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--slate-mid);
+            text-decoration: none;
+            min-height: 48px;
+            transition: all 0.15s;
+        }
+        .lp-mobile-menu a:hover { background: var(--bg-off); color: var(--navy); }
+        .lp-mobile-menu a.lp-mob-login {
+            color: var(--slate-mid);
+            border-top: 1px solid var(--border);
+            margin-top: 0.25rem;
+        }
+        .lp-mobile-menu a.lp-mob-cta {
+            background: var(--navy);
+            color: var(--white) !important;
+            font-weight: 700;
+            justify-content: center;
+            margin-top: 0.35rem;
+            border-radius: 8px;
+            text-align: center;
+            touch-action: manipulation;
+        }
+        .lp-mobile-menu a.lp-mob-cta:hover { background: var(--navy-light); }
+        @media (max-width: 360px) {
+            .lp-mobile-menu { top: 64px; padding: 0.5rem 1rem 0.75rem; }
+        }
+
+        /* ─── MOBILE HEADER: always-visible Pricing + LOGIN + CTA ─── */
+        /* Desktop: hide the mobile-only pieces */
+        .mob-inline-links { display: none; }
+        .nav-cta-mobile { display: none !important; }
+
+        @media (max-width: 768px) {
+            /* Show Pricing + LOGIN inline */
+            .mob-inline-links {
+                display: flex;
+                align-items: center;
+                gap: 0.55rem;
+                flex-shrink: 0;
+            }
+            .mob-inline-links a {
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: var(--slate-mid);
+                text-decoration: none;
+                white-space: nowrap;
+                padding: 0.2rem 0;
+                transition: color 0.15s;
+            }
+            .mob-inline-links a:hover { color: var(--navy); }
+            .mob-inline-links a.mob-login {
+                color: var(--navy);
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+            /* Swap desktop CTA → mobile CTA */
+            .nav-cta-desktop { display: none !important; }
+            .nav-cta-mobile {
+                display: flex !important;
+                font-size: 0.72rem;
+                padding: 0.5rem 0.6rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+                text-decoration: none;
+            }
+        }
+        @media (max-width: 360px) {
+            .mob-inline-links { gap: 0.4rem; }
+            .mob-inline-links a { font-size: 0.72rem; }
+            .nav-cta-mobile { font-size: 0.68rem; padding: 0.45rem 0.5rem; }
+        }
+
+        /* ─── MOBILE RESPONSIVENESS FIXES (360-390px iPhones) ─── */
+
+        /* 480px: Demo table → 3 columns (hide Time), tighter demo type tags */
+        @media (max-width: 480px) {
+            .demo-table-header, .demo-row {
+                grid-template-columns: 2fr 0.8fr 1.4fr;
+                padding: 0.65rem 0.85rem;
+                min-width: 0;
+            }
+            .demo-table-header span:nth-child(3),
+            .demo-row .demo-portal { display: none; }
+            .demo-table-header span:nth-child(5),
+            .demo-row .demo-time { display: none; }
+            .demo-chrome { padding: 0.6rem 0.85rem; }
+            .demo-chrome-title { font-size: 0.7rem; }
+            .demo-chrome-title span { display: none; }
+            .demo-chrome-status { font-size: 0.65rem; }
+            .demo-type-tag { font-size: 0.62rem; padding: 0.2rem 0.4rem; }
+            .demo-name { font-size: 0.8rem; }
+            .demo-property { font-size: 0.68rem; max-width: 120px; }
+            .demo-avatar { width: 28px; height: 28px; font-size: 0.7rem; }
+            .demo-row-lead { gap: 0.5rem; }
+            .demo-status-sent, .demo-status-new, .demo-status-responding {
+                font-size: 0.68rem;
+                padding: 0.2rem 0.45rem;
+            }
+            .demo-container { border-radius: 10px; }
+            .demo-trigger-btn { padding: 0.8rem 1.5rem; font-size: 0.88rem; }
+            .demo-post-inner { flex-direction: column; text-align: center; gap: 1rem; }
+            .demo-post-text { min-width: 0; align-items: center; }
+            .demo-post-btn { width: 100%; justify-content: center; }
+
+            /* Full Loop — reduce quote padding */
+            .loop-quote-block { padding: 1.5rem; }
+            .loop-quote-mark { font-size: 2.5rem; margin-bottom: 0.5rem; }
+            .loop-quote-block p { font-size: 0.95rem; }
+            .loop-benefit { padding: 1rem; }
+            .full-loop-section { padding: 3.5rem 0; }
+
+            /* Pain section — tighter spacing */
+            .pain-card { padding: 1.5rem; }
+            .pain-content h3 { font-size: 1.4rem; }
+
+            /* Push promo banner */
+            .push-promo-banner { padding: 1rem 1.25rem; gap: 0.75rem; }
+            .push-promo-emoji { font-size: 1.8rem; }
+            .push-promo-copy strong { font-size: 0.95rem; }
+            .push-promo-copy p { font-size: 0.82rem; }
+
+            /* Pricing — responsive amount size */
+            .pricing-price .amount { font-size: 3.25rem; }
+            .pricing-price .currency { font-size: 1.25rem; }
+
+            /* Compare table — tighter cells */
+            .compare-row { font-size: 0.78rem; padding: 0.7rem 0; }
+
+            /* Proof section */
+            .proof-logos { gap: 1.5rem; }
+            .proof-quote { padding: 1.5rem; }
+            .proof-quote p { font-size: 0.95rem; }
+
+            /* FAQ — tighter */
+            .faq-question { padding: 1.1rem 0; }
+            .faq-answer { font-size: 0.88rem; }
+
+            /* Final CTA */
+            .final-cta { padding: 4rem 0; }
+            .final-cta h2 { font-size: 1.5rem; }
+
+            /* Video section */
+            .video-wrapper { border-radius: 10px; }
+            .video-secondary-wrap { margin-top: 2.5rem; }
+
+            /* Flow visual — tighter on mobile */
+            .flow-step { padding: 1rem 0.5rem; }
+            .flow-icon { width: 48px; height: 48px; font-size: 1.2rem; }
+            .flow-step h4 { font-size: 0.8rem; }
+            .flow-step p { font-size: 0.72rem; }
+
+            /* Stats bar */
+            .stats-bar { padding: 2rem 0; }
+            .stats-grid { gap: 1rem; }
+
+            /* Feature cards push highlight */
+            .push-highlight .push-points { gap: 0.65rem; }
+            .push-point { font-size: 0.82rem; }
+
+            /* Billing toggle */
+            .billing-toggle-btn { padding: 0.45rem 1rem; font-size: 0.8rem; }
+            .billing-save-pill { font-size: 0.65rem; padding: 0.25rem 0.6rem; }
+        }
+
+        /* ─── LANDSCAPE ORIENTATION ─── */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .video-wrapper {
+                width: 100%;
+                max-height: 60vh;
+                position: relative;
+                border-radius: 0.5rem;
+                box-shadow: none;
+                max-width: 720px;
+                margin: 0 auto;
+                background: #000;
+            }
+            .video-aspect {
+                padding-bottom: 56.25%;
+                height: 0;
+                width: 100%;
+                position: relative;
+            }
+            .video-aspect iframe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+        }
+
+        /* Landscape on phones only — max-height prevents firing on desktop monitors */
+        @media (orientation: landscape) and (max-height: 500px) {
+            nav { position: fixed; }
+            .hero { padding-top: 5rem; }
+            .hero h1 { font-size: 1.75rem; }
+            .hero-sub { font-size: 0.9rem; margin-bottom: 1.5rem; }
+            .flow-visual { flex-direction: row; }
+            .flow-arrow { transform: none; margin: 0 -0.25rem; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .pain-grid { grid-template-columns: repeat(2, 1fr); }
+            .steps-grid { grid-template-columns: repeat(3, 1fr); }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .pain-section, .how-section, .features-section, .pricing-section {
+                padding: 3rem 0;
+            }
+        }
+
+        /* 390px: iPhone 14 — further tightening */
+        @media (max-width: 390px) {
+            .hero h1 { font-size: 1.85rem; letter-spacing: -1px; }
+            .hero-sub { font-size: 0.92rem; }
+            .email-form input { padding: 0.85rem 1rem; font-size: 0.95rem; min-height: 44px; }
+            .email-form button { font-size: 0.9rem; padding: 0.85rem 1.5rem; min-height: 44px; }
+            .form-note { font-size: 0.75rem; }
+            .section-eyebrow { font-size: 0.7rem; letter-spacing: 1.5px; }
+            .section-title { font-size: 1.45rem; }
+            .step-card p { font-size: 0.85rem; }
+            .feature-card p { font-size: 0.85rem; }
+            .feature-card h3 { font-size: 0.98rem; }
+            .pricing-feature { font-size: 0.85rem; }
+            .pricing-card { padding: 2rem 1.5rem; }
+            .full-loop-headline { font-size: 1.15rem; }
+            .loop-quote-block ul { font-size: 0.82rem; }
+            .push-step-callout { font-size: 0.78rem; padding: 0.5rem 0.7rem; }
+            /* Demo table responsive */
+            .demo-table-header { font-size: 0.65rem; padding: 0.5rem 0.75rem; }
+            .demo-row { padding: 0.7rem 0.75rem; font-size: 0.75rem; }
+            .demo-container { margin: 0 auto; }
+        }
+
+        /* Small mobile: 375px (iPhone SE) and below */
+        @media (max-width: 375px) {
+            .demo-section { padding: 3rem 0; }
+            .demo-headline { font-size: 1.25rem; }
+            .demo-subtext { font-size: 0.85rem; }
+            .demo-chrome { padding: 0.5rem 0.75rem; }
+            .demo-chrome-title { font-size: 0.65rem; }
+            .demo-table-header { font-size: 0.6rem; padding: 0.4rem 0.5rem; }
+            .demo-row { padding: 0.6rem 0.5rem; font-size: 0.7rem; min-width: 0; }
+            .demo-name { font-size: 0.75rem; }
+            .demo-property { font-size: 0.65rem; max-width: 100px; }
+        }
+
+        /* 360px: iPhone SE — most aggressive */
+        @media (max-width: 360px) {
+            .hero { padding: 5.25rem 0 2rem; }
+            .hero h1 { font-size: 1.7rem; letter-spacing: -0.8px; }
+            .hero-badge { font-size: 0.68rem; padding: 0.25rem 0.7rem; gap: 0.35rem; }
+            .hero-sub { font-size: 0.88rem; line-height: 1.6; margin-bottom: 2rem; }
+            .screenshot-wrap { border-radius: 10px; margin: 2rem 0 0; }
+            .demo-table-header, .demo-row {
+                grid-template-columns: 2.2fr 0.7fr 1.2fr;
+                padding: 0.55rem 0.65rem;
+            }
+            .demo-table-header { font-size: 0.65rem; }
+            .demo-type-tag { font-size: 0.58rem; padding: 0.15rem 0.35rem; }
+            .demo-avatar { width: 24px; height: 24px; font-size: 0.65rem; }
+            .demo-name { font-size: 0.75rem; }
+            .demo-property { font-size: 0.65rem; max-width: 90px; }
+            .demo-status-sent, .demo-status-new, .demo-status-responding {
+                font-size: 0.62rem; padding: 0.15rem 0.35rem; gap: 0.25rem;
+            }
+            .loop-quote-block { padding: 1.25rem; }
+            .loop-quote-block p { font-size: 0.9rem; }
+            .loop-benefit { padding: 0.85rem; gap: 0.75rem; }
+            .loop-benefit h4 { font-size: 0.88rem; }
+            .loop-benefit p { font-size: 0.8rem; }
+            .loop-benefit-icon { font-size: 1.3rem; }
+            .proof-logos { gap: 1rem; font-size: 0.78rem; }
+            .compare-row { font-size: 0.72rem; }
+            .demo-trigger-btn { padding: 0.75rem 1.25rem; font-size: 0.85rem; }
+            .demo-cta-note { font-size: 0.75rem; }
+            .pricing-card { margin: 2rem auto 0; }
+            .pricing-price .amount { font-size: 3rem; }
+            .full-loop-headline { font-size: 1.1rem; margin-bottom: 2rem; }
+            .push-promo-banner { border-radius: 12px; }
+            .push-promo-copy strong { font-size: 0.9rem; }
+            .push-promo-copy p { font-size: 0.78rem; }
+        }
+
+        /* ─── HUGO SHOWCASE SECTION ─── */
+        .hugo-section {
+            background: linear-gradient(135deg, #0a0e1a 0%, #111827 50%, #0a0e1a 100%);
+            padding: 7rem 0 5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .hugo-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 25% 60%, rgba(245,158,11,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 40%, rgba(37,99,235,0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .hugo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        .hugo-left { position: relative; z-index: 1; }
+        .hugo-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--amber);
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.25);
+            padding: 0.32rem 0.85rem;
+            border-radius: 100px;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .hugo-headline {
+            font-size: clamp(1.85rem, 4vw, 2.75rem);
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.13;
+            letter-spacing: -1.2px;
+            margin-bottom: 1.1rem;
+        }
+        .hugo-headline span { color: var(--amber); }
+        .hugo-desc {
+            font-size: 1rem;
+            color: #94a3b8;
+            line-height: 1.7;
+            max-width: 440px;
+            margin-bottom: 2rem;
+        }
+        .hugo-ctas { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+        .hugo-chat-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--amber);
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 0.82rem 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            min-height: 44px;
+        }
+        .hugo-chat-btn:hover {
+            background: var(--amber-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 18px rgba(245,158,11,0.35);
+        }
+        .hugo-chat-btn .btn-live {
+            width: 8px;
+            height: 8px;
+            background: #0f172a;
+            border-radius: 50%;
+            animation: hugo-pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes hugo-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.75); }
+        }
+        .hugo-trial-link {
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .hugo-trial-link:hover { color: #94a3b8; }
+        /* Language selector */
+        .hugo-lang-selector { margin-bottom: 0.75rem; }
+        .hugo-lang-label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .hugo-lang-flags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .hugo-lang-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1.5px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 0.25rem 0.35rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: transform 0.12s, border-color 0.12s, background 0.12s;
+            line-height: 1;
+        }
+        .hugo-lang-btn:hover { transform: scale(1.15); border-color: rgba(255,255,255,0.3); }
+        .hugo-lang-btn.active { border-color: #eab308; background: rgba(234,179,8,0.12); }
+        /* Right panel */
+        .hugo-right {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+        /* Chat mockup */
+        .hugo-chat-window {
+            flex: 1;
+            background: #1a2035;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.07);
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.45);
+        }
+        .chat-hdr {
+            background: #0f172a;
+            padding: 0.7rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .chat-hdr-avatar {
+            width: 30px; height: 30px;
+            background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; flex-shrink: 0;
+        }
+        .chat-hdr-name { font-size: 0.8rem; font-weight: 700; color: #fff; }
+        .chat-hdr-status {
+            font-size: 0.65rem; color: #10b981;
+            display: flex; align-items: center; gap: 0.3rem;
+        }
+        .chat-status-dot {
+            width: 6px; height: 6px;
+            background: #10b981; border-radius: 50%;
+            animation: pulse-green 2s ease-in-out infinite;
+        }
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .chat-body {
+            padding: 0.85rem 1rem;
+            display: flex; flex-direction: column; gap: 0.7rem;
+            min-height: 200px;
+        }
+        .chat-row { display: flex; gap: 0.45rem; align-items: flex-end; }
+        .chat-row.agent { justify-content: flex-end; }
+        .chat-bubble {
+            max-width: 78%;
+            padding: 0.55rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            line-height: 1.55;
+            color: #cbd5e1;
+        }
+        .chat-row.hugo .chat-bubble {
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-bottom-left-radius: 3px;
+        }
+        .chat-row.agent .chat-bubble {
+            background: #2d3748;
+            border-bottom-right-radius: 3px;
+        }
+        .chat-avatar {
+            width: 22px; height: 22px;
+            background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 700; color: #0f172a; flex-shrink: 0;
+        }
+        .chat-typing-row { display: flex; gap: 0.45rem; align-items: flex-end; }
+        .typing-bubble {
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 12px; border-bottom-left-radius: 3px;
+            padding: 0.55rem 0.7rem;
+            display: flex; gap: 4px; align-items: center;
+        }
+        .tdot {
+            width: 5px; height: 5px;
+            background: var(--amber); border-radius: 50%;
+            animation: tbounce 1.2s ease-in-out infinite;
+        }
+        .tdot:nth-child(2) { animation-delay: 0.2s; }
+        .tdot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes tbounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+        /* PWA phone card */
+        .pwa-phone-card {
+            width: 128px; flex-shrink: 0;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 0.7rem;
+            padding-top: 0.5rem;
+        }
+        .phone-shell {
+            width: 104px;
+            background: #0d1117;
+            border-radius: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            padding: 7px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+        }
+        .phone-notch {
+            width: 28px; height: 4px;
+            background: rgba(255,255,255,0.09);
+            border-radius: 10px;
+            margin: 0 auto 5px;
+        }
+        .phone-screen {
+            background: #111827;
+            border-radius: 13px;
+            padding: 7px;
+            min-height: 148px;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .phone-topbar {
+            display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
+        }
+        .phone-icon {
+            width: 14px; height: 14px;
+            background: var(--amber);
+            border-radius: 3px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.5rem; font-weight: 900; color: #0f172a;
+        }
+        .phone-app-name { font-size: 0.56rem; font-weight: 700; color: #fff; font-family: 'Inter',sans-serif; }
+        .phone-lead-card {
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.18);
+            border-radius: 5px; padding: 4px 5px; margin-bottom: 2px;
+        }
+        .plc-name { font-size: 0.52rem; color: #e2e8f0; font-weight: 600; font-family: 'Inter',sans-serif; }
+        .plc-stat { font-size: 0.47rem; color: #10b981; font-family: 'Inter',sans-serif; }
+        .phone-notif-bar {
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.18);
+            border-radius: 5px; padding: 3px 5px;
+            font-size: 0.46rem; color: #10b981; font-family: 'Inter',sans-serif;
+        }
+        .pwa-tag { text-align: center; }
+        .pwa-tag-title { font-size: 0.72rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.15rem; }
+        .pwa-tag-sub { font-size: 0.62rem; color: #64748b; line-height: 1.45; margin-bottom: 0.4rem; }
+        .pwa-tag-link {
+            font-size: 0.68rem; font-weight: 600; color: var(--amber);
+            text-decoration: none; cursor: pointer; background: none; border: none;
+            font-family: inherit; display: inline;
+        }
+        .pwa-tag-link:hover { text-decoration: underline; }
+        /* Responsive */
+        @media (max-width: 900px) {
+            .hugo-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+            .hugo-right { max-width: 520px; margin: 0 auto; }
+            .hugo-desc { max-width: 100%; }
+        }
+        /* Hugo character images — thumbnail size, float right of text */
+        .hugo-char-img {
+            width: 120px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+            border-radius: 10px;
+        }
+        .hugo-char-img-lg {
+            width: 200px;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+            border-radius: 10px;
+        }
+        .hugo-char-wrap {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .hugo-char-wrap-reverse {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-direction: row-reverse;
+        }
+        @media (max-width: 600px) {
+            .hugo-char-wrap,
+            .hugo-char-wrap-reverse {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            .hugo-char-img { width: 90px; }
+            .hugo-char-img-lg { width: 140px; }
+        }
+        @media (max-width: 540px) {
+            .hugo-section { padding: 5.5rem 0 3.5rem; }
+            .hugo-right { flex-direction: column; align-items: stretch; }
+            .pwa-phone-card {
+                flex-direction: row; width: 100%;
+                align-items: flex-start; gap: 1rem;
+            }
+            .phone-shell { width: 88px; }
+            .phone-screen { min-height: 120px; }
+            .pwa-tag { text-align: left; }
+        }
+        @media (max-width: 375px) {
+            .hugo-char-wrap,
+            .hugo-char-wrap-reverse {
+                gap: 0.75rem;
+            }
+            .hugo-char-img { width: 80px; }
+            .hugo-char-img-lg { width: 120px; }
+        }
+        @media (max-width: 360px) {
+            .hugo-char-img { width: 75px; }
+            .hugo-char-img-lg { width: 110px; }
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Lightweight page tracker — no cookies, no PII, <2KB -->
+<script defer src="/track.js"></script>
+
+<!-- NAV -->
+<nav>
+    <div class="nav-inner">
+        <div class="nav-left">
+            <a href="/" class="logo" aria-label="PropOps.Trade — Home">
+                <img src="/logo-horizontal.svg" alt="PropOps.Trade" height="34">
+            </a>
+            <div class="nav-links">
+                <a href="#demo">Live Demo</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="/login">Log in</a>
+            </div>
+        </div>
+        <!-- Mobile-only: Pricing + LOGIN always visible in header row -->
+        <div class="mob-inline-links">
+            <a href="#pricing" onclick="closeLandingMenu()">Pricing</a>
+            <a href="/login" class="mob-login" onclick="closeLandingMenu()">LOGIN</a>
+        </div>
+        <!-- Desktop CTA -->
+        <a href="#pricing" class="nav-cta nav-cta-desktop">Start Free Trial</a>
+        <!-- Mobile CTA (replaces desktop one at ≤768px) -->
+        <a href="#pricing" class="nav-cta nav-cta-mobile">14 Days Free Trial</a>
+        <button class="ham-btn" id="hamBtn" onclick="toggleLandingMenu()" aria-label="Open navigation menu" aria-expanded="false">&#9776;</button>
+    </div>
+</nav>
+
+<!-- MOBILE NAV MENU -->
+<div class="lp-mobile-menu" id="lpMobileMenu" role="navigation" aria-label="Mobile navigation">
+    <a href="#demo" onclick="closeLandingMenu()">&#128161; Live Demo</a>
+    <a href="#how-it-works" onclick="closeLandingMenu()">How It Works</a>
+    <a href="#features" onclick="closeLandingMenu()">Features</a>
+</div>
+
+<!-- MULTILINGUAL PROMO — TOP OF PAGE -->
+<section class="multilingual-section" id="multilingual">
+    <div class="container">
+        <div class="ml-header">
+            <div class="ml-eyebrow">🌏 Real conversations. Real proof.</div>
+            <h2 class="ml-heading">Hugo speaks your customer's language.<br>All 40 of them.</h2>
+        </div>
+        <div class="ml-screenshots-stacked">
+            <!-- Arabic chat demo — inline HTML mockup (R2 images were 404) -->
+            <div class="ml-screenshot-block">
+                <div class="ml-proof-label">🇸🇦 Arabic customer — plumber enquiry, live chat</div>
+                <div class="ml-chat-mockup" dir="rtl" lang="ar">
+                    <div class="ml-chat-header">
+                        <div class="ml-chat-avatar">H</div>
+                        <div class="ml-chat-header-info">
+                            <span class="ml-chat-name">Hugo</span>
+                            <span class="ml-chat-status-dot"></span>
+                            <span class="ml-chat-status">Online</span>
+                        </div>
+                    </div>
+                    <div class="ml-chat-body">
+                        <div class="ml-chat-bubble ml-chat-bot">
+                            <p>!مرحبا! أنا هوغو، مساعدك الذكي</p>
+                            <p>كيف أقدر أساعدك اليوم؟ 🤙</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-user">
+                            <p>أحتاج سباك ضروري — المطبخ فيه تسريب ماي كبير</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-bot">
+                            <p>!أكيد، أقدر أساعدك</p>
+                            <p>وين موقعك بالضبط؟ عشان أرسلك أقرب سباك متاح اليوم 📍</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-user">
+                            <p>في منطقة باراماتا — محتاجه اليوم لو ممكن</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-bot">
+                            <p>تمام! عندنا سباك متاح في باراماتا اليوم. خليني أحجزلك موعد</p>
+                            <p>ممكن اسمك ورقم تلفونك عشان أأكد الحجز؟ ✅</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="ml-proof-note">Live conversation — Hugo auto-detected Arabic, responded instantly.</div>
+            </div>
+            <!-- Mandarin chat demo — inline HTML mockup (R2 images were 404) -->
+            <div class="ml-screenshot-block">
+                <div class="ml-proof-label">🇨🇳 Mandarin customer — trade job enquiry, live chat</div>
+                <div class="ml-chat-mockup" lang="zh">
+                    <div class="ml-chat-header">
+                        <div class="ml-chat-avatar">H</div>
+                        <div class="ml-chat-header-info">
+                            <span class="ml-chat-name">Hugo</span>
+                            <span class="ml-chat-status-dot"></span>
+                            <span class="ml-chat-status">Online</span>
+                        </div>
+                    </div>
+                    <div class="ml-chat-body">
+                        <div class="ml-chat-bubble ml-chat-bot">
+                            <p>你好！我是Hugo，你的智能助手 🤙</p>
+                            <p>今天有什么可以帮你的？</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-user">
+                            <p>我家厨房水龙头漏水很严重，需要找一个水管工</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-bot">
+                            <p>没问题！我可以帮你安排水管工。</p>
+                            <p>你在哪个区？我帮你找最近的师傅 📍</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-user">
+                            <p>我在Chatswood，今天能来最好</p>
+                        </div>
+                        <div class="ml-chat-bubble ml-chat-bot">
+                            <p>好的！Chatswood今天有师傅可以上门。我帮你预约。</p>
+                            <p>请告诉我你的名字和电话号码，我马上确认预约 ✅</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="ml-proof-note">Auto-detected Mandarin. Zero setup required.</div>
+            </div>
+        </div>
+        <div class="ml-bullets">
+            <div class="ml-bullet">✅ Reads, writes &amp; speaks 40 languages</div>
+            <div class="ml-bullet">✅ Zero setup — Hugo auto-detects customer language</div>
+            <div class="ml-bullet">✅ Every lead understood. Every booking captured.</div>
+            <div class="ml-bullet">✅ Sounds natural — not robotic translation</div>
+        </div>
+        <div class="ml-flags" aria-label="Languages Hugo speaks">
+            <span title="Arabic">🇸🇦</span><span title="Chinese">🇨🇳</span><span title="Vietnamese">🇻🇳</span><span title="Hindi">🇮🇳</span>
+            <span title="Korean">🇰🇷</span><span title="Japanese">🇯🇵</span><span title="Spanish">🇪🇸</span><span title="French">🇫🇷</span>
+            <span title="German">🇩🇪</span><span title="Italian">🇮🇹</span><span title="Portuguese">🇧🇷</span><span title="Russian">🇷🇺</span>
+            <span title="Turkish">🇹🇷</span><span title="Indonesian">🇮🇩</span><span title="Malay">🇲🇾</span><span title="Thai">🇹🇭</span>
+            <span title="Greek">🇬🇷</span><span title="Dutch">🇳🇱</span><span title="Polish">🇵🇱</span><span title="Swedish">🇸🇪</span>
+            <span title="Norwegian">🇳🇴</span><span title="Danish">🇩🇰</span><span title="Finnish">🇫🇮</span><span title="Czech">🇨🇿</span>
+            <span title="Hungarian">🇭🇺</span><span title="Romanian">🇷🇴</span><span title="Bulgarian">🇧🇬</span><span title="Croatian">🇭🇷</span>
+            <span title="Slovak">🇸🇰</span><span title="Slovenian">🇸🇮</span><span title="Ukrainian">🇺🇦</span><span title="Hebrew">🇮🇱</span>
+            <span title="Persian">🇮🇷</span><span title="Urdu">🇵🇰</span><span title="Bengali">🇧🇩</span><span title="Tamil">🇱🇰</span>
+            <span title="Swahili">🇰🇪</span><span title="Afrikaans">🇿🇦</span><span title="Filipino">🇵🇭</span><span title="English">🇦🇺</span>
+        </div>
+        <div style="text-align:center;margin-top:1.5rem;">
+            <button class="ml-cta" onclick="document.querySelector('.hugo-widget-btn, #hugo-widget-toggle, .hugo-toggle, [class*=hugo]')?.click(); window.__hugoOpen?.();">
+                Try Hugo in your language →
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- HUGO SHOWCASE -->
+<section class="hugo-section" id="hugo">
+    <div class="container">
+        <div class="hugo-grid">
+            <!-- Left: Identity + CTA -->
+            <div class="hugo-left">
+                <div class="hugo-tag">
+                    <span>⚡</span> Meet Hugo — your 24/7 receptionist
+                </div>
+                <h2 class="hugo-headline">
+                    Hugo sounds like <span>you</span>.<br>Not a robot.
+                </h2>
+                <p class="hugo-desc">
+                    Hugo asks 10 questions about your business. Your services, your tone, your service zones, your pricing. After that, every response sounds like you wrote it — just sent in 3 seconds while you're under a sink.
+                </p>
+                <!-- Hugo waving — 24/7 reception / meet Hugo -->
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/cec072f4-38d8-4598-9636-edb63f898263.png"
+                     alt="Hugo waving — your 24/7 receptionist"
+                     class="hugo-char-img"
+                     style="margin-bottom:1.25rem;">
+                <!-- Language selector — click your flag to chat with Hugo in your language -->
+                <div class="hugo-lang-selector">
+                    <span class="hugo-lang-label">Chat in your language:</span>
+                    <div class="hugo-lang-flags">
+                        <button class="hugo-lang-btn active" data-lang="en" title="English" onclick="setHugoLang('en',this)">🇦🇺</button>
+                        <button class="hugo-lang-btn" data-lang="ar" title="Arabic" onclick="setHugoLang('ar',this)">🇸🇦</button>
+                        <button class="hugo-lang-btn" data-lang="zh" title="Mandarin" onclick="setHugoLang('zh',this)">🇨🇳</button>
+                        <button class="hugo-lang-btn" data-lang="vi" title="Vietnamese" onclick="setHugoLang('vi',this)">🇻🇳</button>
+                        <button class="hugo-lang-btn" data-lang="tr" title="Turkish" onclick="setHugoLang('tr',this)">🇹🇷</button>
+                        <button class="hugo-lang-btn" data-lang="el" title="Greek" onclick="setHugoLang('el',this)">🇬🇷</button>
+                        <button class="hugo-lang-btn" data-lang="it" title="Italian" onclick="setHugoLang('it',this)">🇮🇹</button>
+                        <button class="hugo-lang-btn" data-lang="ko" title="Korean" onclick="setHugoLang('ko',this)">🇰🇷</button>
+                    </div>
+                </div>
+                <div class="hugo-ctas">
+                    <button class="hugo-chat-btn" onclick="openHugoChat()" type="button">
+                        <span class="btn-live"></span>
+                        Talk to Hugo now
+                    </button>
+                    <a href="#pricing" class="hugo-trial-link">Start free trial →</a>
+                </div>
+            </div>
+            <!-- Right: Chat mockup + PWA phone -->
+            <div class="hugo-right">
+                <div class="hugo-chat-window">
+                    <div class="chat-hdr">
+                        <div class="chat-hdr-avatar" style="overflow:hidden;background:transparent;border:none;">
+                            <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/c2633fd8-e689-454d-81af-04564b0b6b5e.png"
+                                 alt="Hugo - Your Business Assistant"
+                                 style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                        </div>
+                        <div>
+                            <div class="chat-hdr-name">Hugo</div>
+                            <div class="chat-hdr-status">
+                                <span class="chat-status-dot"></span> Online now
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-body">
+                        <div class="chat-row hugo">
+                            <div class="chat-avatar" style="background:transparent;overflow:hidden;"><img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/a0804d7d-ad62-442d-8618-0f1f7ad15c2d.png" alt="Hugo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>
+                            <div class="chat-bubble">G'day! I'm Hugo, handling enquiries for this plumbing business. What job do you need done?</div>
+                        </div>
+                        <div class="chat-row agent">
+                            <div class="chat-bubble">Hot water system not working, need someone today</div>
+                        </div>
+                        <div class="chat-row hugo" id="hugoReply" style="display:none">
+                            <div class="chat-avatar" style="background:transparent;overflow:hidden;"><img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/a0804d7d-ad62-442d-8618-0f1f7ad15c2d.png" alt="Hugo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>
+                            <div class="chat-bubble">Sounds urgent — we can get someone out today. Electric HWS repair or replacement starts from <strong style="color:var(--amber)">$350</strong>. I'll have someone call you within 30 minutes to confirm.</div>
+                        </div>
+                        <div class="chat-typing-row" id="hugoTyping" style="display:none">
+                            <div class="chat-avatar" style="background:transparent;overflow:hidden;"><img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/a0804d7d-ad62-442d-8618-0f1f7ad15c2d.png" alt="Hugo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>
+                            <div class="typing-bubble">
+                                <span class="tdot"></span>
+                                <span class="tdot"></span>
+                                <span class="tdot"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- PWA promo -->
+                <div class="pwa-phone-card">
+                    <div class="phone-shell">
+                        <div class="phone-notch"></div>
+                        <div class="phone-screen">
+                            <div class="phone-topbar">
+                                <div class="phone-icon">P</div>
+                                <div class="phone-app-name">PropOps</div>
+                            </div>
+                            <div class="phone-lead-card">
+                                <div class="plc-name">Dave — burst pipe Bondi</div>
+                                <div class="plc-stat">⚡ Replied in 3s</div>
+                            </div>
+                            <div class="phone-lead-card">
+                                <div class="plc-name">Sarah — power out Surry Hills</div>
+                                <div class="plc-stat">⚡ Replied in 5s</div>
+                            </div>
+                            <div class="phone-notif-bar">📱 2 new job enquiries handled</div>
+                        </div>
+                    </div>
+                    <div class="pwa-tag">
+                        <div class="pwa-tag-title">Works as an app</div>
+                        <div class="pwa-tag-sub">iPhone &amp; Android.<br>Install in 15 seconds.</div>
+                        <button class="pwa-tag-link" id="pwaInstallBtn" onclick="triggerPwaInstall()" type="button">📲 Install the App →</button>
+                        <p id="pwaInstallNote" style="display:none;font-size:0.7rem;color:#64748b;margin:0.4rem 0 0;line-height:1.4;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">
+            <span>🔨</span>
+            <strong>Built for Australian Tradies</strong>
+        </div>
+        <h1>Sparky, plumber, painter —<br>who shows up? <span style="color:var(--amber)">Hugo.</span></h1>
+        <p class="hero-sub">Hugo answers your job enquiries in <strong>3 seconds, 24/7</strong>. Qualifies the lead, books the call, quotes your rates. You keep doing the work. Hugo handles the admin.</p>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin:1.5rem 0 1rem;">
+            <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/c9e2729e-029e-4944-a708-c3e89fa1ce9f.png"
+                 alt="Hugo — answering calls, bookings and quotes"
+                 style="width:56px;height:56px;object-fit:contain;border-radius:50%;border:2px solid rgba(245,158,11,0.35);box-shadow:0 4px 14px rgba(245,158,11,0.25);flex-shrink:0;">
+            <div style="text-align:left;">
+                <div style="font-size:0.78rem;font-weight:700;color:#f59e0b;letter-spacing:0.08em;text-transform:uppercase;">Meet Hugo</div>
+                <div style="font-size:0.85rem;color:var(--slate-mid);line-height:1.4;">Hugo — answers calls, books jobs, quotes rates</div>
+            </div>
+        </div>
+        <!-- Phone SMS signup — fastest path (no password, no email) -->
+        <form id="heroPhoneForm" onsubmit="handlePhoneSignup(event,'heroPhoneForm')" style="max-width:420px;margin:0 auto 0.5rem;">
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <input type="tel" id="heroPhoneInput" placeholder="0412 345 678" autocomplete="tel" required
+                       style="flex:1;min-width:180px;padding:0.7rem 1rem;border-radius:8px;border:2px solid var(--border);background:var(--white);color:var(--navy);font-size:1rem;outline:none;font-family:inherit;" />
+                <button type="submit" style="padding:0.7rem 1.1rem;background:#f59e0b;color:#0a0e1a;font-weight:800;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;font-size:0.95rem;font-family:inherit;min-height:44px;">📲 Get SMS Link</button>
+            </div>
+            <div id="heroPhoneSuccess" style="display:none;margin-top:0.4rem;color:#4ade80;font-size:0.85rem;font-weight:600;text-align:center;"></div>
+            <div id="heroPhoneError" style="display:none;margin-top:0.4rem;color:#f87171;font-size:0.85rem;text-align:center;"></div>
+        </form>
+        <p style="text-align:center;font-size:0.75rem;color:#64748b;margin:0 0 0.75rem;">No password · tap link in text · 14-day trial starts instantly</p>
+        <div style="text-align:center;font-size:0.78rem;color:#64748b;margin:0 0 0.75rem;">— or sign up with email —</div>
+        <form class="email-form" id="heroForm" onsubmit="return handleSignup(event, 'heroForm')">
+            <input type="email" name="email" placeholder="Enter your email" required autocomplete="email">
+            <button type="submit">Start Free Trial</button>
+        </form>
+        <div class="form-success" id="heroFormSuccess">You're in! We'll send your login details shortly.</div>
+        <div class="form-error" id="heroFormError"></div>
+        <p class="form-note">14-day free trial · <strong>$69/mo early bird</strong> (locked forever) · No payment until day 15</p>
+    </div>
+</section>
+
+<!-- 23 TRADES COVERED — pill cloud near hero -->
+<section style="background:linear-gradient(135deg,#1e3a5f 0%,#0a1628 100%);padding:2.5rem 0;border-top:3px solid rgba(245,158,11,0.4);border-bottom:1px solid rgba(245,158,11,0.15);">
+    <div class="container">
+        <div style="text-align:center;margin-bottom:1.25rem;">
+            <div style="font-size:0.75rem;font-weight:700;color:#f59e0b;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.75rem;">23 TRADES COVERED</div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;max-width:760px;margin:0 auto;">
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🔧 Plumber</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">⚡ Electrician</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🏗️ Builder</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🎨 Painter</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🧱 Bricklayer</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🪵 Carpenter</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🏠 Roofer</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🪣 Concreter</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🪟 Tiler</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🏚️ Plasterer</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🌿 Lawn Care</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🌳 Landscaper</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🏊 Pool Cleaning</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🧹 Carpet Cleaning</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🪲 Pest Control</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🧽 Commercial Cleaning</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🚪 Fencer</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🔒 Locksmith</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">📦 Removalist</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🖌️ Renderer</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;font-size:0.8rem;color:rgba(255,255,255,0.85);font-weight:500;">🔧 Appliance Repair</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.35);border-radius:100px;font-size:0.8rem;color:#fbbf24;font-weight:600;">🏢 Small Business</span>
+                <span style="padding:0.35rem 0.85rem;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.35);border-radius:100px;font-size:0.8rem;color:#fbbf24;font-weight:600;">🏠 Property Management</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- EAGLE'S EYE MAP SHOWCASE -->
+<section class="eagles-eye-section" id="eagles-eye">
+    <div class="ee-container">
+        <div class="ee-header">
+            <div class="ee-badge">LIVE NETWORK</div>
+            <h2 class="ee-heading">Eagle's Eye — Your Live Network Map</h2>
+            <p class="ee-subtext">See your leads, tradies &amp; operators in real time. Your service area. Your network. Live.</p>
+        </div>
+        <div class="ee-screenshot-wrap">
+            <img
+                src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/f2c0847c-df0a-4a45-9e27-e3927cc18ccd.png"
+                alt="Eagle's Eye live network map showing leads, operators and service areas"
+                class="ee-screenshot"
+                loading="lazy"
+            />
+            <div class="ee-glow"></div>
+        </div>
+        <div class="ee-features">
+            <div class="ee-feat">
+                <span class="ee-feat-dot ee-dot-blue"></span>
+                <span>Live leads in your area</span>
+            </div>
+            <div class="ee-feat">
+                <span class="ee-feat-dot ee-dot-green"></span>
+                <span>Nearby operators &amp; tradies</span>
+            </div>
+            <div class="ee-feat">
+                <span class="ee-feat-dot ee-dot-amber"></span>
+                <span>Your service radius</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* ─── EAGLE'S EYE MAP SHOWCASE ─── */
+.eagles-eye-section {
+    background: #050810;
+    padding: 5rem 0 4rem;
+    position: relative;
+    overflow: hidden;
+}
+.eagles-eye-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(251,191,36,0.4), transparent);
+}
+.ee-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem;
+}
+.ee-badge {
+    display: inline-block;
+    background: rgba(251,191,36,0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 0.3rem 0.9rem;
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;
+}
+.ee-header {
+    text-align: center;
+    max-width: 640px;
+}
+.ee-heading {
+    font-size: clamp(1.75rem, 4vw, 2.6rem);
+    font-weight: 800;
+    color: #f9fafb;
+    line-height: 1.15;
+    margin: 0 0 0.9rem;
+    letter-spacing: -0.02em;
+}
+.ee-subtext {
+    font-size: 1.05rem;
+    color: #9ca3af;
+    line-height: 1.65;
+    margin: 0;
+}
+.ee-screenshot-wrap {
+    width: 100%;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(251,191,36,0.15), 0 32px 80px rgba(0,0,0,0.7), 0 8px 32px rgba(251,191,36,0.08);
+}
+.ee-screenshot {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+}
+.ee-glow {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 80px;
+    background: radial-gradient(ellipse, rgba(251,191,36,0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+.ee-features {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.ee-feat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #d1d5db;
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+.ee-feat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.ee-dot-blue  { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.6); }
+.ee-dot-green { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.6); }
+.ee-dot-amber { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.6); }
+@media (max-width: 640px) {
+    .eagles-eye-section { padding: 3.5rem 0 3rem; }
+    .ee-features { gap: 1.2rem; }
+}
+
+/* ─── MULTILINGUAL PROMO ─── */
+.multilingual-section {
+    background: #0a0e1a;
+    padding: 4.5rem 0;
+    position: relative;
+    overflow: hidden;
+}
+.multilingual-section::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 700px; height: 350px;
+    background: radial-gradient(ellipse, rgba(245,158,11,0.1) 0%, transparent 70%);
+    pointer-events: none;
+}
+.ml-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+.ml-eyebrow {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #f59e0b;
+    margin-bottom: 0.85rem;
+}
+.ml-heading {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.2;
+    letter-spacing: -1px;
+}
+/* Two screenshots side by side (legacy) */
+.ml-screenshots-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+}
+/* Two screenshots stacked vertically */
+.ml-screenshots-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.ml-screenshot-full {
+    width: 100%;
+    max-width: 700px;
+}
+.ml-screenshot-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.ml-proof-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.ml-screenshot {
+    width: 100%;
+    border-radius: 14px;
+    border: 2px solid rgba(255,255,255,0.08);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(245,158,11,0.12);
+    display: block;
+}
+.ml-proof-note {
+    font-size: 0.72rem;
+    color: #475569;
+    font-style: italic;
+}
+/* Bullet points */
+.ml-bullets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
+    justify-content: center;
+    margin-bottom: 1.75rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.ml-bullet {
+    font-size: 0.95rem;
+    color: #e2e8f0;
+    font-weight: 600;
+}
+.ml-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+.ml-flags span {
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: default;
+    transition: transform 0.15s ease;
+    display: inline-block;
+}
+.ml-flags span:hover {
+    transform: scale(1.25);
+}
+.ml-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #f59e0b;
+    color: #0a0e1a;
+    font-weight: 800;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem 1.6rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+    font-family: inherit;
+}
+.ml-cta:hover {
+    background: #fbbf24;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+}
+@media (max-width: 768px) {
+    .ml-screenshots-row { grid-template-columns: 1fr; gap: 1.5rem; }
+    .ml-heading { font-size: 1.7rem; }
+    .ml-bullets { flex-direction: column; gap: 0.5rem; }
+}
+@media (max-width: 480px) {
+    .ml-headline { font-size: 1.7rem; }
+    .ml-flags span { font-size: 1.25rem; }
+}
+/* ─── CHAT MOCKUP (inline demos replacing broken R2 images) ─── */
+.ml-chat-mockup {
+    background: #111827;
+    border-radius: 14px;
+    border: 2px solid rgba(255,255,255,0.08);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(245,158,11,0.12);
+    overflow: hidden;
+    width: 100%;
+    max-width: 700px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.ml-chat-header {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    direction: ltr;
+}
+.ml-chat-avatar {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #0a0e1a;
+    flex-shrink: 0;
+}
+.ml-chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.ml-chat-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #f1f5f9;
+}
+.ml-chat-status-dot {
+    width: 7px; height: 7px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
+}
+.ml-chat-status {
+    font-size: 0.7rem;
+    color: #22c55e;
+    font-weight: 500;
+}
+.ml-chat-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.ml-chat-bubble {
+    max-width: 82%;
+    padding: 0.65rem 0.9rem;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+.ml-chat-bubble p {
+    margin: 0;
+}
+.ml-chat-bubble p + p {
+    margin-top: 0.3rem;
+}
+.ml-chat-bot {
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.2);
+    color: #f1f5f9;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+[dir="rtl"] .ml-chat-bot {
+    align-self: flex-end;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 4px;
+}
+.ml-chat-user {
+    background: #1e3a5f;
+    border: 1px solid rgba(59,130,246,0.2);
+    color: #e2e8f0;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+[dir="rtl"] .ml-chat-user {
+    align-self: flex-start;
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 4px;
+}
+@media (max-width: 480px) {
+    .ml-chat-bubble { max-width: 90%; font-size: 0.78rem; }
+    .ml-chat-body { padding: 0.75rem; gap: 0.5rem; }
+}
+</style>
+
+<!-- LIVE DEMO -->
+<section class="demo-section" id="demo">
+    <div class="container">
+        <div class="demo-header">
+            <div class="demo-live-badge">
+                <span class="demo-live-dot"></span>
+                Live Demo &mdash; No Signup Required
+            </div>
+            <h2 class="demo-headline">Watch Hugo respond to a job enquiry</h2>
+            <p class="demo-subtext">This is exactly what your dashboard looks like. Hit the button &mdash; watch Hugo respond in real time.</p>
+        </div>
+
+        <div class="demo-container">
+            <div class="demo-chrome">
+                <div class="demo-chrome-dots"><span></span><span></span><span></span></div>
+                <div class="demo-chrome-title">
+                    <img src="/logo-white.svg" alt="PropOps.Trade" height="18" style="vertical-align:middle;opacity:0.85;margin-right:0.4rem;">
+                    <span style="vertical-align:middle;opacity:0.55;font-size:0.75rem;">— Job Pipeline</span>
+                </div>
+                <div class="demo-chrome-status">
+                    <span class="demo-active-dot"></span>
+                    LIVE
+                </div>
+            </div>
+            <div class="demo-table-header">
+                <span>Enquiry</span>
+                <span>Type</span>
+                <span>Source</span>
+                <span>Hugo Response</span>
+                <span>Time</span>
+            </div>
+            <div class="demo-table-body" id="demoTableBody"></div>
+        </div>
+
+        <div class="demo-cta-area">
+            <button class="demo-trigger-btn" id="demoTriggerBtn" onclick="triggerDemo()">
+                <span class="demo-play-icon">&#9654;</span>
+                Watch Hugo respond
+            </button>
+            <p class="demo-cta-note">Tap to see a new lead arrive and get responded to in seconds</p>
+        </div>
+
+        <div class="demo-post-cta" id="demoPostCta">
+            <div class="demo-post-inner">
+                <div class="demo-post-check">&#10003;</div>
+                <div class="demo-post-text">
+                    <strong>That just happened in under 5 seconds.</strong>
+                    <span>Ready to try it on your real enquiries?</span>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem;flex-shrink:0">
+                    <a href="#pricing" class="demo-post-btn">Start 14-day free trial &#8594;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- VIDEO DEMO -->
+<section class="video-section">
+    <div class="container">
+
+        <!-- TRADIE PROMO — above video -->
+        <div class="push-promo-banner">
+            <div class="push-promo-inner">
+                <span class="push-promo-emoji">🔧</span>
+                <div class="push-promo-copy">
+                    <strong>One missed call = one lost job. Hugo makes sure it doesn't happen.</strong>
+                    <p>Hugo answers every enquiry in 3 seconds — phone, email, web form. Your competitors go to voicemail. You book the job. ServiceM8 doesn't do this. Tradify doesn't do this.</p>
+                </div>
+            </div>
+            <span class="push-promo-live">&#10003; Always On</span>
+        </div>
+
+        <p class="video-label">See Hugo in Action</p>
+        <div class="video-wrapper">
+            <div class="video-aspect">
+                <iframe
+                    src="https://www.youtube.com/embed/tA-sM_BB88o?rel=0&modestbranding=1&enablejsapi=1"
+                    title="PropOps — Hugo, Your Receptionist for Australian Tradies"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                    loading="lazy"
+                ></iframe>
+            </div>
+        </div>
+        <p class="video-caption">See how Hugo replies to new job enquiries in 3 seconds — 24/7, no missed jobs ↑</p>
+
+        <!-- Dashboard screenshot removed — showed RE/property listing UI, wrong audience for tradies -->
+
+        <!-- 2nd video removed to reduce page length -->
+    </div>
+</section>
+
+
+
+<!-- STATS BAR -->
+<section class="stats-bar">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">&lt;3s</div>
+                <div class="stat-label">Average response time</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">Always on, never misses</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">$69</div>
+                <div class="stat-label">Per month — locked for life</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">5 min</div>
+                <div class="stat-label">Setup, start to finish</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- Trade pills moved above — see near hero section -->
+
+<!-- PAIN POINT -->
+<section class="pain-section">
+    <div class="container">
+        <div class="pain-grid" style="grid-template-columns:1fr;max-width:640px;margin:0 auto">
+            <div class="pain-content">
+                <div class="section-eyebrow">The Problem</div>
+                <h3>You're on the tools.<br>Leads <span class="highlight">go cold.</span></h3>
+                <div class="pain-stats">
+                    <div class="pain-stat">
+                        <div class="pain-stat-icon">📵</div>
+                        <div>
+                            <h4>On-site = phone off</h4>
+                            <p>You can't answer calls on a roof, under a sink, or in someone's switchboard. Every missed call is a job gone to the next tradie.</p>
+                        </div>
+                    </div>
+                    <div class="pain-stat">
+                        <div class="pain-stat-icon">⏱️</div>
+                        <div>
+                            <h4>First to respond wins</h4>
+                            <p>Customers send the same enquiry to 3 tradies. They book whoever replies first. If that's not you, it's money out of your pocket.</p>
+                        </div>
+                    </div>
+                    <div class="pain-stat">
+                        <div class="pain-stat-icon">🌙</div>
+                        <div>
+                            <h4>Enquiries don't stop at 5pm</h4>
+                            <p>Half your leads come in after hours. A robot voicemail doesn't book jobs — Hugo sounds like you and does.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how-it-works">
+    <div class="container">
+        <div style="text-align:center">
+            <div class="section-eyebrow">How It Works</div>
+            <h2 class="section-title">Set up in 10 minutes. Hugo handles the rest.</h2>
+        </div>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h3>Tell Hugo about your business</h3>
+                <ul class="feature-bullets">
+                    <li>Answer 10 questions — trades, areas, pricing</li>
+                    <li>Hugo responds exactly like you would</li>
+                    <li>One-time setup, under 10 minutes</li>
+                </ul>
+                <div class="step-tag setup">One-time setup</div>
+            </div>
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h3>Enquiries come in — Hugo answers</h3>
+                <div class="hugo-char-wrap" style="margin-bottom:0.75rem;">
+                    <p style="margin:0">Email, web form, or phone. Hugo replies in 3 seconds with your rates, availability, and qualifies the lead. No "I'll get back to you."</p>
+                    <!-- Hugo on phone call — phone intake / call handling -->
+                    <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/aa222c8a-f8b0-449a-a43a-58c9a8063548.png"
+                         alt="Hugo on phone call — handles every enquiry 24/7"
+                         class="hugo-char-img">
+                </div>
+                <div class="push-step-callout">&#128241; Instant push notification — every single enquiry</div>
+                <div class="step-tag auto">Fully automatic</div>
+            </div>
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h3>You get the hot leads, ready to book</h3>
+                <ul class="feature-bullets">
+                    <li>Only serious, qualified leads reach you</li>
+                    <li>Admin already done — just show up</li>
+                    <li>More jobs, less time on the phone</li>
+                </ul>
+                <div class="step-tag result">More jobs booked</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+    <div class="container">
+        <div style="text-align:center">
+            <div class="section-eyebrow">Features</div>
+            <h2 class="section-title">Your full-time receptionist for less than a coffee a day</h2>
+        </div>
+        <!-- Hugo 4-panel grid — features overview header -->
+        <div style="text-align:center;margin-bottom:2rem;">
+            <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/0e53e086-0847-4e75-8733-23aa290deae4.png"
+                 alt="Hugo — everything he does at a glance"
+                 class="hugo-char-img-lg"
+                 style="display:inline-block;">
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#9889;</div>
+                <h3>3-second responses, 24/7</h3>
+                <ul class="feature-bullets">
+                    <li>Replies in under 3 seconds, every time</li>
+                    <li>Nights, weekends, public holidays — always on</li>
+                    <li>Competitors go to voicemail. You book the job.</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Lead qualification built in</h3>
+                <ul class="feature-bullets">
+                    <li>Asks location, scope, timeline, budget</li>
+                    <li>Only serious leads reach you</li>
+                    <li>Tyre-kickers filtered out automatically</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <h3>Sounds exactly like you</h3>
+                <ul class="feature-bullets">
+                    <li>Learns your tone, trade, and rates</li>
+                    <li>Customers can't tell it's Hugo, not you</li>
+                    <li>Every reply sounds human — not a bot</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Your rates, your quotes</h3>
+                <div class="hugo-char-wrap">
+                    <ul class="feature-bullets" style="margin:0">
+                        <li>Tell Hugo your pricing once</li>
+                        <li>Hugo quotes it accurately, every time</li>
+                        <li>No more "I'll need to come have a look"</li>
+                    </ul>
+                    <!-- Hugo checklist — invoicing / quoting compliance -->
+                    <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/5f494238-2a0f-4912-a764-b3eb505f7d67.png"
+                         alt="Hugo with checklist — accurate quoting and invoicing"
+                         class="hugo-char-img">
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📞</div>
+                <h3>Phone + email + web enquiries</h3>
+                <div class="hugo-char-wrap">
+                    <ul class="feature-bullets" style="margin:0">
+                        <li>Email portals, web forms, missed calls</li>
+                        <li>Hugo covers every channel</li>
+                        <li>Nothing falls through the cracks</li>
+                    </ul>
+                    <!-- Hugo on laptop — quotes, bookings & portal sync -->
+                    <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/fcadb0d9-9731-40a0-af9f-9cd9c971c1b6.png"
+                         alt="Hugo on laptop — quotes, bookings and portal sync"
+                         class="hugo-char-img">
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:var(--amber-bg)">&#128241;</div>
+                <h3>See every lead in your dashboard</h3>
+                <div class="hugo-char-wrap">
+                    <ul class="feature-bullets" style="margin:0">
+                        <li>Full conversation history per lead</li>
+                        <li>See what was quoted, follow up with context</li>
+                        <li>Push notifications on every enquiry</li>
+                    </ul>
+                    <!-- Hugo texting/phone — SMS & push notifications -->
+                    <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/3a98b6a5-cad8-4439-964f-822e5a0139b2.png"
+                         alt="Hugo texting — push notifications and SMS leads"
+                         class="hugo-char-img">
+                </div>
+            </div>
+
+            <!-- TRADIE HIGHLIGHTED CARD — full-width -->
+            <div class="feature-card push-highlight" style="background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 100%);border-color:#2563eb;">
+                <div class="push-main">
+                    <div class="push-badge" style="color:var(--blue);border-color:var(--blue);background:var(--blue-bg)">🔧 Built for Tradies</div>
+                    <div class="hugo-char-wrap" style="margin-bottom:1rem;align-items:flex-start;">
+                        <div>
+                            <div class="feature-icon" style="background:var(--blue-bg); margin-bottom:1rem">🔧</div>
+                            <h3>23 Trades Covered — Hugo Knows Your Industry</h3>
+                            <ul class="feature-bullets feature-bullets-dark">
+                                <li>Plumbers, electricians, builders, painters + 19 more</li>
+                                <li>Learns your trade, pricing, service areas</li>
+                                <li>ServiceM8, Tradify — neither does this</li>
+                            </ul>
+                        </div>
+                        <!-- Hugo boss/clipboard — manage your business / operations -->
+                        <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/809d7b46-10d1-4149-9f99-80b06e2d53bd.png"
+                             alt="Hugo boss with clipboard — managing your trade business"
+                             class="hugo-char-img">
+                    </div>
+                </div>
+                <div class="push-points">
+                    <div class="push-point">
+                        <div class="push-point-icon" style="background:var(--blue-bg);border-color:rgba(37,99,235,0.2)">🔧</div>
+                        <div><strong style="color:var(--navy);display:block;margin-bottom:0.15rem">Trade-specific knowledge</strong>Hugo knows the difference between a gas and electric HWS, a single-phase and three-phase job, a full reno and a patch job.</div>
+                    </div>
+                    <div class="push-point">
+                        <div class="push-point-icon" style="background:var(--blue-bg);border-color:rgba(37,99,235,0.2)">&#128176;</div>
+                        <div><strong style="color:var(--navy);display:block;margin-bottom:0.15rem">One extra job covers the cost 10x</strong>Average tradie job value $700+. Hugo costs $69/mo. The maths is a no-brainer.</div>
+                    </div>
+                    <div class="push-point">
+                        <div class="push-point-icon" style="background:var(--blue-bg);border-color:rgba(37,99,235,0.2)">&#9940;</div>
+                        <div><strong style="color:var(--navy);display:block;margin-bottom:0.15rem">No competitor offers this</strong>ServiceM8, Tradify, Fergus — none of them include Hugo answering enquiries in 3 seconds.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ─── HUGO VS DIRECTORY SITES COMPARISON ─── -->
+<style>
+.vs-section {
+    background: #070c1a;
+    padding: 5rem 0 5.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.vs-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent);
+}
+.vs-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent);
+}
+.vs-eyebrow {
+    text-align: center;
+    margin-bottom: 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+}
+.vs-headline {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+.vs-subhead {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 1rem;
+    margin-bottom: 3rem;
+}
+.vs-grid {
+    max-width: 860px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.07);
+}
+.vs-col-header {
+    padding: 1.25rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.vs-col-header.them {
+    background: #111827;
+    color: #64748b;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.vs-col-header.us {
+    background: linear-gradient(135deg, #1a2a12 0%, #0f1f0a 100%);
+    color: #4ade80;
+    border-left: 1px solid rgba(74,222,128,0.15);
+    border-bottom: 1px solid rgba(74,222,128,0.12);
+}
+.vs-col-header .col-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+.vs-col-header.them .col-icon { background: rgba(100,116,139,0.2); }
+.vs-col-header.us .col-icon { background: rgba(74,222,128,0.15); }
+.vs-row {
+    display: contents;
+}
+.vs-cell {
+    padding: 1.4rem 1.5rem;
+    font-size: 0.93rem;
+    line-height: 1.55;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.vs-cell:last-child { border-bottom: none; }
+.vs-cell.them {
+    background: #0d1117;
+    color: #64748b;
+}
+.vs-cell.us {
+    background: #0d1a0d;
+    color: #cbd5e1;
+    border-left: 1px solid rgba(74,222,128,0.1);
+}
+.vs-cell.them:last-of-type { background: #0d1117; }
+.vs-cell.us:last-of-type { background: #0d1a0d; }
+.vs-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.1rem;
+}
+.vs-icon.cross {
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+}
+.vs-icon.check {
+    background: rgba(74,222,128,0.15);
+    color: #4ade80;
+}
+.vs-cell.us strong { color: #f0fdf4; }
+.vs-tagline {
+    text-align: center;
+    margin-top: 2.5rem;
+    font-size: 1.15rem;
+    color: #94a3b8;
+}
+.vs-tagline strong {
+    color: #f59e0b;
+}
+@media (max-width: 600px) {
+    .vs-grid {
+        grid-template-columns: 1fr;
+        border-radius: 12px;
+    }
+    .vs-col-header.them { border-radius: 12px 12px 0 0; }
+    .vs-col-header.us { border-left: none; border-top: 1px solid rgba(74,222,128,0.15); }
+    .vs-cell.us { border-left: none; border-top: 1px solid rgba(74,222,128,0.06); }
+    .vs-headline { font-size: 1.55rem; }
+    .vs-grid { max-width: 420px; }
+    .vs-grid { display: flex; flex-direction: column; }
+}
+</style>
+<section class="vs-section">
+    <div class="container">
+        <div class="vs-eyebrow">The Difference Is Obvious</div>
+        <h2 class="vs-headline">Directories store your name.<br>Hugo runs your business.</h2>
+        <p class="vs-subhead">Three reasons tradies who've made the switch don't look back.</p>
+        <div class="vs-grid">
+            <!-- Column headers -->
+            <div class="vs-col-header them">
+                <span class="col-icon">≡</span> Directory Sites
+            </div>
+            <div class="vs-col-header us">
+                <span class="col-icon">✦</span> Hugo
+            </div>
+            <!-- Row 1: Lead Handling -->
+            <div class="vs-cell them">
+                <span class="vs-icon cross">✕</span>
+                <span>Your name on a list. Customer calls at 7am — you're already on the tools. By the time you call back, they've booked someone else.</span>
+            </div>
+            <div class="vs-cell us">
+                <span class="vs-icon check">✓</span>
+                <span><strong>Picks up the phone at 7am</strong> — and every hour after. Qualifies the lead, gives a rough quote range, and locks in a booking while you're finishing the job.</span>
+            </div>
+            <!-- Row 2: Learning -->
+            <div class="vs-cell them">
+                <span class="vs-icon cross">✕</span>
+                <span>Static profile. You update it manually. Doesn't know your rates, your service area, or what jobs you actually want.</span>
+            </div>
+            <div class="vs-cell us">
+                <span class="vs-icon check">✓</span>
+                <span><strong>Knows your business inside out.</strong> Your rates, your service area, every job at every address — and gets sharper the longer you use it.</span>
+            </div>
+            <!-- Row 3: Operations -->
+            <div class="vs-cell them">
+                <span class="vs-icon cross">✕</span>
+                <span>Directories just drop the lead in your inbox. Every callback, follow-up, and booking confirmation is still on you — after a full day on the tools.</span>
+            </div>
+            <div class="vs-cell us">
+                <span class="vs-icon check">✓</span>
+                <span><strong>Runs intake, follow-ups, and confirmations</strong> while you're working. Customers get a response in seconds. You get a full job sheet waiting at knock-off.</span>
+            </div>
+        </div>
+        <p class="vs-tagline">Stop paying to be on a list. <strong>Start having a receptionist who never clocks off.</strong></p>
+    </div>
+</section>
+
+<!-- ─── HUGO EASY ONBOARDING ─── -->
+<style>
+.onboarding-section {
+    background: #f8fafc;
+    padding: 5.5rem 0 5rem;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    position: relative;
+    overflow: hidden;
+}
+.onboarding-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #f59e0b 40%, #fbbf24 60%, transparent);
+}
+.onboarding-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #d97706;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 100px;
+    padding: 0.35rem 0.9rem;
+    margin-bottom: 1.25rem;
+}
+.onboarding-headline {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.15;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.75rem;
+}
+.onboarding-headline .amber-word { color: #f59e0b; }
+.onboarding-subhead {
+    font-size: 1.05rem;
+    color: #475569;
+    max-width: 520px;
+    margin: 0 auto 3.5rem;
+    line-height: 1.65;
+}
+/* Steps row */
+.onboarding-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 3.5rem;
+    position: relative;
+}
+.onboarding-steps::before {
+    content: '';
+    position: absolute;
+    top: 26px;
+    left: calc(16.66% + 18px);
+    right: calc(16.66% + 18px);
+    height: 2px;
+    background: linear-gradient(90deg, #fde68a, #fbbf24, #fde68a);
+    z-index: 0;
+}
+.onboarding-step {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+    position: relative;
+    text-align: center;
+    z-index: 1;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+@media (hover: hover) {
+    .onboarding-step:hover {
+        border-color: #f59e0b;
+        box-shadow: 0 8px 28px rgba(245,158,11,0.12);
+    }
+}
+.onboarding-step-num {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fef3c7;
+    border: 2px solid #fde68a;
+    color: #d97706;
+    font-weight: 800;
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.1rem;
+}
+.onboarding-step h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.5rem;
+}
+.onboarding-step p {
+    font-size: 0.88rem;
+    color: #475569;
+    line-height: 1.6;
+}
+.onboarding-step-confirm {
+    margin-top: 1rem;
+    display: inline-block;
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    color: #065f46;
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+/* Portal pills */
+.onboarding-portals-label {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #94a3b8;
+    margin-bottom: 1rem;
+}
+.portal-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 2.5rem;
+}
+.portal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #fff;
+    border: 1.5px solid #22c55e;
+    border-radius: 100px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #15803d;
+    box-shadow: 0 2px 8px rgba(34,197,94,0.1);
+    white-space: nowrap;
+}
+.portal-pill .pill-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.2);
+}
+/* Closing tagline */
+.onboarding-tagline {
+    text-align: center;
+    font-size: 1.05rem;
+    color: #475569;
+    max-width: 480px;
+    margin: 0 auto;
+    font-style: italic;
+}
+.onboarding-tagline strong {
+    color: #0f172a;
+    font-style: normal;
+}
+/* Mobile */
+@media (max-width: 768px) {
+    .onboarding-steps {
+        grid-template-columns: 1fr;
+    }
+    .onboarding-steps::before { display: none; }
+    .onboarding-headline { font-size: 1.7rem; }
+}
+@media (max-width: 480px) {
+    .onboarding-section { padding: 3.5rem 0; }
+    .onboarding-headline { font-size: 1.5rem; }
+    .portal-pills { gap: 0.45rem; }
+    .portal-pill { font-size: 0.8rem; padding: 0.35rem 0.85rem; }
+}
+</style>
+<section class="onboarding-section" id="portal-onboarding">
+    <div class="container">
+        <div style="text-align:center">
+            <div class="onboarding-eyebrow">⚡ Zero Setup</div>
+            <h2 class="onboarding-headline">Hugo <span class="amber-word">Auto-Detects</span><br>Your Trade Portals</h2>
+            <p class="onboarding-subhead">Forward one email. Hugo does the rest — no filters, no settings, no tech skills needed.</p>
+        </div>
+
+        <!-- 3-step flow -->
+        <div class="onboarding-steps">
+            <div class="onboarding-step">
+                <div class="onboarding-step-num">1</div>
+                <h3>Forward one email</h3>
+                <p>From any trade portal to your PropOps address. One email. That's it.</p>
+            </div>
+            <div class="onboarding-step">
+                <div class="onboarding-step-num">2</div>
+                <h3>Hugo auto-detects the portal</h3>
+                <p>Parses the email headers and matches the sender — fully automatic.</p>
+            </div>
+            <div class="onboarding-step">
+                <div class="onboarding-step-num">3</div>
+                <h3>Hugo confirms &amp; goes live</h3>
+                <p>You get a confirmation and the portal shows 🟢 Connected on your dashboard.</p>
+                <span class="onboarding-step-confirm">✅ Hipages connected — I'll capture your leads from here.</span>
+            </div>
+        </div>
+
+        <!-- Portal pills -->
+        <div class="onboarding-portals-label">Supported Portals — All Auto-Detected</div>
+        <div class="portal-pills">
+            <span class="portal-pill"><span class="pill-dot"></span>Hipages</span>
+            <span class="portal-pill"><span class="pill-dot"></span>ServiceSeeking</span>
+            <span class="portal-pill"><span class="pill-dot"></span>Airtasker</span>
+            <span class="portal-pill"><span class="pill-dot"></span>Oneflare</span>
+            <span class="portal-pill"><span class="pill-dot"></span>Bark</span>
+            <span class="portal-pill"><span class="pill-dot"></span>Facebook</span>
+            <span class="portal-pill"><span class="pill-dot"></span>Google Business</span>
+        </div>
+
+        <p class="onboarding-tagline">Set and forget — <strong>Hugo captures every future lead automatically.</strong></p>
+    </div>
+</section>
+
+<section class="pricing-section" id="pricing">
+    <div class="container">
+        <div style="text-align:center">
+            <div class="section-eyebrow">Pricing</div>
+            <!-- Hugo thumbs up — pricing / get started CTA -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/e6dc2c44-d32d-49a0-88f9-9076d58fc879.png"
+                     alt="Hugo thumbs up — great value, simple pricing"
+                     class="hugo-char-img">
+                <h2 class="section-title" style="margin:0">One job pays for a year.</h2>
+            </div>
+            <p style="color:var(--slate-mid);margin-top:0.75rem;max-width:540px;margin-left:auto;margin-right:auto;font-size:1rem">14-day free trial. No payment until day 15. Cancel anytime.</p>
+        </div>
+
+        <div class="pricing-tiers-grid">
+            <!-- Monthly -->
+            <div class="pricing-tier-card" style="padding:2rem 1.75rem;border:2px solid var(--amber);box-shadow:0 4px 24px rgba(245,158,11,0.15);">
+                <div class="pricing-tier-badge">30% OFF — BEFORE JUNE 30</div>
+                <div class="pricing-tier-name" style="font-size:1.15rem;margin-bottom:0.75rem;">Early Bird</div>
+                <div class="pricing-tier-price">
+                    <span class="currency">$</span><span class="amount" style="font-size:3rem;">69</span><span class="period">/mo</span>
+                </div>
+                <div class="pricing-tier-currency" style="margin-bottom:0.5rem;">AUD</div>
+                <p style="font-size:0.82rem;color:var(--amber-dark);margin-bottom:1.5rem;font-weight:600;">⚡ Locked at $69/mo forever — goes to $99/mo after June 30</p>
+                <ul style="list-style:none;text-align:left;margin-bottom:1.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Hugo — 24/7 receptionist</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Unlimited job enquiry responses</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Lead qualification &amp; scoring</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Instant push notifications</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Custom rates &amp; service zones</li>
+                </ul>
+                <a href="https://buy.stripe.com/dRmbJ1bqw89v4Jj0pKdby0a" class="pricing-tier-cta" target="_blank" rel="noopener">Start Free Trial</a>
+            </div>
+
+            <!-- Standard -->
+            <div class="pricing-tier-card" style="padding:2rem 1.75rem;">
+                <div class="pricing-tier-badge" style="background:var(--blue-bg);color:var(--blue);border-color:rgba(37,99,235,0.3);">MOST POPULAR</div>
+                <div class="pricing-tier-name" style="font-size:1.15rem;margin-bottom:0.75rem;">Standard</div>
+                <div class="pricing-tier-price">
+                    <span class="currency">$</span><span class="amount" style="font-size:3rem;">99</span><span class="period">/mo</span>
+                </div>
+                <div class="pricing-tier-currency" style="margin-bottom:0.5rem;">AUD</div>
+                <p style="font-size:0.82rem;color:var(--slate-mid);margin-bottom:1.5rem;">&nbsp;</p>
+                <ul style="list-style:none;text-align:left;margin-bottom:1.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Hugo — 24/7 receptionist</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Unlimited job enquiry responses</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Lead qualification &amp; scoring</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Instant push notifications</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Custom rates &amp; service zones</li>
+                </ul>
+                <a href="https://buy.stripe.com/dRmbJ1bqw89v4Jj0pKdby0a" class="pricing-tier-cta" target="_blank" rel="noopener">Start Free Trial</a>
+            </div>
+
+            <!-- Annual -->
+            <div class="pricing-tier-card" style="border-color:var(--amber);box-shadow:0 4px 24px rgba(245,158,11,0.12);padding:2rem 1.75rem;">
+                <div class="pricing-tier-badge save">Save 17%</div>
+                <div class="pricing-tier-name" style="font-size:1.15rem;margin-bottom:0.75rem;">Annual</div>
+                <div class="pricing-tier-price">
+                    <span class="currency">$</span><span class="amount" style="font-size:3rem;">999</span><span class="period">/yr</span>
+                </div>
+                <div class="pricing-tier-currency" style="margin-bottom:0.5rem;">AUD</div>
+                <p style="font-size:0.82rem;color:var(--slate-light);margin-bottom:1.5rem;">$83/month — 2 months free</p>
+                <ul style="list-style:none;text-align:left;margin-bottom:1.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Everything in monthly</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Best value — lock in the rate</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> 14-day free trial included</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Cancel before day 15, no charge</li>
+                    <li style="font-size:0.875rem;color:var(--amber-dark);font-weight:600;display:flex;gap:0.5rem;align-items:flex-start;"><span style="font-weight:700;flex-shrink:0;">$0</span> PayID processing fees</li>
+                </ul>
+                <a href="https://buy.stripe.com/9B63cvams0H37VvfkEdby09" class="pricing-tier-cta" target="_blank" rel="noopener">Start Free Trial</a>
+            </div>
+
+            <!-- Premium -->
+            <div class="pricing-tier-card" style="padding:2rem 1.75rem;border:2px solid rgba(139,92,246,0.5);box-shadow:0 4px 24px rgba(139,92,246,0.12);">
+                <div class="pricing-tier-badge" style="background:rgba(139,92,246,0.12);color:#a78bfa;border-color:rgba(139,92,246,0.3);">FULL STACK</div>
+                <div class="pricing-tier-name" style="font-size:1.15rem;margin-bottom:0.75rem;">Premium</div>
+                <div class="pricing-tier-price">
+                    <span class="currency">$</span><span class="amount" style="font-size:3rem;">149</span><span class="period">/mo</span>
+                </div>
+                <div class="pricing-tier-currency" style="margin-bottom:0.5rem;">AUD</div>
+                <p style="font-size:0.82rem;color:#a78bfa;margin-bottom:1.5rem;font-weight:600;">14-day free trial included</p>
+                <ul style="list-style:none;text-align:left;margin-bottom:1.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Everything in Standard</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Staff &amp; roster management</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Stripe invoicing — auto-sent</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Payroll tracking</li>
+                    <li style="font-size:0.875rem;color:var(--slate-mid);display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Hugo auto-books your staff</li>
+                </ul>
+                <a href="https://buy.stripe.com/7sY4gzeCI75rb7H1tOdby0b" class="pricing-tier-cta" target="_blank" rel="noopener" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">Start Free Trial</a>
+            </div>
+        </div>
+        <p style="text-align:center;font-size:0.8rem;color:var(--muted);margin-top:1.25rem">All prices in AUD &middot; 14-day free trial &middot; No payment until day 15 &middot; Cancel anytime</p>
+
+
+        <!-- Competitor comparison -->
+        <div class="compare-table">
+            <p style="text-align:center;font-size:0.85rem;font-weight:600;color:var(--slate-mid);margin-bottom:1.5rem">See how Hugo compares</p>
+            <div class="compare-row header">
+                <span></span>
+                <span class="price">Their Price</span>
+                <span class="price">Hugo</span>
+            </div>
+            <div class="compare-row">
+                <span class="name">ServiceM8 / Tradify / Fergus</span>
+                <span class="price">$49–199+/mo</span>
+                <span class="propops-price">$69/mo</span>
+            </div>
+            <div class="compare-row">
+                <span class="name">Response time</span>
+                <span class="price">Hours (manual)</span>
+                <span class="propops-price">3 seconds</span>
+            </div>
+            <div class="compare-row highlight">
+                <span class="name">Hugo receptionist?</span>
+                <span class="price" style="color:var(--red);font-weight:600">None</span>
+                <span class="propops-price">&#10003; Built-in</span>
+            </div>
+            <div class="compare-row">
+                <span class="name">Instant push notifications?</span>
+                <span class="price" style="color:var(--red);font-weight:600">None</span>
+                <span class="propops-price">&#10003; Built-in</span>
+            </div>
+            <div class="compare-row">
+                <span class="name">Setup time</span>
+                <span class="price">Days / weeks</span>
+                <span class="propops-price">10 minutes</span>
+            </div>
+            <div class="compare-row highlight" style="background:#eff6ff;border-bottom:none;">
+                <span class="name" style="color:var(--blue)">Hugo quoting in responses?</span>
+                <span class="price" style="color:var(--red);font-weight:600">None</span>
+                <span class="propops-price" style="color:var(--blue);font-weight:700">&#10003; Built-in</span>
+            </div>
+        </div>
+        <p style="text-align:center;font-size:0.8rem;color:var(--muted);margin-top:1rem">ServiceM8 doesn't do this. Tradify doesn't do this. No job management tool includes Hugo.</p>
+    </div>
+</section>
+
+<!-- PRICING -->
+
+
+<!-- DASHBOARD SCREENSHOTS — show tradies what the product looks like -->
+<section style="padding:5rem 0;background:var(--white);border-top:1px solid var(--border);">
+    <div class="container">
+        <div style="text-align:center;margin-bottom:3rem;">
+            <div class="section-eyebrow">Your Dashboard</div>
+            <h2 class="section-title">See exactly what you get</h2>
+            <p style="color:var(--slate-mid);margin-top:0.75rem;max-width:500px;margin-left:auto;margin-right:auto;font-size:1rem;">Every lead, every conversation, every quote — all in one place. Set up in minutes.</p>
+        </div>
+        <!-- Primary screenshots — 2-col grid -->
+        <div class="dash-grid-primary" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:900px;margin:0 auto;">
+            <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/915c90d1-c074-458b-974b-2212f0ac9fcb.png"
+                     alt="Customize Your Hugo — real dashboard screenshot"
+                     style="width:100%;height:auto;display:block;">
+                <div style="padding:0.75rem 1rem;background:var(--bg-off);font-size:0.78rem;font-weight:600;color:var(--slate-mid);">Customize Your Hugo</div>
+            </div>
+            <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/6a66ac35-41d2-4dfd-8778-ccc6207935bf.png"
+                     alt="Train Your Hugo — dashboard screenshot"
+                     style="width:100%;height:auto;display:block;">
+                <div style="padding:0.75rem 1rem;background:var(--bg-off);font-size:0.78rem;font-weight:600;color:var(--slate-mid);">Train Your Hugo</div>
+            </div>
+            <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/1fddcc41-e4bc-4b28-a5ce-469146ee64a9.png"
+                     alt="Leads dashboard"
+                     style="width:100%;height:auto;display:block;">
+                <div style="padding:0.75rem 1rem;background:var(--bg-off);font-size:0.78rem;font-weight:600;color:var(--slate-mid);">Your Leads Pipeline</div>
+            </div>
+            <div style="border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/79f53545-4e40-493b-beba-87a3390475bf.png"
+                     alt="Email management dashboard"
+                     style="width:100%;height:auto;display:block;">
+                <div style="padding:0.75rem 1rem;background:var(--bg-off);font-size:0.78rem;font-weight:600;color:var(--slate-mid);">Email Management</div>
+            </div>
+        </div>
+        <!-- Secondary screenshots row — 4-col -->
+        <div class="dash-grid-secondary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;max-width:900px;margin:1.5rem auto 0;">
+            <div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/3be8d851-92b3-4599-9ee8-49b47154a042.png"
+                     alt="Dashboard overview"
+                     style="width:100%;height:auto;display:block;">
+            </div>
+            <div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/845e1a89-3eb6-4005-b8bc-6e3980d2a704.png"
+                     alt="Dashboard view 2"
+                     style="width:100%;height:auto;display:block;">
+            </div>
+            <div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/c9fb9494-4799-4b19-ba8e-223346d2ad36.png"
+                     alt="Dashboard view 3"
+                     style="width:100%;height:auto;display:block;">
+            </div>
+            <div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);border:1px solid var(--border);">
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/9dd8c337-12d8-42cb-8c7e-b55758e163b3.png"
+                     alt="Dashboard view 4"
+                     style="width:100%;height:auto;display:block;">
+            </div>
+        </div>
+        <style>
+        @media (max-width: 640px) {
+            .dash-grid-primary { grid-template-columns: 1fr !important; }
+            .dash-grid-secondary { grid-template-columns: repeat(2,1fr) !important; }
+        }
+        </style>
+    </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="proof-section">
+    <div class="container">
+        <div class="proof-content">
+            <div class="section-eyebrow">TRUSTED ACROSS AUSTRALIA</div>
+            <div class="hugo-char-wrap" style="margin-bottom:1rem;">
+                <h2 class="section-title" style="margin:0">One dashboard handles every enquiry — phone, email, web form</h2>
+                <!-- Hugo handshake — client partnerships / trusted across Australia -->
+                <img src="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/f479bd20-c54e-44a0-9b90-d864fedafec1.png"
+                     alt="Hugo handshake — trusted partnerships across Australia"
+                     class="hugo-char-img">
+            </div>
+            <div class="proof-logos">
+                <span class="proof-logo">Google</span>
+                <span class="proof-logo">Hipages</span>
+                <span class="proof-logo">Your website</span>
+                <span class="proof-logo">Phone</span>
+                <span class="proof-logo">+ any email source</span>
+            </div>
+            <div class="proof-quote" style="text-align:left;">
+                <div>
+                    <p>"I was on a job site all day. Hugo booked three callbacks and quoted two hot water repairs. I didn't touch my phone once."</p>
+                    <cite>Early access user, Sydney</cite>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+    <div class="container">
+        <div style="text-align:center">
+            <div class="section-eyebrow">FAQ</div>
+            <h2 class="section-title">Straight answers</h2>
+            <p style="font-size:0.85rem;color:var(--slate-light);margin:0.25rem 0 0;">Hugo has answers — or just <button onclick="openHugoChat()" type="button" style="background:none;border:none;color:var(--amber);font-weight:700;cursor:pointer;font-size:0.85rem;padding:0;text-decoration:underline;">chat with him directly</button></p>
+        </div>
+        <div class="faq-list">
+
+            <details class="faq-item">
+                <summary class="faq-question">
+                    <h4>Does Hugo actually sound like me, or is it obviously a robot?</h4>
+                    <span class="faq-chevron">+</span>
+                </summary>
+                <p class="faq-answer">Hugo learns your voice. You tell it your tone (casual Aussie, professional, etc), your common phrases, your service area slang. Customers generally don't know it's Hugo — they just think you've got your admin sorted.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary class="faq-question">
+                    <h4>What happens when someone asks something Hugo doesn't know?</h4>
+                    <span class="faq-chevron">+</span>
+                </summary>
+                <p class="faq-answer">Hugo will say "let me get the boss to call you about that" and flag the lead for your attention. It never makes stuff up. You get notified so you can follow up directly.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary class="faq-question">
+                    <h4>Does it work for my trade specifically?</h4>
+                    <span class="faq-chevron">+</span>
+                </summary>
+                <p class="faq-answer">We cover 21 trades: plumbers, electricians, builders, painters, bricklayers, carpenters, roofers, concreters, tilers, plasterers, renderers, lawn care, landscapers, pool cleaners, carpet cleaners, pest control, commercial cleaners, fencers, locksmiths, removalists, and appliance repair. If yours isn't on the list, contact us — we add new trades regularly.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary class="faq-question">
+                    <h4>What's the early bird price lock about?</h4>
+                    <span class="faq-chevron">+</span>
+                </summary>
+                <p class="faq-answer">We're launching at $69/mo. After June 30, 2026, new signups pay $99/mo. If you sign up before June 30, your price is locked at $69/mo for life — it never goes up. No asterisks, no fine print.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary class="faq-question">
+                    <h4>Do I need to change how customers contact me?</h4>
+                    <span class="faq-chevron">+</span>
+                </summary>
+                <p class="faq-answer">No. Hugo connects to your existing email and can handle enquiries from any web form. You don't need to tell customers anything different — they contact you the same way they always did, Hugo just replies faster.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary class="faq-question">
+                    <h4>Can I cancel anytime?</h4>
+                    <span class="faq-chevron">+</span>
+                </summary>
+                <p class="faq-answer">Yes. No contracts, no lock-in. Cancel anytime and you won't be billed again. The 14-day free trial doesn't require a credit card.</p>
+            </details>
+
+        </div>
+    </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta" id="start">
+    <div class="container">
+        <h2>Stop losing jobs to your voicemail.</h2>
+        <p>Hugo replies in 3 seconds. You keep doing the work. That's the deal.</p>
+
+        <form class="email-form" id="footerForm" onsubmit="return handleSignup(event, 'footerForm')">
+            <input type="email" name="email" placeholder="Enter your work email" required autocomplete="email">
+            <button type="submit">Start Free Trial</button>
+        </form>
+        <div class="form-success" id="footerFormSuccess">You're in! Check your email for login details.</div>
+        <div class="form-error" id="footerFormError"></div>
+        <p class="form-note">14-day free trial · <strong>$69/mo early bird</strong> (locked forever) · No payment until day 15</p>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<!-- CONTACT INFO LIVES HERE IN FOOTER ONLY — DO NOT MOVE TO TOP/MIDDLE — SEE TASK HISTORY #1413249 #1429127 #1429709 #1439607 -->
+<footer>
+    <div class="container">
+        <div class="footer-logo">
+            <img src="/logo-horizontal.svg" alt="PropOps.Trade" height="28">
+        </div>
+        <p>Hugo — receptionist for Australian tradies.</p>
+        <p style="margin-top:1rem"><a href="/login">Log in</a> &middot; <a href="/login">Dashboard</a> &middot; <a href="mailto:support@propops.trade">support@propops.trade</a> &middot; <a href="tel:+61253010002">02-5301-0002</a> &middot; <a href="https://propops.pro">PropOps.Pro</a></p>
+    </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script>
+// ─── Pricing — direct GoCardless links (no JS needed for plan selection) ──────
+
+// ─── Checkout form submission ────────────────────────────────────────────────
+// Redirects to the #pricing section where all 6 plans are visible
+// with direct links to correct Stripe payment pages.
+async function handleSignup(e, formId) {
+    e.preventDefault();
+    var form = document.getElementById(formId);
+    var btn = form.querySelector('button');
+    var input = form.querySelector('input[name="email"]');
+    var error = document.getElementById(formId + 'Error');
+    var success = document.getElementById(formId + 'Success');
+    var email = input.value.trim();
+
+    if (!email) return false;
+
+    var plan = window._billingPlan || 'monthly';
+
+    btn.disabled = true;
+    btn.textContent = 'Going to pricing section...';
+    error.style.display = 'none';
+    if (success) success.style.display = 'none';
+
+    // Redirect to pricing section where all plans are visible with correct Stripe payment links
+    var pricingUrl = '/#pricing';
+    window.location.href = pricingUrl;
+
+    return false;
+}
+</script>
+
+<!-- Live Demo Script -->
+<script>
+(function() {
+    var demoLeads = [
+        { name: 'Dave R.',   type: 'Emergency', portal: 'Google',  property: 'Burst pipe — Bondi',             time: '3s' },
+        { name: 'Sarah M.',  type: 'Quote',     portal: 'Hipages', property: 'Switchboard upgrade — Newtown',  time: '4s' },
+        { name: 'Tom K.',    type: 'Booking',   portal: 'Website', property: 'Full house repaint — Coogee',    time: '2s' },
+        { name: 'Lisa P.',   type: 'Emergency', portal: 'Phone',   property: 'No hot water — Dee Why',         time: '5s' },
+        { name: 'James O.',  type: 'Quote',     portal: 'Google',  property: 'Deck build — Bankstown',         time: '3s' }
+    ];
+
+    var demoNewLeads = [
+        { name: 'Mark T.',   type: 'Emergency', portal: 'Phone',   property: 'Power out — Manly',          time: '3s' },
+        { name: 'Claire W.', type: 'Quote',     portal: 'Hipages', property: 'Bathroom reno — Surry Hills', time: '4s' },
+        { name: 'David H.',  type: 'Booking',   portal: 'Website', property: 'Fence repair — Pymble',      time: '3s' },
+        { name: 'Priya S.',  type: 'Emergency', portal: 'Google',  property: 'Leak under sink — Cottesloe', time: '2s' }
+    ];
+
+    var newLeadIdx = 0;
+    var demoRunning = false;
+
+    function typeClass(t) {
+        var m = { Emergency: 'type-buyer', Quote: 'type-renter', Booking: 'type-seller', Callback: 'type-landlord' };
+        return m[t] || 'type-buyer';
+    }
+
+    function buildRow(lead, status, animate) {
+        var statusHtml = '';
+        if (status === 'sent') {
+            statusHtml = '<span class="demo-status-sent">&#10003; Sent</span>';
+        } else if (status === 'new') {
+            statusHtml = '<span class="demo-status-new"><span class="demo-pulse"></span>New inquiry</span>';
+        } else if (status === 'responding') {
+            statusHtml = '<span class="demo-status-responding"><span class="demo-spinner"></span>Responding&hellip;</span>';
+        }
+        var div = document.createElement('div');
+        div.className = 'demo-row' + (animate ? ' demo-row-animate' : '');
+        div.innerHTML =
+            '<div class="demo-row-lead">' +
+                '<div class="demo-avatar">' + lead.name.charAt(0) + '</div>' +
+                '<div><div class="demo-name">' + lead.name + '</div>' +
+                '<div class="demo-property">' + lead.property + '</div></div>' +
+            '</div>' +
+            '<div><span class="demo-type-tag ' + typeClass(lead.type) + '">' + lead.type + '</span></div>' +
+            '<div class="demo-portal">' + lead.portal + '</div>' +
+            '<div class="demo-status-cell">' + statusHtml + '</div>' +
+            '<div class="demo-time">' + (status === 'sent' ? lead.time : '&mdash;') + '</div>';
+        return div;
+    }
+
+    function initDemo() {
+        var body = document.getElementById('demoTableBody');
+        if (!body) return;
+        demoLeads.forEach(function(lead) { body.appendChild(buildRow(lead, 'sent', false)); });
+    }
+
+    window.triggerDemo = function() {
+        if (demoRunning) return;
+        demoRunning = true;
+
+        var btn = document.getElementById('demoTriggerBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="demo-spinner-dark"></span> Incoming lead&hellip;';
+
+        var lead = demoNewLeads[newLeadIdx % demoNewLeads.length];
+        newLeadIdx++;
+
+        var body = document.getElementById('demoTableBody');
+        var newRow = buildRow(lead, 'new', true);
+        body.insertBefore(newRow, body.firstChild);
+
+        // Keep max 5 rows
+        var allRows = body.querySelectorAll('.demo-row');
+        if (allRows.length > 5) { allRows[allRows.length - 1].remove(); }
+
+        // 1.5s → responding
+        setTimeout(function() {
+            var sc = newRow.querySelector('.demo-status-cell');
+            if (sc) sc.innerHTML = '<span class="demo-status-responding"><span class="demo-spinner"></span>Responding&hellip;</span>';
+        }, 1500);
+
+        // 3.5s → sent + post-CTA
+        setTimeout(function() {
+            var sc = newRow.querySelector('.demo-status-cell');
+            var tc = newRow.querySelector('.demo-time');
+            if (sc) sc.innerHTML = '<span class="demo-status-sent">&#10003; Sent</span>';
+            if (tc) tc.textContent = lead.time;
+            newRow.classList.remove('demo-row-animate');
+            newRow.style.background = '';
+
+            var cta = document.getElementById('demoPostCta');
+            if (cta) {
+                cta.style.display = 'block';
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() { cta.classList.add('demo-post-cta-visible'); });
+                });
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<span class="demo-play-icon">&#9654;</span> Watch it again';
+            demoRunning = false;
+        }, 3500);
+    };
+
+    document.addEventListener('DOMContentLoaded', initDemo);
+})();
+</script>
+
+<!-- Tracking scripts removed to stabilize server -->
+
+<script>
+// ─── Mobile nav hamburger (landing page) ────────────────────────────────────
+function toggleLandingMenu() {
+    var menu = document.getElementById('lpMobileMenu');
+    var btn = document.getElementById('hamBtn');
+    if (!menu || !btn) return;
+    var isOpen = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    btn.innerHTML = isOpen ? '&#x2715;' : '&#9776;';
+    btn.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+}
+function closeLandingMenu() {
+    var menu = document.getElementById('lpMobileMenu');
+    var btn = document.getElementById('hamBtn');
+    if (!menu || !btn) return;
+    menu.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML = '&#9776;';
+    btn.setAttribute('aria-label', 'Open navigation menu');
+}
+// Close when clicking outside
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('lpMobileMenu');
+    var btn = document.getElementById('hamBtn');
+    if (menu && menu.classList.contains('open') &&
+        !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+        closeLandingMenu();
+    }
+});
+// Close when a hash link is clicked (smooth scroll to section)
+document.querySelectorAll('.lp-mobile-menu a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function() { closeLandingMenu(); });
+});
+</script>
+
+
+<script>
+// ─── Open Hugo chat widget ────────────────────────────────────────────────────
+function openHugoChat() {
+    var btn = document.getElementById('hugo-widget-btn');
+    if (btn && !btn.classList.contains('hw-open')) btn.click();
+}
+
+// ─── Language selector for Hugo widget ───────────────────────────────────────
+// Sets the visitor's preferred language before opening the chat.
+// Hugo's first response will be in that language. Auto-detect still runs after.
+function setHugoLang(lang, el) {
+    window._hugoPreferredLang = lang;
+    // Update active state on flag buttons
+    var btns = document.querySelectorAll('.hugo-lang-btn');
+    btns.forEach(function(b) { b.classList.remove('active'); });
+    if (el) el.classList.add('active');
+    // Open the widget immediately after selecting a language
+    openHugoChat();
+}
+
+// ─── Hugo chat mockup animation ─────────────────────────────────────────────
+(function() {
+    var animated = false;
+    function runHugoAnimation() {
+        if (animated) return;
+        animated = true;
+        var typing = document.getElementById('hugoTyping');
+        var reply  = document.getElementById('hugoReply');
+        if (!typing || !reply) return;
+        setTimeout(function() {
+            typing.style.display = 'flex';
+            setTimeout(function() {
+                typing.style.display = 'none';
+                reply.style.display  = 'flex';
+            }, 2000);
+        }, 1600);
+    }
+    // Run when Hugo section scrolls into view (or immediately if already visible)
+    if ('IntersectionObserver' in window) {
+        var section = document.getElementById('hugo');
+        if (section) {
+            var obs = new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) { runHugoAnimation(); obs.disconnect(); }
+                });
+            }, { threshold: 0.3 });
+            obs.observe(section);
+        }
+    } else {
+        // Fallback: run after 2s
+        setTimeout(runHugoAnimation, 2000);
+    }
+})();
+</script>
+
+<!-- Hugo self-hosted widget (voice + text) — same-origin load avoids CORS issues -->
+<script src="/hugo-widget.js?v=13" defer></script>
+
+<script>
+// ─── PWA Install Prompt ───────────────────────────────────────────────────────
+var _pwaInstallEvent = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    _pwaInstallEvent = e;
+    var btn = document.getElementById('pwaInstallBtn');
+    if (btn) {
+        btn.textContent = '📲 Install App — 15 Seconds';
+        btn.style.color = '#f59e0b';
+        btn.style.fontWeight = '800';
+    }
+});
+
+window.addEventListener('appinstalled', function() {
+    _pwaInstallEvent = null;
+    var btn = document.getElementById('pwaInstallBtn');
+    if (btn) { btn.textContent = '✅ App Installed!'; btn.disabled = true; }
+});
+
+function triggerPwaInstall() {
+    if (_pwaInstallEvent) {
+        _pwaInstallEvent.prompt();
+        _pwaInstallEvent.userChoice.then(function(choice) {
+            _pwaInstallEvent = null;
+            if (choice.outcome === 'accepted') {
+                var btn = document.getElementById('pwaInstallBtn');
+                if (btn) { btn.textContent = '✅ Installing...'; btn.disabled = true; }
+            }
+        });
+    } else {
+        var note = document.getElementById('pwaInstallNote');
+        var ua = navigator.userAgent;
+        if (note) {
+            note.style.display = 'block';
+            if (/iPhone|iPad/i.test(ua)) {
+                note.innerHTML = '📱 Tap the <strong>Share</strong> button (↑) in Safari, then <strong>"Add to Home Screen"</strong>';
+            } else if (/Android/i.test(ua)) {
+                note.innerHTML = '📱 Tap <strong>⋮</strong> in Chrome, then <strong>"Add to Home Screen"</strong> or <strong>"Install app"</strong>';
+            } else {
+                note.innerHTML = '💻 Open on your phone browser and tap <strong>"Add to Home Screen"</strong> in the menu';
+            }
+        }
+    }
+}
+
+// ─── Phone SMS Magic Link Signup ─────────────────────────────────────────────
+async function handlePhoneSignup(e, formId) {
+    e.preventDefault();
+
+    var inputId   = formId === 'heroPhoneForm' ? 'heroPhoneInput' : 'phoneInput';
+    var successId = formId === 'heroPhoneForm' ? 'heroPhoneSuccess' : 'phoneSuccess';
+    var errorId   = formId === 'heroPhoneForm' ? 'heroPhoneError' : 'phoneError';
+
+    var inputEl   = document.getElementById(inputId);
+    var successEl = document.getElementById(successId);
+    var errorEl   = document.getElementById(errorId);
+    var btn       = e.target.querySelector('button[type="submit"]');
+
+    if (!inputEl || !btn) return;
+    var phone = inputEl.value.trim();
+    if (!phone) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    if (successEl) successEl.style.display = 'none';
+    if (errorEl)   errorEl.style.display   = 'none';
+
+    try {
+        var resp = await fetch('/api/auth/phone-magic-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone })
+        });
+        var data = await resp.json();
+
+        if (data.success) {
+            if (successEl) {
+                successEl.style.display = 'block';
+                successEl.textContent = '\u2705 ' + data.message + '. Tap the link in your text to log in.';
+            }
+            inputEl.value = '';
+            btn.textContent = '\u2705 Sent!';
+        } else {
+            if (errorEl) {
+                errorEl.style.display = 'block';
+                errorEl.textContent = data.message || 'Something went wrong \u2014 please try again';
+            }
+            btn.disabled = false;
+            btn.textContent = '\ud83d\udcf2 Get SMS Link';
+        }
+    } catch(err) {
+        if (errorEl) {
+            errorEl.style.display = 'block';
+            errorEl.textContent = 'Network error \u2014 please try again';
+        }
+        btn.disabled = false;
+        btn.textContent = '\ud83d\udcf2 Get SMS Link';
+    }
+}
+</script>
+
+<!-- Cache-buster: unregister stale service workers and clear cached responses
+     on propops.trade origin. Fixes stale propops.pro content being served from
+     browser/SW cache after the 301→302 redirect fix. -->
+<script>
+(function() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      registrations.forEach(function(reg) {
+        reg.unregister().then(function() {
+          console.log('[PropOps.Trade] Unregistered stale service worker');
+        });
+      });
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then(function(names) {
+      names.forEach(function(name) {
+        caches.delete(name).then(function() {
+          console.log('[PropOps.Trade] Cleared cache:', name);
+        });
+      });
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 96" width="520" height="96">
+  <defs>
+    <style>
+      .brand-text { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- ── Compact house mark (72px tall, left-anchored) ── -->
+  <!-- Roof -->
+  <polygon points="48,6 88,38 8,38" fill="#0f172a"/>
+  <!-- Body -->
+  <rect x="14" y="36" width="68" height="50" fill="#0f172a"/>
+  <!-- Left window (white) -->
+  <rect x="22" y="44" width="20" height="17" rx="2" fill="#ffffff"/>
+  <!-- Right window (amber — .Pro accent) -->
+  <rect x="50" y="44" width="20" height="17" rx="2" fill="#f59e0b"/>
+  <!-- Door -->
+  <rect x="31" y="61" width="16" height="25" rx="2" fill="#ffffff"/>
+  <!-- Door knob -->
+  <circle cx="46" cy="74" r="2.5" fill="#f59e0b"/>
+
+  <!-- ── Wordmark: tspan keeps PropOps + .Pro on one natural text flow ── -->
+  <text
+    x="106"
+    y="64"
+    class="brand-text"
+    font-weight="800"
+    font-size="42"
+    letter-spacing="-1">
+    <tspan fill="#0f172a">PropOps</tspan><tspan fill="#f59e0b">.Pro</tspan>
+  </text>
+</svg>

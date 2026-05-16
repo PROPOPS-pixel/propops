@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Navy rounded background -->
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <!-- Bold "P" in white -->
+  <text
+    x="32"
+    y="46"
+    font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
+    font-weight="900"
+    font-size="40"
+    fill="white"
+    text-anchor="middle"
+    dominant-baseline="auto"
+    letter-spacing="-1">P</text>
+  <!-- Amber accent dot — the ".Pro" hint -->
+  <circle cx="50" cy="12" r="7" fill="#f59e0b"/>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 96" width="520" height="96">
+  <!-- White version — for use on dark backgrounds -->
+  <defs>
+    <style>
+      .brand-text { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- House mark in white (with amber window as accent) -->
+  <polygon points="48,6 88,38 8,38" fill="#ffffff"/>
+  <rect x="14" y="36" width="68" height="50" fill="#ffffff"/>
+  <rect x="22" y="44" width="20" height="17" rx="2" fill="#0f172a"/>
+  <rect x="50" y="44" width="20" height="17" rx="2" fill="#f59e0b"/>
+  <rect x="31" y="61" width="16" height="25" rx="2" fill="#0f172a"/>
+  <circle cx="46" cy="74" r="2.5" fill="#f59e0b"/>
+
+  <!-- Wordmark — white + amber for .Pro -->
+  <text
+    x="106"
+    y="64"
+    class="brand-text"
+    font-weight="800"
+    font-size="42"
+    letter-spacing="-1">
+    <tspan fill="#ffffff">PropOps</tspan><tspan fill="#f59e0b">.Pro</tspan>
+  </text>
+</svg>

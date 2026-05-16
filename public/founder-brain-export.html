@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hugo Brain Export — Founder Audit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0f1a;
+      --surface: #111827;
+      --surface2: #1e293b;
+      --border: #1f2d40;
+      --border2: #2d3f55;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+      --green: #22c55e;
+      --cyan: #06b6d4;
+      --purple: #a855f7;
+      --mono: 'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-logo {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+    .topbar-sep { color: var(--border2); }
+    .topbar-title { font-size: 14px; color: var(--text-dim); }
+    .topbar-spacer { flex: 1; }
+    .topbar-time { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+    .btn-download:disabled { background: var(--surface2); color: var(--text-muted); cursor: default; }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 2rem 4rem;
+    }
+
+    /* ── HEADER ── */
+    .page-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .meta-row {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 12px;
+    }
+    .meta-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .badge-green { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge-red   { background: rgba(239,68,68,.15);  color: var(--red); }
+    .badge-orange{ background: rgba(249,115,22,.15); color: var(--orange); }
+    .badge-yellow{ background: rgba(234,179,8,.15);  color: var(--yellow); }
+    .badge-blue  { background: rgba(59,130,246,.15); color: var(--accent); }
+    .badge-gray  { background: var(--surface2); color: var(--text-muted); }
+
+    /* ── LOADING STATE ── */
+    #loading {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error-state {
+      display: none;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 8px;
+      padding: 1.5rem;
+      color: var(--red);
+      text-align: center;
+    }
+
+    #content { display: none; }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 2rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1rem;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .section-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+    }
+    .card-header:hover { background: #263146; }
+    .card-label {
+      font-size: 13px;
+      font-weight: 600;
+      flex: 1;
+    }
+    .card-source {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+    .card-chevron {
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform .2s;
+    }
+    .card-body {
+      padding: 14px 16px;
+    }
+    .card.collapsed .card-body { display: none; }
+    .card.collapsed .card-chevron { transform: rotate(-90deg); }
+
+    /* ── PROMPT BOX ── */
+    .prompt-box {
+      background: #0d1520;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #a5c7f5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.7;
+    }
+
+    /* ── WARN / INFO PILLS ── */
+    .warn {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.25);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: #fca5a5;
+      margin-top: 10px;
+    }
+    .warn::before { content: '⚠ '; }
+
+    .info-note {
+      background: rgba(59,130,246,.08);
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: #93c5fd;
+      margin-top: 10px;
+    }
+
+    /* ── BUG LIST ── */
+    .bug-item {
+      display: flex;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .bug-item:last-child { border-bottom: none; }
+    .bug-sev {
+      width: 64px;
+      height: 22px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+    }
+    .sev-HIGH   { background: rgba(239,68,68,.2);   color: var(--red); }
+    .sev-MEDIUM { background: rgba(249,115,22,.2);  color: var(--orange); }
+    .sev-LOW    { background: rgba(234,179,8,.2);   color: var(--yellow); }
+    .sev-INFO   { background: rgba(59,130,246,.15); color: var(--accent); }
+    .bug-content { flex: 1; }
+    .bug-title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+    .bug-detail { font-size: 12.5px; color: var(--text-dim); }
+    .bug-file { font-size: 11px; color: var(--text-muted); font-family: var(--mono); margin-top: 4px; }
+
+    /* ── GRID ── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ── KEY VALUE ── */
+    .kv-row {
+      display: flex;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .kv-row:last-child { border-bottom: none; }
+    .kv-key { color: var(--text-muted); min-width: 160px; flex-shrink: 0; }
+    .kv-val { color: var(--text); flex: 1; word-break: break-word; }
+    .kv-val.mono { font-family: var(--mono); font-size: 12px; color: var(--cyan); }
+
+    /* ── TABLE ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+      vertical-align: top;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,.02); }
+    .overflow-cell {
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── MEMORY TABLE ── */
+    .mem-row { display: flex; gap: 12px; margin-bottom: 8px; font-size: 13px; }
+    .mem-channel { min-width: 120px; font-weight: 600; color: var(--accent); }
+    .mem-detail { color: var(--text-dim); }
+
+    /* ── SCROLL ANCHOR NAV ── */
+    .side-nav {
+      position: fixed;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .nav-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--border2);
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+      title: attr(data-label);
+    }
+    .nav-dot:hover, .nav-dot.active { background: var(--accent); transform: scale(1.4); }
+
+    @media (max-width: 900px) {
+      .side-nav { display: none; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ── COUNT STATS ── */
+    .stat-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .stat-pill {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 8px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+    }
+    .stat-val { font-size: 20px; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .tag-pill {
+      display: inline-block;
+      background: rgba(168,85,247,.15);
+      color: var(--purple);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 4px;
+      font-family: var(--mono);
+    }
+
+    .empty-state {
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-logo">PropOps</span>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-title">Hugo Brain Export</span>
+  <span class="topbar-spacer"></span>
+  <span class="topbar-time" id="gen-time">Loading…</span>
+  <button class="btn-download" id="download-btn" disabled onclick="downloadMarkdown()">↓ Download .md</button>
+</div>
+
+<div class="container">
+  <div class="page-header">
+    <h1>🧠 Hugo Brain — Full Audit Export</h1>
+    <p>Every system prompt, pricing rule, persona config, guardrail, and memory setting that shapes Hugo's behavior. Red-pen this before bugs surface.</p>
+    <div class="meta-row" id="meta-badges"></div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Reading Hugo's brain…</p>
+  </div>
+
+  <div id="error-state">
+    <strong>Failed to load brain export.</strong><br>
+    <span id="error-msg"></span>
+  </div>
+
+  <div id="content">
+
+    <!-- ── BUGS FOUND ── -->
+    <div class="section" id="sec-bugs">
+      <div class="section-header">
+        <div class="section-num" style="background:#ef4444">!</div>
+        <span class="section-title">Bugs &amp; Risks Found</span>
+        <span class="section-desc" id="bugs-count-label"></span>
+      </div>
+      <div class="card">
+        <div id="bug-list"></div>
+      </div>
+    </div>
+
+    <!-- ── SYSTEM PROMPTS ── -->
+    <div class="section" id="sec-prompts">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <span class="section-title">System Prompts</span>
+        <span class="section-desc">Every prompt Hugo sees across all channels</span>
+      </div>
+      <div id="prompts-container"></div>
+    </div>
+
+    <!-- ── PRICING RULES ── -->
+    <div class="section" id="sec-pricing">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <span class="section-title">Pricing Rules</span>
+        <span class="section-desc">Hard-coded constants, guards, fast-paths, fallbacks</span>
+      </div>
+      <div id="pricing-container"></div>
+    </div>
+
+    <!-- ── PERSONA CONFIGURATIONS ── -->
+    <div class="section" id="sec-persona">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <span class="section-title">Persona Configurations</span>
+        <span class="section-desc">Domain routing, greetings, voice switching</span>
+      </div>
+      <div id="persona-container"></div>
+    </div>
+
+    <!-- ── AUTO-CORRECTION RULES ── -->
+    <div class="section" id="sec-guardrails">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <span class="section-title">Auto-Correction &amp; Guardrails</span>
+        <span class="section-desc">Banned words, character-break recovery, email risk</span>
+      </div>
+      <div id="guardrails-container"></div>
+    </div>
+
+    <!-- ── MEMORY SETTINGS ── -->
+    <div class="section" id="sec-memory">
+      <div class="section-header">
+        <div class="section-num">6</div>
+        <span class="section-title">Conversation Memory</span>
+        <span class="section-desc">Per-channel history windows, session TTLs, lead memory</span>
+      </div>
+      <div id="memory-container"></div>
+    </div>
+
+    <!-- ── TRAINING DATA ── -->
+    <div class="section" id="sec-training">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <span class="section-title">Training Data</span>
+        <span class="section-desc">Knowledge entries, legacy training, learned market intelligence</span>
+      </div>
+      <div id="training-container"></div>
+    </div>
+
+    <!-- ── GOD LAYER ── -->
+    <div class="section" id="sec-god">
+      <div class="section-header">
+        <div class="section-num">7</div>
+        <span class="section-title">God Layer — Operator Overrides &amp; FAQ Cache</span>
+        <span class="section-desc">Operator custom rules (prompt injection surface) + FAQ bypass</span>
+      </div>
+      <div id="god-container"></div>
+    </div>
+
+  </div><!-- #content -->
+</div><!-- .container -->
+
+<!-- side nav dots -->
+<div class="side-nav" id="side-nav">
+  <div class="nav-dot active" data-sec="sec-bugs" title="Bugs"></div>
+  <div class="nav-dot" data-sec="sec-prompts" title="Prompts"></div>
+  <div class="nav-dot" data-sec="sec-pricing" title="Pricing"></div>
+  <div class="nav-dot" data-sec="sec-persona" title="Persona"></div>
+  <div class="nav-dot" data-sec="sec-guardrails" title="Guardrails"></div>
+  <div class="nav-dot" data-sec="sec-memory" title="Memory"></div>
+  <div class="nav-dot" data-sec="sec-training" title="Training"></div>
+  <div class="nav-dot" data-sec="sec-god" title="God Layer"></div>
+</div>
+
+<script>
+let exportData = null;
+
+// ── FETCH ────────────────────────────────────────────────────────────────────
+async function loadExport() {
+  try {
+    const r = await fetch('/api/founder/brain-export', {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (r.status === 401 || r.status === 403) {
+      window.location.href = '/founder/login';
+      return;
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (!data.success) throw new Error(data.message || 'Export failed');
+    exportData = data;
+    render(data);
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    const el = document.getElementById('error-state');
+    el.style.display = 'block';
+    document.getElementById('error-msg').textContent = err.message;
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(data) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('download-btn').disabled = false;
+
+  const genAt = new Date(data.generated_at);
+  document.getElementById('gen-time').textContent = `Generated ${genAt.toLocaleTimeString()} ${genAt.toLocaleDateString()}`;
+
+  const s = data.sections;
+
+  renderBugs(s.audit.bugs_found);
+  renderPrompts(s.prompts);
+  renderPricing(s.pricing);
+  renderPersona(s.persona);
+  renderGuardrails(s.guardrails);
+  renderMemory(s.memory);
+  renderTraining(s.training_data);
+  renderGodLayer(s.god_layer);
+  renderMetaBadges(s);
+
+  setupNav();
+}
+
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function collapsibleCard(label, source, bodyHtml, startOpen = false) {
+  const id = 'card-' + Math.random().toString(36).slice(2);
+  return `
+    <div class="card ${startOpen ? '' : 'collapsed'}">
+      <div class="card-header" onclick="toggleCard('${id}')">
+        <span class="card-label">${label}</span>
+        <span class="card-source">${esc(source)}</span>
+        <span class="card-chevron">▼</span>
+      </div>
+      <div class="card-body" id="${id}">${bodyHtml}</div>
+    </div>`;
+}
+
+function toggleCard(id) {
+  const body = document.getElementById(id);
+  const card = body.closest('.card');
+  card.classList.toggle('collapsed');
+}
+
+// ── BUGS ────────────────────────────────────────────────────────────────────
+function renderBugs(bugs) {
+  const highs = bugs.filter(b => b.severity === 'HIGH').length;
+  const mediums = bugs.filter(b => b.severity === 'MEDIUM').length;
+  document.getElementById('bugs-count-label').innerHTML =
+    `<span class="meta-badge badge-red">${highs} HIGH</span>&nbsp;<span class="meta-badge badge-orange">${mediums} MEDIUM</span>`;
+
+  const html = bugs.map(b => `
+    <div class="bug-item">
+      <div class="bug-sev sev-${esc(b.severity)}">${esc(b.severity)}</div>
+      <div class="bug-content">
+        <div class="bug-title">${esc(b.title)}</div>
+        <div class="bug-detail">${esc(b.detail)}</div>
+        <div class="bug-file">${esc(b.file)}</div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('bug-list').innerHTML = html;
+}
+
+// ── PROMPTS ────────────────────────────────────────────────────────────────
+function renderPrompts(prompts) {
+  let html = '';
+  for (const [key, p] of Object.entries(prompts)) {
+    const content = p.content || '[not available — read file directly]';
+    const warn = p.warning ? `<div class="warn">${esc(p.warning)}</div>` : '';
+    html += collapsibleCard(
+      esc(p.description || key),
+      p.source,
+      `<div class="prompt-box">${esc(content)}</div>${warn}`,
+      key === 'brain_personality'
+    );
+  }
+  document.getElementById('prompts-container').innerHTML = html;
+}
+
+// ── PRICING ────────────────────────────────────────────────────────────────
+function renderPricing(pr) {
+  let html = '';
+
+  // Approved prices
+  html += collapsibleCard(
+    'Hard-Coded Approved Prices',
+    pr.source,
+    `<div>
+      <div class="kv-row"><span class="kv-key">Approved amounts</span><span class="kv-val"><strong>$${esc(pr.approved_prices.join(', $'))}</strong> — subscription pricing only</span></div>
+      <div class="kv-row"><span class="kv-key">propops.trade</span><span class="kv-val">${esc(pr.constants['propops.trade'].display)} — ${esc(pr.constants['propops.trade'].trial)}</span></div>
+      <div class="kv-row"><span class="kv-key">propops.pro</span><span class="kv-val">${esc(pr.constants['propops.pro'].display)} — ${esc(pr.constants['propops.pro'].trial)}</span></div>
+      <div class="kv-row"><span class="kv-key">Early bird deadline</span><span class="kv-val">${esc(pr.constants.early_bird_deadline)}</span></div>
+      <div class="kv-row"><span class="kv-key">Early bird pro price</span><span class="kv-val">$${esc(pr.constants.early_bird_pro)}/mo</span></div>
+      <div class="kv-row"><span class="kv-key">Correction regex</span><span class="kv-val mono">${esc(pr.correction_regex)}</span></div>
+      <div class="kv-row"><span class="kv-key">Exemption</span><span class="kv-val">${esc(pr.correction_exemption)}</span></div>
+    </div>
+    <div class="warn">${esc(pr.warning_bug)}</div>`,
+    true
+  );
+
+  // Voice fast-path
+  html += collapsibleCard(
+    'Voice Price Fast-Path (bypasses AI)',
+    pr.voice_fast_path.source,
+    `<div>
+      <div class="kv-row"><span class="kv-key">Trade reply</span><span class="kv-val">"${esc(pr.voice_fast_path.trade)}"</span></div>
+      <div class="kv-row"><span class="kv-key">RE reply</span><span class="kv-val">"${esc(pr.voice_fast_path.re)}"</span></div>
+    </div>
+    <div class="warn">${esc(pr.voice_fast_path.warning_bug)}</div>`,
+    false
+  );
+
+  // Template fallback
+  html += collapsibleCard(
+    'Widget Template Fallback (AI unavailable)',
+    pr.template_fallback.source,
+    `<div class="prompt-box">${esc(pr.template_fallback.content)}</div>
+     <div class="warn">${esc(pr.template_fallback.warning_bug)}</div>`,
+    false
+  );
+
+  // RE static prompt pricing
+  html += collapsibleCard(
+    'RE Agent Widget — Static Pricing (no DB sync)',
+    pr.re_prompt_static.source,
+    `<div class="kv-row"><span class="kv-key">Current price text</span><span class="kv-val">${esc(pr.re_prompt_static.content)}</span></div>
+     <div class="info-note">${esc(pr.re_prompt_static.warning)}</div>`,
+    false
+  );
+
+  document.getElementById('pricing-container').innerHTML = html;
+}
+
+// ── PERSONA ────────────────────────────────────────────────────────────────
+function renderPersona(p) {
+  let html = '';
+
+  html += collapsibleCard(
+    'Domain Detection',
+    p.domain_detection.source,
+    `<div class="kv-row"><span class="kv-key">Logic</span><span class="kv-val">${esc(p.domain_detection.logic)}</span></div>`,
+    true
+  );
+
+  html += collapsibleCard(
+    'Persona Selection Priority',
+    'routes/hugo-widget.js',
+    `<ul style="padding-left:1.2rem;color:var(--text-dim);font-size:13px;line-height:2">${p.selection_priority.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`,
+    true
+  );
+
+  const vs = p.voice_persona_switch;
+  html += collapsibleCard(
+    'Voice Dual-Brain Persona Switch',
+    vs.source,
+    `<div>
+      <div class="kv-row"><span class="kv-key">Default</span><span class="kv-val">${esc(vs.default)}</span></div>
+      <div class="kv-row"><span class="kv-key">Switch trigger</span><span class="kv-val">${esc(vs.switch_trigger)}</span></div>
+      <div class="kv-row"><span class="kv-key">Weights</span><span class="kv-val">${esc(vs.switch_weight)}</span></div>
+      <div class="kv-row"><span class="kv-key">Lock</span><span class="kv-val"><strong>${esc(vs.lock)}</strong></span></div>
+    </div>
+    <div class="warn">${esc(vs.warning_bug)}</div>`,
+    false
+  );
+
+  const g = p.greetings;
+  html += collapsibleCard(
+    'Greeting Templates',
+    'routes/hugo-widget.js + services/hugo-voice.js',
+    `<div>
+      <div class="kv-row"><span class="kv-key">Widget (all personas)</span><span class="kv-val">"${esc(g.widget)}"</span></div>
+      <div class="kv-row"><span class="kv-key">Voice — Trade</span><span class="kv-val">"${esc(g.voice_trade)}"</span></div>
+      <div class="kv-row"><span class="kv-key">Voice — RE</span><span class="kv-val">"${esc(g.voice_re)}"</span></div>
+    </div>
+    <div class="info-note">${esc(g.note)}</div>`,
+    false
+  );
+
+  document.getElementById('persona-container').innerHTML = html;
+}
+
+// ── GUARDRAILS ────────────────────────────────────────────────────────────
+function renderGuardrails(g) {
+  let html = '';
+
+  const bw = g.banned_words;
+  html += collapsibleCard(
+    'Banned Words / Replacement Rules',
+    bw.source,
+    `<div class="info-note">${esc(bw.scope)}</div>
+     <table class="data-table" style="margin-top:12px">
+       <thead><tr><th>Pattern</th><th>Replacement</th></tr></thead>
+       <tbody>${bw.rules.map(r => {
+         const parts = r.split(' → ');
+         return `<tr><td style="font-family:var(--mono);color:var(--red)">${esc(parts[0])}</td><td style="font-family:var(--mono);color:var(--green)">${esc(parts[1] || '[removed]')}</td></tr>`;
+       }).join('')}</tbody>
+     </table>`,
+    true
+  );
+
+  const cb = g.character_break_detection;
+  html += collapsibleCard(
+    'Character-Break Detection &amp; Recovery',
+    'routes/hugo-brain.js + services/hugo.js',
+    `<table class="data-table">
+      <thead><tr><th>Trigger Phrase</th></tr></thead>
+      <tbody>${cb.patterns.map(p => `<tr><td style="font-family:var(--mono);color:var(--yellow)">${esc(p)}</td></tr>`).join('')}</tbody>
+    </table>
+    <div style="margin-top:10px;font-size:13px;color:var(--text-dim)"><strong>Recovery:</strong> ${esc(cb.recovery)}</div>`,
+    false
+  );
+
+  const er = g.email_risk_classification;
+  html += collapsibleCard(
+    'Email Risk Classification',
+    er.source,
+    `<table class="data-table">
+      <thead><tr><th>Risk Trigger</th></tr></thead>
+      <tbody>${er.triggers.map(t => `<tr><td style="color:var(--orange)">${esc(t)}</td></tr>`).join('')}</tbody>
+    </table>
+    <div style="margin-top:10px;font-size:13px;color:var(--text-dim)"><strong>Behavior:</strong> ${esc(er.behavior)}</div>`,
+    false
+  );
+
+  document.getElementById('guardrails-container').innerHTML = html;
+}
+
+// ── MEMORY ────────────────────────────────────────────────────────────────
+function renderMemory(m) {
+  const channels = [
+    { label: 'Widget Session', d: m.widget_session },
+    { label: 'Brain Endpoint', d: m.brain_history_window },
+    { label: 'Voice Call', d: m.voice_history_window },
+    { label: 'Dashboard Chat', d: m.dashboard_chat_history },
+    { label: 'Cross-Channel Lead Memory', d: m.cross_channel_lead_memory },
+  ];
+
+  let html = '<div class="card"><div class="card-body">';
+  html += '<table class="data-table"><thead><tr><th>Channel</th><th>Turns Sent to AI</th><th>Storage</th><th>Expiry</th></tr></thead><tbody>';
+
+  const rows = [
+    ['Widget Session', m.widget_session.sent_to_ai || m.widget_session.max_turns, m.widget_session.storage, m.widget_session.ttl],
+    ['Brain Endpoint', m.brain_history_window.turns_sent_to_ai, 'In-memory (last N from request)', 'Per-request'],
+    ['Voice Call', m.voice_history_window.turns_sent_to_ai, m.voice_history_window.persistent_store, 'None — persists indefinitely'],
+    ['Dashboard Chat', m.dashboard_chat_history.sent_to_ai, `DB: last ${m.dashboard_chat_history.db_fetch}`, 'None — persists indefinitely'],
+    ['Lead Memory', 'N/A', m.cross_channel_lead_memory.table, m.cross_channel_lead_memory.expiry],
+  ];
+
+  for (const [ch, turns, storage, expiry] of rows) {
+    const expiryColor = String(expiry).includes('None') ? 'color:var(--yellow)' : '';
+    html += `<tr>
+      <td style="font-weight:600">${esc(ch)}</td>
+      <td style="font-family:var(--mono);color:var(--cyan)">${esc(turns)}</td>
+      <td style="color:var(--text-dim);font-size:12px">${esc(storage)}</td>
+      <td style="${expiryColor}">${esc(expiry)}</td>
+    </tr>`;
+  }
+
+  html += '</tbody></table></div></div>';
+
+  // Cross-channel detail
+  const cl = m.cross_channel_lead_memory;
+  html += collapsibleCard(
+    'Cross-Channel Lead Memory — Detail',
+    'services/hugo-learning.js',
+    `<div>
+      <div class="kv-row"><span class="kv-key">Table</span><span class="kv-val mono">${esc(cl.table)}</span></div>
+      <div class="kv-row"><span class="kv-key">Key</span><span class="kv-val mono">${esc(cl.key)}</span></div>
+      <div class="kv-row"><span class="kv-key">Expiry</span><span class="kv-val" style="color:var(--yellow)">${esc(cl.expiry)}</span></div>
+      <div class="kv-row"><span class="kv-key">Injected as</span><span class="kv-val">${esc(cl.injected_as)}</span></div>
+      <div class="kv-row"><span class="kv-key">Fields stored</span><span class="kv-val mono">${esc(cl.fields)}</span></div>
+    </div>`,
+    false
+  );
+
+  document.getElementById('memory-container').innerHTML = html;
+}
+
+// ── TRAINING DATA ────────────────────────────────────────────────────────
+function renderTraining(t) {
+  let html = '';
+
+  // Summary stats
+  const summary = t.knowledge_entries_summary || [];
+  const legacy = t.legacy_training || {};
+
+  let statsHtml = '<div class="stat-row">';
+  let totalEntries = 0;
+  for (const row of summary) {
+    totalEntries += parseInt(row.count, 10);
+  }
+  statsHtml += `<div class="stat-pill"><div class="stat-val">${totalEntries}</div><div class="stat-label">Knowledge Entries</div></div>`;
+  statsHtml += `<div class="stat-pill"><div class="stat-val">${esc(legacy.total || 0)}</div><div class="stat-label">Legacy Training</div></div>`;
+  statsHtml += `<div class="stat-pill"><div class="stat-val">${esc(legacy.operator_count || 0)}</div><div class="stat-label">Operators Trained</div></div>`;
+  statsHtml += '</div>';
+
+  // Knowledge by confidence tier
+  const tierRows = summary.map(r =>
+    `<tr><td><span class="tag-pill">${esc(r.confidence)}</span></td><td>${r.validated ? '✅' : '⏳'}</td><td style="font-family:var(--mono)">${esc(r.count)}</td></tr>`
+  ).join('') || '<tr><td colspan="3" class="empty-state">No entries</td></tr>';
+
+  const knowledgeTable = `
+    <table class="data-table">
+      <thead><tr><th>Confidence Tier</th><th>Validated</th><th>Count</th></tr></thead>
+      <tbody>${tierRows}</tbody>
+    </table>`;
+
+  html += collapsibleCard(
+    'Knowledge Entries Summary',
+    'hugo_knowledge_entries table',
+    statsHtml + knowledgeTable,
+    true
+  );
+
+  // Recent entries
+  const recentRows = (t.recent_entries || []).map(e =>
+    `<tr>
+      <td><span class="tag-pill">${esc(e.confidence)}</span>${e.validated ? ' ✅' : ''}</td>
+      <td class="overflow-cell">${esc(e.knowledge_text)}</td>
+      <td>${esc(e.trade_slug || '—')}</td>
+      <td>${esc(e.source_type)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${new Date(e.created_at).toLocaleDateString()}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="5" class="empty-state">No entries yet</td></tr>';
+
+  html += collapsibleCard(
+    'Recent Knowledge Entries (top 50)',
+    'hugo_knowledge_entries — ordered by confidence priority',
+    `<table class="data-table">
+      <thead><tr><th>Tier</th><th>Knowledge Text</th><th>Trade</th><th>Source</th><th>Date</th></tr></thead>
+      <tbody>${recentRows}</tbody>
+    </table>`,
+    false
+  );
+
+  // Learned market intelligence
+  const learnedRows = (t.learned_knowledge || []).map(r =>
+    `<tr>
+      <td>${esc(r.trade_category)}</td>
+      <td>${esc(r.region || '—')}</td>
+      <td style="font-family:var(--mono);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(JSON.stringify(r.payload).slice(0, 120))}…</td>
+      <td style="font-family:var(--mono);font-size:11px">${r.last_updated ? new Date(r.last_updated).toLocaleDateString() : '—'}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="4" class="empty-state">No learned market intelligence yet</td></tr>';
+
+  html += collapsibleCard(
+    'Learned Market Intelligence (hugo_learned_knowledge)',
+    'services/hugo-learning.js :: runDailyLearningBatch()',
+    `<table class="data-table">
+      <thead><tr><th>Trade</th><th>Region</th><th>Payload (preview)</th><th>Updated</th></tr></thead>
+      <tbody>${learnedRows}</tbody>
+    </table>`,
+    false
+  );
+
+  document.getElementById('training-container').innerHTML = html;
+}
+
+// ── GOD LAYER ────────────────────────────────────────────────────────────
+function renderGodLayer(g) {
+  let html = '';
+
+  // Founder override status
+  html += collapsibleCard(
+    'Founder Override Layer',
+    'N/A — does not exist yet',
+    `<div style="padding:1.5rem;text-align:center;color:var(--text-muted)">
+      No founder-level override layer exists. The only things that cannot be overridden by operators are the hard-coded PRICING_CONSTANTS and the pricing correction regex.
+    </div>`,
+    true
+  );
+
+  // Operator custom rules
+  const ops = g.operator_custom_rules?.operators_with_rules || [];
+  const opRows = ops.map(op =>
+    `<tr>
+      <td>${esc(op.name || '—')}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${esc(op.email)}</td>
+      <td>${esc(op.business_type || '—')}</td>
+      <td class="overflow-cell" style="font-family:var(--mono);font-size:11px;color:var(--yellow)">${esc(op.custom_rules)}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="4" class="empty-state">No operators have custom rules set</td></tr>';
+
+  html += collapsibleCard(
+    `Operator Custom Rules (${ops.length} operators with overrides)`,
+    g.operator_custom_rules?.source || 'services/hugo.js',
+    `<div class="warn">${esc(g.operator_custom_rules?.sanitisation || 'NONE — prompt injection surface. Injected verbatim as ABSOLUTE AUTHORITY.')}</div>
+     <table class="data-table" style="margin-top:12px">
+       <thead><tr><th>Operator</th><th>Email</th><th>Type</th><th>Custom Rules</th></tr></thead>
+       <tbody>${opRows}</tbody>
+     </table>`,
+    false
+  );
+
+  // FAQ cache
+  const faqEntries = g.faq_cache?.entries || [];
+  const faqRows = faqEntries.map(f =>
+    `<tr>
+      <td>${esc(f.domain || '—')}</td>
+      <td>${esc(f.question)}</td>
+      <td class="overflow-cell">${esc(f.answer)}</td>
+      <td>${f.is_active ? '✅' : '❌'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${f.expires_at ? new Date(f.expires_at).toLocaleDateString() : 'Never'}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="5" class="empty-state">No FAQ cache entries</td></tr>';
+
+  html += collapsibleCard(
+    `FAQ Cache — ${faqEntries.length} entries (bypasses AI + pricing guards)`,
+    g.faq_cache?.source || 'routes/hugo-widget.js :: lookupFaqCache()',
+    `<div class="warn">${esc(g.faq_cache?.warning || '')}</div>
+     <table class="data-table" style="margin-top:12px">
+       <thead><tr><th>Domain</th><th>Pattern</th><th>Answer</th><th>Active</th><th>Expires</th></tr></thead>
+       <tbody>${faqRows}</tbody>
+     </table>`,
+    false
+  );
+
+  document.getElementById('god-container').innerHTML = html;
+}
+
+// ── META BADGES ────────────────────────────────────────────────────────────
+function renderMetaBadges(s) {
+  const bugs = s.audit.bugs_found;
+  const highs = bugs.filter(b => b.severity === 'HIGH').length;
+  const mediums = bugs.filter(b => b.severity === 'MEDIUM').length;
+
+  const badges = [
+    `<span class="meta-badge badge-red">${highs} HIGH bugs</span>`,
+    `<span class="meta-badge badge-orange">${mediums} MEDIUM risks</span>`,
+    `<span class="meta-badge badge-blue">Read-only export</span>`,
+  ];
+  document.getElementById('meta-badges').innerHTML = badges.join('');
+}
+
+// ── SIDE NAV ────────────────────────────────────────────────────────────────
+function setupNav() {
+  const dots = document.querySelectorAll('.nav-dot');
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const sec = document.getElementById(dot.dataset.sec);
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        dots.forEach(d => d.classList.toggle('active', d.dataset.sec === id));
+      }
+    }
+  }, { threshold: 0.3 });
+
+  document.querySelectorAll('.section').forEach(s => observer.observe(s));
+}
+
+// ── DOWNLOAD MARKDOWN ────────────────────────────────────────────────────────
+function downloadMarkdown() {
+  if (!exportData) return;
+  const s = exportData.sections;
+
+  let md = `# Hugo Brain Export — Founder Audit\n`;
+  md += `Generated: ${new Date(exportData.generated_at).toLocaleString()}\n\n`;
+  md += `---\n\n`;
+
+  md += `## ⚠ Bugs & Risks Found\n\n`;
+  for (const b of s.audit.bugs_found) {
+    md += `### [${b.severity}] ${b.title}\n`;
+    md += `${b.detail}\n`;
+    md += `_File: ${b.file}_\n\n`;
+  }
+
+  md += `---\n\n## 1. System Prompts\n\n`;
+  for (const [, p] of Object.entries(s.prompts)) {
+    md += `### ${p.description || '(prompt)'}\n`;
+    md += `**Source:** ${p.source}\n\n`;
+    md += '```\n' + (p.content || '[not available]') + '\n```\n\n';
+    if (p.warning) md += `> ⚠ ${p.warning}\n\n`;
+  }
+
+  md += `---\n\n## 3. Pricing Rules\n\n`;
+  md += `**Approved prices:** $${s.pricing.approved_prices.join(', $')}\n\n`;
+  md += `**Correction regex:** \`${s.pricing.correction_regex}\`\n\n`;
+  md += `**Exemption:** ${s.pricing.correction_exemption}\n\n`;
+  md += `> ⚠ Bug: ${s.pricing.warning_bug}\n\n`;
+
+  md += `### Voice Fast-Path (bypasses AI)\n`;
+  md += `**Trade:** "${s.pricing.voice_fast_path.trade}"\n\n`;
+  md += `**RE:** "${s.pricing.voice_fast_path.re}"\n\n`;
+  md += `> ⚠ Bug: ${s.pricing.voice_fast_path.warning_bug}\n\n`;
+
+  md += `### Template Fallback\n`;
+  md += `"${s.pricing.template_fallback.content}"\n\n`;
+  md += `> ⚠ Bug: ${s.pricing.template_fallback.warning_bug}\n\n`;
+
+  md += `---\n\n## 4. Persona Configurations\n\n`;
+  md += `**Domain detection:** ${s.persona.domain_detection.logic}\n\n`;
+  md += `**Priority order:**\n${s.persona.selection_priority.map(x => `- ${x}`).join('\n')}\n\n`;
+  md += `**Voice persona switch:** ${s.persona.voice_persona_switch.switch_trigger}\n`;
+  md += `> ⚠ Bug: ${s.persona.voice_persona_switch.warning_bug}\n\n`;
+
+  md += `---\n\n## 5. Guardrails\n\n`;
+  md += `### Banned Words\n`;
+  md += `_Scope: ${s.guardrails.banned_words.scope}_\n\n`;
+  for (const rule of s.guardrails.banned_words.rules) {
+    md += `- ${rule}\n`;
+  }
+  md += `\n`;
+
+  md += `### Character-Break Triggers\n`;
+  for (const p of s.guardrails.character_break_detection.patterns) {
+    md += `- ${p}\n`;
+  }
+  md += `\n**Recovery:** ${s.guardrails.character_break_detection.recovery}\n\n`;
+
+  md += `---\n\n## 6. Memory Settings\n\n`;
+  const memChannels = [
+    ['Widget Session', `${s.memory.widget_session.max_turns} turns max, ${s.memory.widget_session.ttl}`],
+    ['Brain Endpoint', `${s.memory.brain_history_window.turns_sent_to_ai} turns`],
+    ['Voice Call', `${s.memory.voice_history_window.turns_sent_to_ai} turns, ${s.memory.voice_history_window.persistent_store}`],
+    ['Dashboard Chat', `${s.memory.dashboard_chat_history.sent_to_ai} turns`],
+    ['Lead Memory', `${s.memory.cross_channel_lead_memory.expiry} — no expiry, keyed by ${s.memory.cross_channel_lead_memory.key}`],
+  ];
+  for (const [ch, detail] of memChannels) {
+    md += `- **${ch}:** ${detail}\n`;
+  }
+  md += `\n`;
+
+  md += `---\n\n## 7. God Layer\n\n`;
+  md += `**Founder override:** ${s.god_layer.founder_override}\n\n`;
+  md += `**Operator custom_rules:** ${s.god_layer.operator_custom_rules.sanitisation}\n\n`;
+  md += `**FAQ cache warning:** ${s.god_layer.faq_cache.warning}\n\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `hugo-brain-export-${new Date().toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+loadExport();
+</script>
+</body>
+</html>

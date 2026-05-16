@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="72" fill="#0f172a"/>
+  <!-- House: roof -->
+  <polygon points="256,72 368,174 144,174" fill="#f59e0b"/>
+  <!-- House: body -->
+  <rect x="128" y="172" width="256" height="210" fill="#1e293b"/>
+  <!-- Left window -->
+  <rect x="160" y="200" width="72" height="64" rx="6" fill="#ffffff"/>
+  <!-- Right window (amber) -->
+  <rect x="280" y="200" width="72" height="64" rx="6" fill="#f59e0b"/>
+  <!-- Door -->
+  <rect x="212" y="290" width="60" height="92" rx="6" fill="#ffffff"/>
+  <!-- Door knob -->
+  <circle cx="260" cy="340" r="8" fill="#f59e0b"/>
+</svg>

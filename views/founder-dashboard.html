@@ -1,0 +1,3442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PropOps — Founder Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Leaflet CSS — must load in <head> so tile positioning is correct on first render -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <style>
+    /* ── Leaflet CSS scoping fix ── */
+    /* Leaflet CSS sets cursor: zoom-in/zoom-out globally. Scope these to the map container only. */
+    .leaflet-zoom-in, .leaflet-zoom-out, .leaflet-draw-toolbar, .leaflet-control { cursor: auto !important; }
+    #eagleEyeMap .leaflet-zoom-in, #eagleEyeMap .leaflet-zoom-out { cursor: zoom-in !important; }
+    #eagleEyeMap .leaflet-zoom-out { cursor: zoom-out !important; }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --midnight: #0a0e1a;
+      --deep: #111827;
+      --surface: #1a2035;
+      --surface-hover: #1f2742;
+      --amber: #f0a500;
+      --amber-light: #fbbf24;
+      --amber-glow: rgba(240,165,0,0.15);
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --text-bright: #ffffff;
+      --border: rgba(255,255,255,0.06);
+      --green: #10b981;
+      --green-dim: rgba(16,185,129,0.15);
+      --blue: #3b82f6;
+      --blue-dim: rgba(59,130,246,0.15);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.15);
+      --purple: #8b5cf6;
+      --purple-dim: rgba(139,92,246,0.15);
+      --orange: #f97316;
+      --orange-dim: rgba(249,115,22,0.15);
+      --sidebar-width: 220px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--midnight);
+      color: var(--text);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--deep);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo .wordmark {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--text-bright);
+      letter-spacing: -0.5px;
+    }
+    .sidebar-logo .wordmark span { color: var(--amber); }
+    .sidebar-logo .badge {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      background: var(--amber-glow);
+      border: 1px solid rgba(240,165,0,0.3);
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--amber);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .sidebar-nav { padding: 0.75rem 0; flex: 1; }
+    .nav-label {
+      padding: 0.5rem 1.25rem 0.25rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 1.25rem;
+      cursor: pointer;
+      border-radius: 0;
+      color: var(--text-dim);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: var(--surface); color: var(--text); }
+    .nav-item.active {
+      background: var(--amber-glow);
+      color: var(--amber);
+      border-left-color: var(--amber);
+    }
+    .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+    .founder-tag {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .founder-tag strong { color: var(--text); }
+    .logout-btn {
+      margin-top: 0.5rem;
+      display: block;
+      width: 100%;
+      padding: 0.4rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Main content ── */
+    .main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 1rem 2rem;
+      background: var(--midnight);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+    .topbar .meta { font-size: 0.8rem; color: var(--text-dim); }
+
+    .content { padding: 2rem; max-width: 1400px; }
+
+    /* ── Alert banner ── */
+    .alert-banner {
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .alert-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      gap: 1rem;
+    }
+    .alert-item .alert-msg { font-size: 0.875rem; color: var(--text); }
+    .alert-item .alert-sev {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--red-dim);
+      color: var(--red);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .alert-item .alert-dismiss {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 4px;
+    }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-bright);
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Stat cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .stat-card .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .stat-card .value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-bright);
+      line-height: 1;
+    }
+    .stat-card .value.green { color: var(--green); }
+    .stat-card .value.amber { color: var(--amber); }
+    .stat-card .value.blue { color: var(--blue); }
+    .stat-card .sub {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 0.4rem;
+    }
+
+    /* ── Tables ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .card-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-bright);
+    }
+    .card-body { padding: 0; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      padding: 0.6rem 1rem;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .data-table tr.clickable { cursor: pointer; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-green { background: var(--green-dim); color: var(--green); }
+    .badge-amber { background: var(--amber-glow); color: var(--amber); }
+    .badge-red { background: var(--red-dim); color: var(--red); }
+    .badge-blue { background: var(--blue-dim); color: var(--blue); }
+    .badge-purple { background: var(--purple-dim); color: var(--purple); }
+    .badge-grey { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+    .badge-orange { background: var(--orange-dim); color: var(--orange); }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+      align-items: center;
+    }
+    .filter-bar select,
+    .filter-bar input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+    }
+    .filter-bar select:focus,
+    .filter-bar input:focus { border-color: var(--amber); }
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      background: var(--amber);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ── Health indicators ── */
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .health-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .health-card .h-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    .domain-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: rgba(255,255,255,0.02);
+      border-radius: 8px;
+    }
+    .domain-indicator {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.5rem;
+    }
+    .domain-indicator.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .domain-indicator.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .domain-indicator.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+
+    /* ── Trade breakdown bars ── */
+    .trade-bars { }
+    .trade-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+    }
+    .trade-name {
+      width: 140px;
+      font-size: 0.8rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .trade-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .trade-bar-fill {
+      height: 100%;
+      background: var(--amber);
+      border-radius: 3px;
+      transition: width 0.5s;
+    }
+    .trade-count {
+      width: 30px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: right;
+    }
+
+    /* ── Operator detail modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 2rem;
+    }
+    .modal-overlay.open { display: block; }
+    .modal {
+      background: var(--deep);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 1.5rem; }
+    .modal-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+    .modal-tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .modal-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+    /* ── Loading state ── */
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--amber);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-bottom: 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Timeline ── */
+    .timeline { list-style: none; position: relative; padding-left: 1.5rem; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 4px; bottom: 4px;
+      width: 2px;
+      background: var(--border);
+    }
+    .timeline li {
+      position: relative;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+    .timeline li::before {
+      content: '';
+      position: absolute;
+      left: -1.5rem;
+      top: 6px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+      border: 2px solid var(--midnight);
+    }
+    .timeline .tl-time { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 2px; }
+    .timeline .tl-text { color: var(--text); }
+
+    /* ── Empty state ── */
+    .empty { padding: 2.5rem; text-align: center; color: var(--text-dim); font-size: 0.9rem; }
+
+    /* ── Eagle's Eye live pulse animation ── */
+    @keyframes eaglePulse {
+      0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); opacity: 1; }
+      70%  { box-shadow: 0 0 0 8px rgba(16,185,129,0); opacity: 0.7; }
+      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); opacity: 1; }
+    }
+
+    /* ── Integrations panel ── */
+    .integ-category-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      padding: 0.75rem 0 0.5rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+    .integ-category-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+    .integ-table { width: 100%; border-collapse: collapse; }
+    .integ-table th {
+      padding: 0.5rem 1rem;
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+    }
+    .integ-table td {
+      padding: 0.9rem 1rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      vertical-align: middle;
+    }
+    .integ-table tr:last-child td { border-bottom: none; }
+    .integ-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .integ-name { font-weight: 600; color: var(--text-bright); }
+    .integ-desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+    .integ-stats { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; }
+    .integ-stat { font-size: 0.78rem; color: var(--text-dim); }
+    .integ-stat strong { color: var(--text); font-weight: 600; }
+    .integ-dot-green { color: #10b981; font-size: 0.85rem; }
+    .integ-dot-red { color: #ef4444; font-size: 0.85rem; }
+    .integ-dot-amber { color: var(--amber); font-size: 0.85rem; }
+    .integ-open-btn {
+      display: inline-block;
+      padding: 0.3rem 0.75rem;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.78rem;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .integ-open-btn:hover { border-color: var(--amber); color: var(--amber); }
+    .integ-links { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .sidebar { width: 0; overflow: hidden; }
+      .main { margin-left: 0; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .integ-table, .integ-table tbody, .integ-table tr, .integ-table td { display: block; }
+      .integ-table thead { display: none; }
+      .integ-table td { padding: 0.5rem 0.75rem; }
+      .integ-table tr { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; background: var(--surface); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="wordmark">Prop<span>Ops</span></div>
+    <div class="badge">⚡ Founder Mode</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Business</div>
+    <div class="nav-item active" data-section="overview">
+      <span class="icon">📊</span> Overview
+    </div>
+    <div class="nav-item" data-section="operators">
+      <span class="icon">👥</span> Operators
+    </div>
+    <div class="nav-item" data-section="leads">
+      <span class="icon">🎯</span> All Leads
+    </div>
+    <div class="nav-item" data-section="revenue">
+      <span class="icon">💰</span> Revenue
+    </div>
+    <div class="nav-item" data-section="payroll">
+      <span class="icon">🧾</span> Payroll & Invoicing
+    </div>
+    <div class="nav-label" style="margin-top:1rem">Analytics</div>
+    <div class="nav-item" data-section="analytics">
+      <span class="icon">📈</span> Landing Pages
+    </div>
+    <div class="nav-item" data-section="hugo-performance">
+      <span class="icon">🤖</span> Hugo Performance
+    </div>
+    <div class="nav-item" data-section="api-costs">
+      <span class="icon">💸</span> API Costs
+    </div>
+    <div class="nav-item" data-section="training-data">
+      <span class="icon">🧠</span> Training Data
+    </div>
+    <div class="nav-item" data-section="hugo-training-feed">
+      <span class="icon">🎓</span> Training Feed
+    </div>
+    <div class="nav-item" data-section="self-learning-log">
+      <span class="icon">🔬</span> Self-Learning Log
+    </div>
+    <div class="nav-item" data-section="god-layer">
+      <span class="icon">🔒</span> God-Layer Controls
+    </div>
+    <div class="nav-item" data-section="hugo-test">
+      <span class="icon">💬</span> Test Hugo
+    </div>
+    <div class="nav-item" data-section="network-map">
+      <span class="icon">🦅</span> Eagle's Eye
+    </div>
+    <div class="nav-label" style="margin-top:1rem">System</div>
+    <div class="nav-item" data-section="integrations">
+      <span class="icon">🔌</span> Integrations
+    </div>
+    <div class="nav-item" data-section="health">
+      <span class="icon">🔧</span> Health
+    </div>
+    <div class="nav-label" style="margin-top:1rem">Operator</div>
+    <div class="nav-item" id="goOperatorDash" onclick="window.location='/dashboard'" style="cursor:pointer">
+      <span class="icon">↩</span> My Dashboard
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="founder-tag">Logged in as<br><strong id="founderEmail">—</strong></div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <h1 id="pageTitle">Overview</h1>
+      <div class="meta" id="lastUpdated">Loading…</div>
+    </div>
+    <button onclick="refreshCurrent()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);padding:0.4rem 0.9rem;font-size:0.8rem;cursor:pointer;">↻ Refresh</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Alert banner (unread alerts) -->
+    <div class="alert-banner" id="alertBanner"></div>
+
+    <!-- ─── Section: Overview ─── -->
+    <div class="section active" id="section-overview">
+      <div class="section-title">Business Overview</div>
+      <div class="stats-grid" id="overviewStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <div id="overviewConvs"></div>
+    </div>
+
+    <!-- ─── Section: Operators ─── -->
+    <div class="section" id="section-operators">
+      <div class="section-title">All Operators</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Operator Registry</div>
+          <div id="operatorCount" style="font-size:0.8rem;color:var(--text-dim)">—</div>
+        </div>
+        <div class="card-body" id="operatorsTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Leads ─── -->
+    <div class="section" id="section-leads">
+      <div class="section-title">All Leads</div>
+      <div class="filter-bar">
+        <select id="filterTrade"><option value="">All trades</option></select>
+        <select id="filterChannel">
+          <option value="">All channels</option>
+          <option value="widget">Widget</option>
+          <option value="phone">Phone</option>
+          <option value="dashboard">Dashboard</option>
+          <option value="email">Email</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">All statuses</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="booked">Booked</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+        </select>
+        <input type="date" id="filterDateFrom" placeholder="From">
+        <input type="date" id="filterDateTo" placeholder="To">
+        <select id="filterIntent">
+          <option value="">Any intent</option>
+          <option value="7">7+ intent</option>
+          <option value="8">8+ intent</option>
+          <option value="9">9+ intent</option>
+        </select>
+        <button class="filter-btn" onclick="loadLeads()">Apply</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Lead Feed</div>
+          <div id="leadsCount" style="font-size:0.8rem;color:var(--text-dim)">—</div>
+        </div>
+        <div class="card-body" id="leadsTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Revenue ─── -->
+    <div class="section" id="section-revenue">
+      <div class="section-title">Revenue</div>
+      <div class="stats-grid" id="revenueStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem" id="revenuePanels"></div>
+      <div class="card" id="trialExpiringCard" style="display:none">
+        <div class="card-header">
+          <div class="card-title">⚠️ Trials Expiring This Week</div>
+        </div>
+        <div class="card-body" id="trialExpiringTable"></div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Payroll & Invoicing ─── -->
+    <div class="section" id="section-payroll">
+      <div class="section-title">Payroll & Invoicing</div>
+
+      <!-- Summary cards -->
+      <div class="stats-grid" id="payrollStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+
+      <!-- Section 1: Invoicing overview per operator -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">📄 Invoicing Overview</div>
+          <div style="font-size:0.78rem;color:var(--text-dim)">All operators · click name to drill in</div>
+        </div>
+        <div class="card-body" id="payrollInvoiceTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+
+      <!-- Section 2: Roster / staff summary per operator -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">📅 Roster Summary</div>
+          <div style="font-size:0.78rem;color:var(--text-dim)">Hours this week · payroll this month</div>
+        </div>
+        <div class="card-body" id="payrollRosterTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+
+      <!-- Section 3: Overdue invoices alarm -->
+      <div class="card" id="payrollOverdueCard" style="margin-bottom:1.5rem;display:none">
+        <div class="card-header">
+          <div class="card-title" style="color:var(--red)">⚠️ Overdue Invoices</div>
+          <div id="payrollOverdueCount" style="font-size:0.78rem;color:var(--red)"></div>
+        </div>
+        <div class="card-body" id="payrollOverdueTable"></div>
+      </div>
+
+      <!-- Drill-down modal -->
+      <div id="payrollDrillOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;overflow-y:auto;padding:2rem 1rem">
+        <div style="max-width:900px;margin:0 auto;background:var(--deep);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+          <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <div class="card-title" id="payrollDrillTitle">Operator Detail</div>
+            <button onclick="document.getElementById('payrollDrillOverlay').style.display='none'" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);padding:0.3rem 0.8rem;font-size:0.8rem;cursor:pointer;">✕ Close</button>
+          </div>
+          <div id="payrollDrillBody" style="padding:1.5rem">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Health ─── -->
+    <div class="section" id="section-health">
+      <div class="section-title">System Health</div>
+      <div class="health-grid" id="healthSyncStatus">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">Content Mismatches</div>
+          <div id="mismatchCount" style="font-size:0.8rem;color:var(--text-dim)">—</div>
+        </div>
+        <div class="card-body" id="mismatchTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Content Change Audit (Last 30 Days)</div>
+        </div>
+        <div class="card-body" style="padding:1.25rem" id="changeAuditLog">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Eagle's Eye Live Map ─── -->
+    <div class="section" id="section-network-map">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <div class="section-title" style="margin-bottom:0.25rem;">🦅 Eagle's Eye — Live Network Map</div>
+          <p style="color:var(--text-dim);font-size:0.82rem;margin:0;">Every lead and tradie signup appears the moment it lands. No refresh needed.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          <!-- Live pulse indicator -->
+          <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;color:var(--green);">
+            <span id="eagleLivePulse" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);animation:eaglePulse 2s infinite;"></span>
+            <span>Live</span>
+          </div>
+          <button onclick="eagleRefresh(true)" style="padding:0.4rem 0.9rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;cursor:pointer;font-family:inherit;">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Counters row -->
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:0.5rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:1rem;">🔵</span>
+          <div>
+            <div style="font-size:1.25rem;font-weight:700;color:#60a5fa;line-height:1;" id="eagleLeadCount">—</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">Network Leads</div>
+          </div>
+        </div>
+        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:0.5rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:1rem;">🟢</span>
+          <div>
+            <div style="font-size:1.25rem;font-weight:700;color:#34d399;line-height:1;" id="eagleSignupCount">—</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">Tradie Signups</div>
+          </div>
+        </div>
+        <div style="background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.2);border-radius:10px;padding:0.5rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:1rem;">🟠</span>
+          <div>
+            <div style="font-size:1.25rem;font-weight:700;color:var(--amber);line-height:1;" id="eagleOpCount">—</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">Active Operators</div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:0.5rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:0.72rem;color:var(--text-dim);">Last updated: <span id="eagleLastUpdated" style="color:var(--text);">—</span></span>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:0.75rem;font-size:0.75rem;color:var(--text-dim);background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.85rem;">
+        <span><span style="color:#60a5fa;font-weight:700;">●</span> Network lead (suburb)</span>
+        <span><span style="color:#34d399;font-weight:700;">▲</span> Tradie signup (with radius)</span>
+        <span><span style="color:#f0a500;font-weight:700;">●</span> Active operator base</span>
+        <span>Shaded circle = service radius</span>
+      </div>
+
+      <!-- Map container — position:relative so empty-state overlay can sit inside -->
+      <div style="position:relative;">
+        <div id="eagleEyeMap" style="height:520px;border-radius:14px;border:1px solid var(--border);background:#e8e0d8;margin-bottom:1.25rem;"></div>
+
+        <!-- Empty state overlay — hidden when data is present -->
+        <div id="eagleEmptyState" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;border-radius:14px;background:rgba(10,14,26,0.55);backdrop-filter:blur(2px);">
+          <div style="font-size:2.5rem;margin-bottom:0.75rem;opacity:0.6;">🗺️</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:700;color:rgba(255,255,255,0.5);margin-bottom:0.35rem;">Waiting for your first lead…</div>
+          <div style="font-size:0.78rem;color:rgba(255,255,255,0.25);text-align:center;max-width:280px;line-height:1.6;">When a visitor talks to Hugo and leaves their suburb,<br>a blue dot will appear right here.</div>
+        </div>
+      </div>
+
+      <!-- Recent activity feed -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+        <!-- Recent leads -->
+        <div class="card" style="margin:0;">
+          <div class="card-header">
+            <div class="card-title" style="font-size:0.85rem;">🔵 Recent Leads</div>
+            <span id="eagleLeadMapped" style="font-size:0.72rem;color:var(--text-dim);">—</span>
+          </div>
+          <div class="card-body" style="padding:0.5rem;max-height:200px;overflow-y:auto;" id="eagleLeadFeed">
+            <div style="color:var(--text-dim);font-size:0.8rem;padding:0.5rem;text-align:center;">Loading…</div>
+          </div>
+        </div>
+        <!-- Recent signups -->
+        <div class="card" style="margin:0;">
+          <div class="card-header">
+            <div class="card-title" style="font-size:0.85rem;">🟢 Recent Signups</div>
+            <span id="eagleSignupMapped" style="font-size:0.72rem;color:var(--text-dim);">—</span>
+          </div>
+          <div class="card-body" style="padding:0.5rem;max-height:200px;overflow-y:auto;" id="eagleSignupFeed">
+            <div style="color:var(--text-dim);font-size:0.8rem;padding:0.5rem;text-align:center;">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operator table (collapsed by default) -->
+      <div class="card">
+        <div class="card-header" onclick="eagleToggleOpTable()" style="cursor:pointer;">
+          <div class="card-title">🟠 Active Operator Service Areas</div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div id="networkMapOpCount" style="font-size:0.8rem;color:var(--text-dim);">—</div>
+            <span id="eagleOpChevron" style="color:var(--text-dim);font-size:0.8rem;">▼</span>
+          </div>
+        </div>
+        <div id="eagleOpTableWrap" style="display:none;">
+          <div class="card-body">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Operator</th>
+                  <th>Trade</th>
+                  <th>Base Suburb</th>
+                  <th>Radius</th>
+                  <th>Leads</th>
+                  <th>Referrals Out</th>
+                  <th>Map</th>
+                </tr>
+              </thead>
+              <tbody id="networkMapOpTable">
+                <tr><td colspan="7" class="loading"><div class="spinner"></div> Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Integrations ─── -->
+    <!-- Header (title + timestamp + refresh) is handled by the global topbar — no section-level duplicate -->
+    <div class="section" id="section-integrations">
+      <div id="integrationsBody">
+        <div class="loading"><div class="spinner"></div><br>Loading integrations…</div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Landing Page Analytics ─── -->
+    <div class="section" id="section-analytics">
+      <div class="section-title">Landing Page Analytics</div>
+      <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1.25rem">
+        <span style="font-size:0.85rem;color:var(--text-dim)">Period:</span>
+        <select id="analyticsDays" onchange="reloadAnalytics()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.4rem 0.75rem;font-size:0.85rem;font-family:inherit">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </div>
+      <div class="stats-grid" id="analyticsStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <!-- Funnel view -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
+        <div class="card" style="margin:0" id="analyticsFunnelCard">
+          <div class="card-header"><div class="card-title">Conversion Funnel</div></div>
+          <div class="card-body" style="padding:1.25rem" id="analyticsFunnel">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">Device Split</div></div>
+          <div class="card-body" style="padding:1.25rem" id="analyticsDevices">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+      </div>
+      <!-- Traffic sources + daily chart -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">Traffic Sources</div></div>
+          <div class="card-body" style="padding:1.25rem" id="analyticsSources">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">Top Referrers</div></div>
+          <div class="card-body" style="padding:1.25rem" id="analyticsReferrers">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Hugo Performance ─── -->
+    <div class="section" id="section-hugo-performance">
+      <div class="section-title">Hugo Performance</div>
+      <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1.25rem">
+        <span style="font-size:0.85rem;color:var(--text-dim)">Period:</span>
+        <select id="hugoPerfDays" onchange="reloadHugoPerf()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.4rem 0.75rem;font-size:0.85rem;font-family:inherit">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </div>
+      <div class="stats-grid" id="hugoPerfStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">Conversations by Channel</div></div>
+          <div class="card-body" style="padding:1.25rem" id="hugoChannelBreakdown">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">Lead Source Breakdown</div></div>
+          <div class="card-body" style="padding:1.25rem" id="hugoLeadChannels">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Top Questions Hugo Gets Asked</div></div>
+        <div class="card-body" id="hugoTopQuestions">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: API Costs ─── -->
+    <div class="section" id="section-api-costs">
+      <div class="section-title">API Costs</div>
+      <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1.25rem">
+        <span style="font-size:0.85rem;color:var(--text-dim)">Period:</span>
+        <select id="costsDays" onchange="reloadCosts()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.4rem 0.75rem;font-size:0.85rem;font-family:inherit">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </div>
+      <div class="stats-grid" id="costsStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Daily Cost Breakdown (AUD)</div>
+          <div style="font-size:0.75rem;color:var(--text-dim)">Gemini 1.5 Flash · est. from message length</div>
+        </div>
+        <div class="card-body" id="costsDailyTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Training Data ─── -->
+    <div class="section" id="section-training-data">
+      <div class="section-title">Training Data</div>
+      <div class="stats-grid" id="trainingStats">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+      <!-- Filters -->
+      <div class="filter-bar" style="margin-bottom:1.25rem">
+        <select id="filterKTrade"><option value="">All trades</option></select>
+        <select id="filterKSource">
+          <option value="">All sources</option>
+          <option value="trained">Trained (manual)</option>
+          <option value="learned">Learned (auto)</option>
+          <option value="default">Default</option>
+        </select>
+        <select id="filterKConfidence">
+          <option value="">Any confidence</option>
+          <option value="trained">Trained</option>
+          <option value="learned">Learned</option>
+          <option value="default">Default</option>
+        </select>
+        <select id="filterKValidated">
+          <option value="">All validation</option>
+          <option value="true">Validated ✓</option>
+          <option value="false">Pending validation</option>
+        </select>
+        <button class="filter-btn" onclick="loadTrainingData()">Apply</button>
+      </div>
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">Knowledge Entries (Phase 2)</div>
+          <div id="trainingEntryCount" style="font-size:0.8rem;color:var(--text-dim)">—</div>
+        </div>
+        <div class="card-body" id="trainingTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Market Intelligence (Learned Knowledge)</div></div>
+        <div class="card-body" id="learnedTable">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Hugo Training Feed ── -->
+    <div class="section" id="section-hugo-training-feed">
+      <div class="section-title">🎓 Hugo Training Feed</div>
+      <div id="trainingFeedDigest" style="margin-bottom:1rem;"></div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <select id="filterFeedStatus" onchange="loadHugoTrainingFeed()" style="padding:6px 10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;color:var(--text-bright);font-size:0.82rem;">
+          <option value="">All statuses</option>
+          <option value="escalated" selected>Escalated (needs review)</option>
+          <option value="pending">Pending eval</option>
+          <option value="approved">Auto-approved</option>
+          <option value="rejected">Auto-rejected</option>
+          <option value="founder_approved">Founder approved</option>
+          <option value="founder_corrected">Founder corrected</option>
+        </select>
+        <select id="filterFeedTrade" onchange="loadHugoTrainingFeed()" style="padding:6px 10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;color:var(--text-bright);font-size:0.82rem;">
+          <option value="">All trades</option>
+        </select>
+        <span id="trainingFeedCount" style="font-size:0.78rem;color:var(--text-dim);align-self:center;margin-left:auto;">—</span>
+      </div>
+      <div id="trainingFeedItems">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Self-Learning Log ─── -->
+    <div class="section" id="section-self-learning-log">
+      <div class="section-title">🔬 Self-Learning Log</div>
+      <div id="selfLearningStats" style="margin-bottom:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;"></div>
+
+      <!-- Filters + Bulk Actions -->
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center;">
+        <select id="filterSLStatus" onchange="loadSelfLearningLog()" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">
+          <option value="pending">Pending review</option>
+          <option value="">All statuses</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <select id="filterSLPlatform" onchange="loadSelfLearningLog()" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">
+          <option value="">All platforms</option>
+          <option value="web_pro">web_pro</option>
+          <option value="web_trade">web_trade</option>
+          <option value="phone">phone</option>
+          <option value="email">email</option>
+          <option value="dashboard_sim">dashboard_sim</option>
+        </select>
+        <select id="filterSLCategory" onchange="loadSelfLearningLog()" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.82rem;">
+          <option value="">All categories</option>
+          <option value="pricing">pricing</option>
+          <option value="tone">tone</option>
+          <option value="clarity">clarity</option>
+          <option value="faq_accuracy">faq_accuracy</option>
+          <option value="greeting_variation">greeting_variation</option>
+          <option value="completeness">completeness</option>
+          <option value="coaching">coaching</option>
+          <option value="capability_claim">capability_claim</option>
+          <option value="brand_voice_change">brand_voice_change</option>
+        </select>
+        <button onclick="bulkApproveSafe()" style="padding:6px 14px;background:var(--green);border:none;border-radius:6px;color:white;font-size:0.82rem;font-weight:700;cursor:pointer;">✅ Approve All Safe</button>
+        <button onclick="showLiveCorrectionModal()" style="padding:6px 14px;background:var(--amber);border:none;border-radius:6px;color:var(--midnight);font-size:0.82rem;font-weight:700;cursor:pointer;">⚡ Live Correction</button>
+        <span id="selfLearningCount" style="font-size:0.78rem;color:var(--text-dim);align-self:center;margin-left:auto;">—</span>
+      </div>
+
+      <div id="selfLearningItems">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+    </div>
+
+    <!-- ─── Section: God-Layer Controls ─── -->
+    <div class="section" id="section-god-layer">
+      <div class="section-title">🔒 God-Layer Controls</div>
+      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.5rem;max-width:720px">
+        These controls sit <strong style="color:var(--text)">above operator-level training</strong>. Pricing locks are enforced by the Hugo Brain on every request — no operator, training entry, or AI hallucination can override them. Global rules apply to all Hugo instances across all operators.
+      </p>
+
+      <!-- Pricing Locks -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">🔒 Pricing Locks</div>
+          <div style="font-size:0.75rem;color:var(--amber);background:rgba(240,165,0,0.12);padding:3px 10px;border-radius:20px;border:1px solid rgba(240,165,0,0.3);font-weight:700">HARD LOCK — Hugo cannot deviate</div>
+        </div>
+        <div class="card-body" style="padding:1.25rem">
+          <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1.25rem">The prices below are injected into every Brain request as an ABSOLUTE constraint. The pricing guard also rejects any hallucinated price before it reaches the user. This prevents $201/$400/$85/$80 hallucinations at the source.</p>
+          <div id="pricingLocksGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+            <div class="loading"><div class="spinner"></div><br>Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Global Rules -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">🛡️ Global Safety Rules</div>
+          <button onclick="showAddRuleModal('global_rule')" style="background:var(--amber);border:none;border-radius:8px;color:#000;font-size:0.8rem;font-weight:700;padding:5px 14px;cursor:pointer">+ Add Rule</button>
+        </div>
+        <div class="card-body" style="padding:1.25rem" id="globalRulesList">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+
+      <!-- Personality Config -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">🎭 Base Personality Config</div>
+          <button onclick="showAddRuleModal('personality')" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.8rem;font-weight:600;padding:5px 14px;cursor:pointer">+ Add Override</button>
+        </div>
+        <div class="card-body" style="padding:1.25rem" id="personalityConfigList">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+
+      <!-- Per-Vertical Defaults -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">📋 Per-Vertical Defaults</div>
+          <button onclick="showAddRuleModal('vertical_default')" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.8rem;font-weight:600;padding:5px 14px;cursor:pointer">+ Add Vertical</button>
+        </div>
+        <div class="card-body" style="padding:1.25rem" id="verticalDefaultsList">
+          <div class="loading"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+
+      <!-- Override Hierarchy reminder -->
+      <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:1rem 1.25rem;font-size:0.82rem;color:var(--text-dim)">
+        <strong style="color:var(--blue)">Override hierarchy:</strong> Founder locks (this page) → Founder live corrections → Operator training → Self-learned → Base defaults.<br>
+        Pricing locks and global_rule items with value <code style="background:var(--surface);padding:1px 5px;border-radius:3px">true</code> are injected into every Brain request as ABSOLUTE rules that cannot be overridden.
+      </div>
+    </div>
+
+    <!-- God-Layer Add/Edit Modal -->
+    <div class="modal-overlay" id="godLayerModal">
+      <div class="modal" style="max-width:560px">
+        <div class="modal-header">
+          <div class="modal-title" id="godLayerModalTitle">Add Config Entry</div>
+          <button class="modal-close" onclick="closeGodLayerModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-dim);margin-bottom:0.4rem">Config Key</label>
+            <input id="glConfigKey" type="text" placeholder="e.g. global_rule.no_refunds" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.75rem;font-size:0.875rem;font-family:inherit;outline:none">
+          </div>
+          <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-dim);margin-bottom:0.4rem">Value</label>
+            <textarea id="glConfigValue" rows="3" placeholder="Rule text or value…" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.75rem;font-size:0.875rem;font-family:inherit;outline:none;resize:vertical"></textarea>
+          </div>
+          <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-dim);margin-bottom:0.4rem">Description (optional)</label>
+            <input id="glConfigDesc" type="text" placeholder="What does this rule do?" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.75rem;font-size:0.875rem;font-family:inherit;outline:none">
+          </div>
+          <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1.25rem">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
+              <input type="checkbox" id="glIsLocked" checked style="accent-color:var(--amber)">
+              <span>Hard lock (operators cannot override)</span>
+            </label>
+          </div>
+          <div id="glResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem"></div>
+          <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+            <button onclick="closeGodLayerModal()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.5rem 1.25rem;font-size:0.875rem;cursor:pointer">Cancel</button>
+            <button onclick="submitGodLayerConfig()" style="background:var(--amber);border:none;border-radius:8px;color:#000;padding:0.5rem 1.25rem;font-size:0.875rem;font-weight:700;cursor:pointer">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing Lock Edit Modal -->
+    <div class="modal-overlay" id="pricingEditModal">
+      <div class="modal" style="max-width:420px">
+        <div class="modal-header">
+          <div class="modal-title">Edit Pricing Lock</div>
+          <button class="modal-close" onclick="closePricingEditModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem">This is a hard lock. Hugo will enforce this price on every response and the pricing guard will correct any deviation.</p>
+          <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-dim);margin-bottom:0.4rem">Config Key</label>
+            <input id="peConfigKey" type="text" readonly style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);padding:0.6rem 0.75rem;font-size:0.875rem;font-family:inherit">
+          </div>
+          <div style="margin-bottom:1.25rem">
+            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--text-dim);margin-bottom:0.4rem">New Value</label>
+            <input id="peConfigValue" type="text" placeholder="e.g. 69 or June 30, 2026" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.75rem;font-size:0.875rem;font-family:inherit;outline:none">
+          </div>
+          <div id="peResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem"></div>
+          <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+            <button onclick="closePricingEditModal()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.5rem 1.25rem;font-size:0.875rem;cursor:pointer">Cancel</button>
+            <button onclick="submitPricingEdit()" style="background:var(--amber);border:none;border-radius:8px;color:#000;padding:0.5rem 1.25rem;font-size:0.875rem;font-weight:700;cursor:pointer">🔒 Lock It</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Test Hugo ─── -->
+    <div class="section" id="section-hugo-test">
+      <div class="section-title">💬 Test Hugo Live</div>
+      <div style="max-width:760px">
+        <div class="card" style="margin-bottom:1.25rem">
+          <div class="card-header">
+            <div class="card-title">Persona Selector</div>
+            <div style="font-size:0.78rem;color:var(--amber);font-weight:600;background:rgba(240,165,0,0.12);padding:3px 10px;border-radius:20px;border:1px solid rgba(240,165,0,0.3)">TEST MODE</div>
+          </div>
+          <div class="card-body" style="padding:1.25rem">
+            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem">Select which Hugo persona you want to test. The widget below will respond as that persona. Your conversations here are tagged as <code style="background:var(--surface);padding:1px 5px;border-radius:3px;font-size:0.8rem">founder_test</code> and won't pollute operator analytics.</p>
+            <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+              <button id="hugoTestPersonaRE" onclick="setFounderTestPersona('real_estate')" style="padding:8px 20px;background:var(--amber);border:none;border-radius:8px;color:var(--midnight);font-weight:700;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🏘️ RE Agent (propops.pro)</button>
+              <button id="hugoTestPersonaTrade" onclick="setFounderTestPersona('trade')" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-weight:600;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🔧 Tradie (propops.trade)</button>
+              <span id="hugoTestPersonaLabel" style="font-size:0.82rem;color:var(--text-dim);margin-left:0.25rem">Active: <strong style="color:var(--amber)">RE Agent</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Hugo Chat Widget</div>
+            <div style="font-size:0.78rem;color:var(--text-dim)">Widget appears bottom-right ↘</div>
+          </div>
+          <div class="card-body" style="padding:1.25rem">
+            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem">The <strong style="color:var(--text)">yellow chat bubble</strong> in the bottom-right corner is Hugo. Click it to open the chat. Change persona above to switch Hugo's personality mid-test (session will reset).</p>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.82rem;color:var(--text-dim)">
+              <div style="margin-bottom:0.5rem;font-weight:600;color:var(--text)">What you're testing:</div>
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:0.35rem">
+                <li>✅ Full 4-layer Groq brain (same as live widget)</li>
+                <li>✅ Pricing guard + auto-correction active</li>
+                <li>✅ Knowledge entries + training data injected</li>
+                <li>✅ Live corrections (god-layer) enforced</li>
+                <li>🏷️ Conversations tagged <code style="background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px">source_platform: founder_test</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ── Live Correction Modal ── -->
+<div class="modal-overlay" id="liveCorrectionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:center;justify-content:center;">
+  <div class="modal" style="max-width:580px;width:90%;margin:2rem auto;">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Live Correction — God Layer</div>
+      <button class="modal-close" onclick="closeLiveCorrectionModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem;">Locked IMMEDIATELY. No approval step. This becomes the highest-priority rule Hugo uses.</p>
+      <label style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:4px;">What Hugo said wrong (trigger):</label>
+      <input id="lcTriggerText" type="text" placeholder="e.g. 'the price is $89/month'" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;color:var(--text);font-size:0.85rem;margin-bottom:0.75rem;outline:none;" />
+      <label style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:4px;">Correct answer (what Hugo should say):</label>
+      <textarea id="lcCorrectText" placeholder="e.g. 'the price is $69/month'" rows="3" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;color:var(--text);font-size:0.85rem;resize:vertical;margin-bottom:0.75rem;outline:none;"></textarea>
+      <label style="display:block;font-size:0.8rem;color:var(--text-dim);margin-bottom:4px;">Category:</label>
+      <select id="lcType" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;color:var(--text);font-size:0.85rem;margin-bottom:0.75rem;outline:none;">
+        <option value="general">General</option>
+        <option value="price">Price</option>
+        <option value="fact">Fact</option>
+        <option value="rule">Rule</option>
+      </select>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+        <button onclick="closeLiveCorrectionModal()" style="padding:8px 16px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;">Cancel</button>
+        <button onclick="submitLiveCorrection()" style="padding:8px 16px;background:var(--amber);border:none;border-radius:6px;color:var(--midnight);font-weight:700;cursor:pointer;">🔒 Lock Now</button>
+      </div>
+      <div id="lcResult" style="margin-top:0.75rem;font-size:0.82rem;display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Correction Modal ── -->
+<div class="modal-overlay" id="correctionModal" style="display:none;">
+  <div class="modal" style="max-width:550px;">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Correct Hugo's Response</div>
+      <button class="modal-close" onclick="closeCorrectionModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="correctionContext" style="font-size:0.82rem;color:var(--text-dim);margin-bottom:0.75rem;"></div>
+      <textarea id="correctionText" placeholder="Type the corrected response Hugo should learn…" style="width:100%;min-height:100px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:0.75rem;color:var(--text-bright);font-size:0.85rem;resize:vertical;"></textarea>
+      <div style="display:flex;gap:0.5rem;margin-top:0.75rem;justify-content:flex-end;">
+        <button onclick="closeCorrectionModal()" style="padding:8px 16px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;">Cancel</button>
+        <button onclick="submitCorrection()" style="padding:8px 16px;background:var(--amber);border:none;border-radius:6px;color:var(--midnight);font-weight:700;cursor:pointer;">Save Correction</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Operator Detail Modal ── -->
+<div class="modal-overlay" id="operatorModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalOperatorName">Operator</div>
+      <button class="modal-close" onclick="closeOperatorModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <div class="modal-tab active" data-tab="leads" onclick="switchModalTab('leads',this)">Leads</div>
+        <div class="modal-tab" data-tab="chats" onclick="switchModalTab('chats',this)">Conversations</div>
+        <div class="modal-tab" data-tab="training" onclick="switchModalTab('training',this)">Training</div>
+      </div>
+      <div id="modalContent">
+        <div class="loading"><div class="spinner"></div><br>Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  var currentSection = 'overview';
+  var operatorModalData = null;
+  var currentModalTab = 'leads';
+  var loadedSections = {};
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    // Verify founder access
+    apiFetch('/api/founder/me')
+      .then(function(d) {
+        if (!d.is_founder) { window.location = '/dashboard'; return; }
+        var el = document.getElementById('founderEmail');
+        if (el) el.textContent = d.email || 'Founder';
+        // Load initial section
+        loadSection('overview');
+        // Load alert banner
+        loadAlertBanner();
+      })
+      .catch(function() { window.location = '/dashboard'; });
+
+    // Sidebar nav clicks
+    document.querySelectorAll('.nav-item[data-section]').forEach(function(item) {
+      item.addEventListener('click', function() {
+        var sec = this.getAttribute('data-section');
+        if (sec) showSection(sec);
+      });
+    });
+  });
+
+  // ── Section routing ────────────────────────────────────────────────────────
+  function showSection(name) {
+    currentSection = name;
+    // Update nav
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    var navItem = document.querySelector('.nav-item[data-section="' + name + '"]');
+    if (navItem) navItem.classList.add('active');
+    // Update content
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+    var sec = document.getElementById('section-' + name);
+    if (sec) sec.classList.add('active');
+    // Update topbar
+    var titles = { overview: 'Overview', operators: 'Operators', leads: 'All Leads', revenue: 'Revenue', payroll: 'Payroll & Invoicing', health: 'System Health', analytics: 'Landing Page Analytics', 'hugo-performance': 'Hugo Performance', 'api-costs': 'API Costs', 'training-data': 'Training Data', 'hugo-training-feed': 'Hugo Training Feed', 'self-learning-log': 'Self-Learning Log', 'god-layer': '🔒 God-Layer Controls', 'hugo-test': 'Test Hugo Live', integrations: '🔌 Integrations Status', 'network-map': "🦅 Eagle's Eye — Live Map" };
+    var titleEl = document.getElementById('pageTitle');
+    if (titleEl) titleEl.textContent = titles[name] || name;
+    // Load if not cached
+    loadSection(name);
+  }
+
+  function loadSection(name) {
+    if (loadedSections[name]) return;
+    if (name === 'overview') loadOverview();
+    else if (name === 'operators') loadOperators();
+    else if (name === 'leads') loadLeads();
+    else if (name === 'revenue') loadRevenue();
+    else if (name === 'payroll') loadPayroll();
+    else if (name === 'health') loadHealth();
+    else if (name === 'analytics') loadAnalytics();
+    else if (name === 'hugo-performance') loadHugoPerf();
+    else if (name === 'api-costs') loadCosts();
+    else if (name === 'training-data') loadTrainingData();
+    else if (name === 'hugo-training-feed') loadHugoTrainingFeed();
+    else if (name === 'self-learning-log') loadSelfLearningLog();
+    else if (name === 'god-layer') loadGodLayerConfig();
+    else if (name === 'hugo-test') initHugoTestSection();
+    else if (name === 'integrations') loadIntegrations();
+    else if (name === 'network-map') initNetworkMap();
+    loadedSections[name] = true;
+  }
+
+  function refreshCurrent() {
+    delete loadedSections[currentSection];
+    loadSection(currentSection);
+    setLastUpdated();
+  }
+  // Expose to global scope so inline onclick="refreshCurrent()" works
+  window.refreshCurrent = refreshCurrent;
+
+  // ── Section 14: Integrations Status ────────────────────────────────────────
+  function loadIntegrations() {
+    var body = document.getElementById('integrationsBody');
+    body.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading integrations…</div>';
+
+    apiFetch('/api/founder/integrations-status')
+      .then(function(d) {
+        var services = d.services || [];
+        var ts = d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : '—';
+        // Update the global topbar timestamp (no section-level timestamp element)
+        var lastEl = document.getElementById('lastUpdated');
+        if (lastEl) lastEl.textContent = 'Updated ' + ts;
+
+        // Group by category
+        var categories = ['AI', 'Comms', 'Leads', 'Billing', 'Infrastructure'];
+        var byCategory = {};
+        services.forEach(function(s) { (byCategory[s.category] = byCategory[s.category] || []).push(s); });
+
+        var html = '';
+        categories.forEach(function(cat) {
+          var rows = byCategory[cat];
+          if (!rows || !rows.length) return;
+
+          html += '<div class="card" style="margin-bottom:1.25rem">';
+          html += '<div class="card-header"><div class="card-title">' + esc(cat) + '</div></div>';
+          html += '<div class="card-body"><table class="integ-table">';
+          html += '<thead><tr><th style="width:30%">Service</th><th>Live Stats</th><th style="width:8%">Status</th><th style="width:16%">Link</th></tr></thead>';
+          html += '<tbody>';
+
+          rows.forEach(function(s) {
+            var dotClass = s.status === 'connected' ? 'integ-dot-green' : (s.status === 'error' ? 'integ-dot-red' : 'integ-dot-red');
+            var dotChar = s.status === 'connected' ? '🟢' : '🔴';
+            var statusLabel = s.status === 'connected' ? 'Connected' : (s.status === 'error' ? 'Error' : 'Not Connected');
+
+            // Stats
+            var statsHtml = '<div class="integ-stats">';
+            (s.stats || []).forEach(function(stat) {
+              statsHtml += '<span class="integ-stat">' + esc(stat.label) + ': <strong>' + esc(String(stat.value)) + '</strong></span>';
+            });
+            statsHtml += '</div>';
+
+            // Links
+            var linksHtml = '<div class="integ-links">';
+            if (s.link) {
+              linksHtml += '<a href="' + esc(s.link) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(s.link_label || 'Open →') + '</a>';
+            }
+            if (s.extra_links) {
+              s.extra_links.forEach(function(el) {
+                linksHtml += '<a href="' + esc(el.url) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(el.label) + '</a>';
+              });
+            }
+            linksHtml += '</div>';
+
+            html += '<tr>';
+            html += '<td><div class="integ-name">' + esc(s.name) + '</div><div class="integ-desc">' + esc(s.description || '') + '</div></td>';
+            html += '<td>' + statsHtml + '</td>';
+            html += '<td><span class="' + dotClass + '" title="' + esc(statusLabel) + '">' + dotChar + '</span> <span style="font-size:0.75rem;color:var(--text-dim)">' + esc(statusLabel) + '</span></td>';
+            html += '<td>' + linksHtml + '</td>';
+            html += '</tr>';
+          });
+
+          html += '</tbody></table></div></div>';
+        });
+
+        body.innerHTML = html || '<div class="empty">No integrations data</div>';
+      })
+      .catch(function(err) {
+        body.innerHTML = '<div class="empty">Failed to load integrations: ' + esc(err.message || String(err)) + '</div>';
+      });
+  }
+
+  // reloadIntegrations — kept for backwards compat; delegates to the global refresh
+  window.reloadIntegrations = function() {
+    if (currentSection === 'integrations') {
+      refreshCurrent();
+    } else {
+      delete loadedSections['integrations'];
+      loadIntegrations();
+      loadedSections['integrations'] = true;
+    }
+  };
+
+  // ── Alert banner ───────────────────────────────────────────────────────────
+  function loadAlertBanner() {
+    apiFetch('/api/founder/health')
+      .then(function(d) {
+        var alerts = d.unread_alerts || [];
+        if (!alerts.length) return;
+        var banner = document.getElementById('alertBanner');
+        banner.style.display = 'block';
+        banner.innerHTML = alerts.map(function(a) {
+          return '<div class="alert-item">' +
+            '<div style="display:flex;align-items:center;gap:0.5rem">' +
+            '<span class="alert-sev ' + (a.severity === 'error' ? 'badge-red' : 'badge-amber') + '">' + esc(a.severity) + '</span>' +
+            '<span class="alert-msg">' + esc(a.message) + '</span>' +
+            '</div>' +
+            '<button class="alert-dismiss" onclick="dismissAlert(' + a.id + ',this)" title="Mark as read">✕</button>' +
+          '</div>';
+        }).join('');
+      })
+      .catch(function() {});
+  }
+
+  window.dismissAlert = function(id, btn) {
+    apiFetch('/api/founder/alerts/' + id + '/read', { method: 'POST' })
+      .then(function() {
+        var item = btn.closest('.alert-item');
+        if (item) item.remove();
+        var banner = document.getElementById('alertBanner');
+        if (banner && !banner.querySelector('.alert-item')) banner.style.display = 'none';
+      });
+  };
+
+  // ── Section 1: Overview ────────────────────────────────────────────────────
+  function loadOverview() {
+    apiFetch('/api/founder/overview')
+      .then(function(d) {
+        var grid = document.getElementById('overviewStats');
+        grid.innerHTML = [
+          statCard('MRR', '$' + fmtNum(d.mrr), 'green', '/month est.'),
+          statCard('Active', d.active_count, 'amber', 'paid subscribers'),
+          statCard('Trials', d.trial_count, 'blue', 'in trial period'),
+          statCard('Leads Today', d.leads_today, '', 'across all operators'),
+          statCard('Convs Today', d.conversations_today.total, '', d.conversations_today.widget + ' widget · ' + d.conversations_today.dashboard + ' dashboard'),
+        ].join('');
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('overviewStats', err); });
+  }
+
+  // ── Section 3: Operators ───────────────────────────────────────────────────
+  var allOperators = [];
+
+  function loadOperators() {
+    apiFetch('/api/founder/operators')
+      .then(function(d) {
+        allOperators = d.operators || [];
+        document.getElementById('operatorCount').textContent = allOperators.length + ' operators';
+        // Populate trade filter on leads page
+        var tradeSelect = document.getElementById('filterTrade');
+        var trades = [...new Set(allOperators.map(function(o) { return o.trade || o.business_type; }).filter(Boolean))].sort();
+        trades.forEach(function(t) {
+          var opt = document.createElement('option');
+          opt.value = t; opt.textContent = t;
+          tradeSelect.appendChild(opt);
+        });
+        // Render table
+        var container = document.getElementById('operatorsTable');
+        if (!allOperators.length) { container.innerHTML = '<div class="empty">No operators yet</div>'; return; }
+        container.innerHTML = '<table class="data-table"><thead><tr>' +
+          '<th>Name</th><th>Trade</th><th>Status</th><th>Leads</th><th>Chats</th><th>Last Login</th><th>Joined</th>' +
+          '</tr></thead><tbody>' +
+          allOperators.map(function(o) {
+            return '<tr class="clickable" onclick="openOperatorModal(' + o.id + ')">' +
+              '<td><strong>' + esc(o.name || '—') + '</strong><br><span style="color:var(--text-dim);font-size:0.75rem">' + esc(o.email) + '</span></td>' +
+              '<td>' + tradeBadge(o.trade || o.business_type) + '</td>' +
+              '<td>' + statusBadge(o.subscription_status) + '</td>' +
+              '<td>' + (o.lead_count || 0) + '</td>' +
+              '<td>' + (o.chat_count || 0) + '</td>' +
+              '<td>' + fmtDate(o.last_login) + '</td>' +
+              '<td>' + fmtDate(o.created_at) + '</td>' +
+              '</tr>';
+          }).join('') +
+          '</tbody></table>';
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('operatorsTable', err); });
+  }
+
+  // ── Section 4: Leads ──────────────────────────────────────────────────────
+  window.loadLeads = function() {
+    var container = document.getElementById('leadsTable');
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+    var params = new URLSearchParams();
+    var trade = document.getElementById('filterTrade').value;
+    var channel = document.getElementById('filterChannel').value;
+    var status = document.getElementById('filterStatus').value;
+    var from = document.getElementById('filterDateFrom').value;
+    var to = document.getElementById('filterDateTo').value;
+    var intent = document.getElementById('filterIntent').value;
+    if (trade) params.set('trade', trade);
+    if (channel) params.set('channel', channel);
+    if (status) params.set('status', status);
+    if (from) params.set('date_from', from);
+    if (to) params.set('date_to', to);
+    if (intent) params.set('intent_min', intent);
+    params.set('limit', '200');
+
+    apiFetch('/api/founder/leads?' + params.toString())
+      .then(function(d) {
+        var leads = d.leads || [];
+        document.getElementById('leadsCount').textContent = d.total + ' total leads';
+        if (!leads.length) { container.innerHTML = '<div class="empty">No leads match these filters</div>'; return; }
+        container.innerHTML = '<table class="data-table"><thead><tr>' +
+          '<th>Lead</th><th>Operator</th><th>Trade</th><th>Channel</th><th>Status</th><th>Intent</th><th>Date</th>' +
+          '</tr></thead><tbody>' +
+          leads.map(function(l) {
+            var name = l.lead_name || l.caller_name || l.name || 'Unknown';
+            var phone = l.lead_phone || l.phone || '';
+            return '<tr>' +
+              '<td><strong>' + esc(name) + '</strong>' + (phone ? '<br><span style="color:var(--text-dim);font-size:0.75rem">' + esc(phone) + '</span>' : '') + '</td>' +
+              '<td>' + esc(l.operator_name || '—') + '</td>' +
+              '<td>' + tradeBadge(l.trade || l.business_type) + '</td>' +
+              '<td>' + channelBadge(l.channel || l.source || '?') + '</td>' +
+              '<td>' + leadStatusBadge(l.status) + '</td>' +
+              '<td>' + intentDots(l.intent_score) + '</td>' +
+              '<td>' + fmtDate(l.created_at) + '</td>' +
+              '</tr>';
+          }).join('') +
+          '</tbody></table>';
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('leadsTable', err); });
+  };
+
+  // ── Section: Payroll & Invoicing ─────────────────────────────────────────
+  function loadPayroll() {
+    var statsEl = document.getElementById('payrollStats');
+    var invoiceEl = document.getElementById('payrollInvoiceTable');
+    var rosterEl = document.getElementById('payrollRosterTable');
+    var overdueCard = document.getElementById('payrollOverdueCard');
+    var overdueEl = document.getElementById('payrollOverdueTable');
+    var overdueCount = document.getElementById('payrollOverdueCount');
+
+    statsEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+    invoiceEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+    rosterEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+
+    apiFetch('/api/founder/payroll-summary')
+      .then(function(d) {
+        if (!d.success) throw new Error(d.message || 'Load failed');
+        var s = d.summary || {};
+
+        // ── Summary cards ─────────────────────────────────────────────────
+        statsEl.innerHTML = [
+          mkStatCard('📄 Invoices Sent', s.total_invoices || 0, (s.invoices_this_month || 0) + ' this month', 'blue'),
+          mkStatCard('💵 Total Collected', fmtAUD(s.total_collected), 'all operators · all time', 'green'),
+          mkStatCard('⚠️ Overdue', (s.overdue_count || 0) + ' invoices', fmtAUD(s.overdue_amount) + ' outstanding', s.overdue_count > 0 ? 'amber' : ''),
+          mkStatCard('👷 Staff Rostered', s.total_staff || 0, 'across all operators', 'blue'),
+          mkStatCard('💰 Payroll This Month', fmtAUD(s.gross_this_month), 'gross across all operators', 'green'),
+        ].join('');
+
+        // ── Invoicing table ───────────────────────────────────────────────
+        var invRows = d.invoice_by_operator || [];
+        if (invRows.length === 0) {
+          invoiceEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-dim);font-size:0.875rem">No invoice data yet. Operators will appear here once they start using Hugo.Pays invoicing.</div>';
+        } else {
+          var html = '<table class="data-table"><thead><tr>'
+            + '<th>Operator</th><th style="text-align:right">Sent</th><th style="text-align:right">Paid</th>'
+            + '<th style="text-align:right">Overdue</th><th style="text-align:right">Total Billed</th>'
+            + '<th style="text-align:right">Collected</th><th></th>'
+            + '</tr></thead><tbody>';
+          invRows.forEach(function(r) {
+            var od = parseInt(r.overdue_count, 10);
+            html += '<tr>'
+              + '<td><strong style="color:var(--text-bright)">' + esc(r.operator_name) + '</strong></td>'
+              + '<td style="text-align:right">' + r.total_invoices + '</td>'
+              + '<td style="text-align:right;color:var(--green)">' + r.paid_count + '</td>'
+              + '<td style="text-align:right;color:' + (od > 0 ? 'var(--amber)' : 'var(--text-dim)') + '">' + od + '</td>'
+              + '<td style="text-align:right">' + fmtAUD(r.total_billed) + '</td>'
+              + '<td style="text-align:right;color:var(--green)">' + fmtAUD(r.total_collected) + '</td>'
+              + '<td><button onclick="openPayrollDrill(' + r.operator_id + ',\'' + esc(r.operator_name) + '\')" style="padding:0.25rem 0.6rem;background:var(--surface-hover);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:0.75rem;cursor:pointer;font-family:inherit">Detail →</button></td>'
+              + '</tr>';
+          });
+          invoiceEl.innerHTML = html + '</tbody></table>';
+        }
+
+        // ── Roster table ──────────────────────────────────────────────────
+        var rostRows = d.roster_by_operator || [];
+        if (rostRows.length === 0) {
+          rosterEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-dim);font-size:0.875rem">No roster data yet. Operators will appear here once they add staff and create shifts.</div>';
+        } else {
+          var rhtml = '<table class="data-table"><thead><tr>'
+            + '<th>Operator</th><th style="text-align:right">Staff</th>'
+            + '<th style="text-align:right">Hours This Week</th><th style="text-align:right">Gross This Month</th>'
+            + '<th style="text-align:right">Net This Month</th><th></th>'
+            + '</tr></thead><tbody>';
+          rostRows.forEach(function(r) {
+            rhtml += '<tr>'
+              + '<td><strong style="color:var(--text-bright)">' + esc(r.operator_name) + '</strong></td>'
+              + '<td style="text-align:right">' + (r.staff_count || 0) + '</td>'
+              + '<td style="text-align:right">' + (parseFloat(r.hours_this_week) || 0).toFixed(1) + ' hrs</td>'
+              + '<td style="text-align:right">' + fmtAUD(r.gross_this_month) + '</td>'
+              + '<td style="text-align:right;color:var(--green)">' + fmtAUD(r.net_this_month) + '</td>'
+              + '<td><button onclick="openPayrollDrill(' + r.operator_id + ',\'' + esc(r.operator_name) + '\')" style="padding:0.25rem 0.6rem;background:var(--surface-hover);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:0.75rem;cursor:pointer;font-family:inherit">Detail →</button></td>'
+              + '</tr>';
+          });
+          rosterEl.innerHTML = rhtml + '</tbody></table>';
+        }
+
+        // ── Overdue alarms ────────────────────────────────────────────────
+        var overdue = d.overdue_invoices || [];
+        if (overdue.length > 0) {
+          overdueCard.style.display = '';
+          overdueCount.textContent = overdue.length + ' overdue';
+          var ohtml = '<table class="data-table"><thead><tr>'
+            + '<th>Operator</th><th>Invoice #</th><th>Customer</th>'
+            + '<th style="text-align:right">Amount</th><th style="text-align:right">Days Overdue</th>'
+            + '</tr></thead><tbody>';
+          overdue.forEach(function(r) {
+            ohtml += '<tr>'
+              + '<td>' + esc(r.operator_name) + '</td>'
+              + '<td style="font-size:0.8rem;color:var(--text-dim)">' + esc(r.invoice_number || '#' + r.id) + '</td>'
+              + '<td>' + esc(r.customer_name || '—') + '</td>'
+              + '<td style="text-align:right">' + fmtAUD(r.amount) + '</td>'
+              + '<td style="text-align:right;color:var(--red);font-weight:600">' + (r.days_overdue || 0) + 'd</td>'
+              + '</tr>';
+          });
+          overdueEl.innerHTML = ohtml + '</tbody></table>';
+        } else {
+          overdueCard.style.display = 'none';
+        }
+
+        var lastEl = document.getElementById('lastUpdated');
+        if (lastEl && d.timestamp) lastEl.textContent = 'Updated ' + new Date(d.timestamp).toLocaleTimeString();
+      })
+      .catch(function(err) {
+        statsEl.innerHTML = '<div style="color:var(--red);padding:1rem;font-size:0.875rem">Failed to load payroll data: ' + esc(err.message) + '</div>';
+        invoiceEl.innerHTML = '';
+        rosterEl.innerHTML = '';
+      });
+  }
+
+  // Open operator drill-down modal
+  window.openPayrollDrill = function(opId, opName) {
+    var overlay = document.getElementById('payrollDrillOverlay');
+    var body = document.getElementById('payrollDrillBody');
+    var title = document.getElementById('payrollDrillTitle');
+    title.textContent = opName + ' — Detail';
+    body.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+    overlay.style.display = '';
+
+    apiFetch('/api/founder/payroll-summary/operator/' + opId)
+      .then(function(d) {
+        if (!d.success) throw new Error(d.message || 'Load failed');
+        var html = '';
+
+        // Staff list
+        var staff = d.staff || [];
+        if (staff.length > 0) {
+          html += '<div class="card-title" style="margin-bottom:0.75rem;font-size:0.95rem">👷 Staff (' + staff.length + ')</div>';
+          html += '<table class="data-table" style="margin-bottom:1.5rem"><thead><tr><th>Name</th><th>Role</th><th style="text-align:right">Rate</th><th>TFN</th><th>Status</th></tr></thead><tbody>';
+          staff.forEach(function(s) {
+            html += '<tr>'
+              + '<td><strong>' + esc(s.name) + '</strong></td>'
+              + '<td style="color:var(--text-dim)">' + esc(s.role || 'employee') + '</td>'
+              + '<td style="text-align:right">' + (s.hourly_rate ? '$' + parseFloat(s.hourly_rate).toFixed(2) + '/hr' : '—') + '</td>'
+              + '<td style="font-size:0.78rem;color:' + (s.tfn_status === 'provided' ? 'var(--green)' : 'var(--amber)') + '">' + esc(s.tfn_status || '—') + '</td>'
+              + '<td><span style="font-size:0.75rem;padding:2px 7px;border-radius:4px;background:' + (s.is_active ? 'var(--green-dim)' : 'rgba(148,163,184,0.1)') + ';color:' + (s.is_active ? 'var(--green)' : 'var(--text-dim)') + '">' + (s.is_active ? 'Active' : 'Inactive') + '</span></td>'
+              + '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+
+        // Recent roster
+        var roster = d.roster || [];
+        if (roster.length > 0) {
+          html += '<div class="card-title" style="margin-bottom:0.75rem;font-size:0.95rem">📅 Recent Shifts (14 days)</div>';
+          html += '<table class="data-table" style="margin-bottom:1.5rem"><thead><tr><th>Date</th><th>Staff</th><th>Job</th><th>Time</th><th>Status</th></tr></thead><tbody>';
+          roster.forEach(function(r) {
+            var timeStr = r.start_time ? (r.start_time + (r.end_time ? ' – ' + r.end_time : '')) : '—';
+            html += '<tr>'
+              + '<td>' + esc(r.scheduled_date ? r.scheduled_date.toString().slice(0,10) : '—') + '</td>'
+              + '<td>' + esc(r.staff_name || '—') + '</td>'
+              + '<td style="color:var(--text-dim)">' + esc(r.job_title || '—') + '</td>'
+              + '<td style="font-size:0.78rem">' + esc(timeStr) + '</td>'
+              + '<td><span style="font-size:0.75rem;padding:2px 7px;border-radius:4px;background:var(--surface-hover)">' + esc(r.status || 'scheduled') + '</span></td>'
+              + '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+
+        // Invoices
+        var invs = d.invoices || [];
+        if (invs.length > 0) {
+          html += '<div class="card-title" style="margin-bottom:0.75rem;font-size:0.95rem">📄 Invoices (' + invs.length + ')</div>';
+          html += '<table class="data-table"><thead><tr><th>Invoice #</th><th>Customer</th><th style="text-align:right">Amount</th><th>Status</th><th>Due</th></tr></thead><tbody>';
+          invs.forEach(function(i) {
+            var statusColor = { paid: 'var(--green)', overdue: 'var(--red)', sent: 'var(--amber)', draft: 'var(--text-dim)' }[i.status] || 'var(--text-dim)';
+            html += '<tr>'
+              + '<td style="font-size:0.78rem;color:var(--text-dim)">' + esc(i.invoice_number || '#' + i.id) + '</td>'
+              + '<td>' + esc(i.customer_name || '—') + '</td>'
+              + '<td style="text-align:right">' + fmtAUD(i.display_amount) + '</td>'
+              + '<td style="color:' + statusColor + ';font-size:0.8rem;font-weight:600">' + esc(i.status) + '</td>'
+              + '<td style="font-size:0.78rem;color:var(--text-dim)">' + (i.due_date ? i.due_date.toString().slice(0,10) : '—') + '</td>'
+              + '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+
+        if (!staff.length && !roster.length && !invs.length) {
+          html = '<div style="color:var(--text-dim);text-align:center;padding:2rem;font-size:0.875rem">No Hugo.Pays data found for this operator.</div>';
+        }
+
+        body.innerHTML = html;
+      })
+      .catch(function(err) {
+        body.innerHTML = '<div style="color:var(--red);padding:1rem">Error: ' + esc(err.message) + '</div>';
+      });
+  };
+
+  // Helpers
+  function fmtAUD(val) {
+    var n = parseFloat(val) || 0;
+    return '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function mkStatCard(label, value, sub, colorClass) {
+    return '<div class="stat-card"><div class="label">' + label + '</div>'
+      + '<div class="value' + (colorClass ? ' ' + colorClass : '') + '">' + value + '</div>'
+      + (sub ? '<div class="sub">' + sub + '</div>' : '')
+      + '</div>';
+  }
+  function esc(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Section 5: Revenue ────────────────────────────────────────────────────
+  function loadRevenue() {
+    apiFetch('/api/founder/revenue')
+      .then(function(d) {
+        var grid = document.getElementById('revenueStats');
+        grid.innerHTML = [
+          statCard('MRR', '$' + fmtNum(d.mrr), 'green', 'est. monthly recurring'),
+          statCard('Active', d.active_count, 'amber', 'paying subscribers'),
+          statCard('Trials', d.trial_count, 'blue', 'in trial period'),
+          statCard('Conversion', d.conversion_rate + '%', '', 'trial → paid rate'),
+          statCard('Churned', d.churned_last_30_days, 'red', 'last 30 days'),
+        ].join('');
+
+        // Revenue by trade
+        var maxCount = Math.max(1, ...d.by_trade.map(function(r) { return r.active_count; }));
+        var panels = document.getElementById('revenuePanels');
+        panels.innerHTML =
+          '<div class="card" style="margin:0"><div class="card-header"><div class="card-title">Revenue by Trade</div></div>' +
+          '<div style="padding:1.25rem"><div class="trade-bars">' +
+          d.by_trade.filter(function(r) { return r.active_count > 0; }).map(function(r) {
+            var pct = Math.max(4, Math.round((r.active_count / maxCount) * 100));
+            return '<div class="trade-row">' +
+              '<div class="trade-name">' + esc(formatTrade(r.trade)) + '</div>' +
+              '<div class="trade-bar-wrap"><div class="trade-bar-fill" style="width:' + pct + '%"></div></div>' +
+              '<div class="trade-count">' + r.active_count + '</div>' +
+              '</div>';
+          }).join('') +
+          '</div></div></div>' +
+
+          '<div class="card" style="margin:0"><div class="card-header"><div class="card-title">Subscription Breakdown</div></div>' +
+          '<div style="padding:1.25rem">' +
+          d.status_breakdown.map(function(r) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">' +
+              '<span>' + statusBadge(r.status) + '</span>' +
+              '<strong style="color:var(--text-bright)">' + r.count + '</strong>' +
+              '</div>';
+          }).join('') +
+          '</div></div>';
+
+        // Trial expiring
+        if (d.trial_expiring_soon && d.trial_expiring_soon.length) {
+          var card = document.getElementById('trialExpiringCard');
+          card.style.display = 'block';
+          var tbl = document.getElementById('trialExpiringTable');
+          tbl.innerHTML = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Trade</th><th>Expires</th></tr></thead><tbody>' +
+            d.trial_expiring_soon.map(function(u) {
+              var daysLeft = Math.max(0, Math.ceil((new Date(u.trial_end) - Date.now()) / 86400000));
+              return '<tr>' +
+                '<td>' + esc(u.name || '—') + '</td>' +
+                '<td>' + esc(u.email) + '</td>' +
+                '<td>' + tradeBadge(u.business_type) + '</td>' +
+                '<td><span style="color:' + (daysLeft <= 2 ? 'var(--red)' : 'var(--amber)') + '">' + daysLeft + 'd left</span></td>' +
+                '</tr>';
+            }).join('') +
+            '</tbody></table>';
+        }
+
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('revenueStats', err); });
+  }
+
+  // ── Section 9: Health ─────────────────────────────────────────────────────
+  function loadHealth() {
+    apiFetch('/api/founder/health')
+      .then(function(d) {
+        // Sync status
+        var syncEl = document.getElementById('healthSyncStatus');
+        syncEl.innerHTML = '<div class="health-card">' +
+          '<div class="h-label">Landing Page Sync Status</div>' +
+          (d.sync_status && d.sync_status.length ?
+            d.sync_status.map(function(s) {
+              var cls = s.status === 'fresh' ? 'green' : s.age_minutes < 60 * 24 ? 'amber' : 'red';
+              var ago = s.age_minutes !== null ? (s.age_minutes < 60 ? s.age_minutes + 'm ago' : Math.floor(s.age_minutes / 60) + 'h ago') : 'Never';
+              return '<div class="domain-row">' +
+                '<div><span class="domain-indicator ' + cls + '"></span><strong>' + esc(s.domain) + '</strong></div>' +
+                '<div style="font-size:0.78rem;color:var(--text-dim)">' + ago + '</div>' +
+                '</div>';
+            }).join('') :
+            '<div style="color:var(--text-dim);font-size:0.85rem">No landing pages synced yet</div>'
+          ) + '</div>';
+
+        // Mismatch table
+        var mismatches = d.mismatches || [];
+        document.getElementById('mismatchCount').textContent = mismatches.length + ' recent';
+        var mEl = document.getElementById('mismatchTable');
+        if (!mismatches.length) {
+          mEl.innerHTML = '<div class="empty">✅ No content mismatches detected</div>';
+        } else {
+          mEl.innerHTML = '<table class="data-table"><thead><tr>' +
+            '<th>Key</th><th>Hugo Said</th><th>Actual</th><th>Domain</th><th>Auto-Fixed</th><th>When</th>' +
+            '</tr></thead><tbody>' +
+            mismatches.map(function(m) {
+              return '<tr>' +
+                '<td><code style="font-size:0.8rem;color:var(--amber)">' + esc(m.content_key) + '</code></td>' +
+                '<td style="color:var(--red)">' + esc(m.hugo_quoted || '?') + '</td>' +
+                '<td style="color:var(--green)">' + esc(m.actual_value || '?') + '</td>' +
+                '<td>' + esc(m.domain || '?') + '</td>' +
+                '<td>' + (m.auto_corrected ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>') + '</td>' +
+                '<td>' + fmtDate(m.detected_at) + '</td>' +
+                '</tr>';
+            }).join('') +
+            '</tbody></table>';
+        }
+
+        // Change audit log
+        var changes = d.content_changes || [];
+        var auditEl = document.getElementById('changeAuditLog');
+        if (!changes.length) {
+          auditEl.innerHTML = '<div class="empty">No content changes logged in the last 30 days</div>';
+        } else {
+          auditEl.innerHTML = '<ul class="timeline">' +
+            changes.map(function(c) {
+              return '<li>' +
+                '<div class="tl-time">' + fmtDateTime(c.detected_at) + ' · ' + esc(c.domain || '') + '</div>' +
+                '<div class="tl-text"><strong>' + esc(c.content_key) + '</strong>: ' +
+                '<span style="color:var(--red)">' + esc(truncate(c.hugo_quoted, 40)) + '</span>' +
+                ' → <span style="color:var(--green)">' + esc(truncate(c.actual_value, 40)) + '</span></div>' +
+                '</li>';
+            }).join('') + '</ul>';
+        }
+
+        setLastUpdated();
+      })
+      .catch(function(err) {
+        document.getElementById('healthSyncStatus').innerHTML = '<div class="empty">Failed to load health data</div>';
+      });
+  }
+
+  // ── Operator Modal ─────────────────────────────────────────────────────────
+  window.openOperatorModal = function(id) {
+    operatorModalData = null;
+    currentModalTab = 'leads';
+    document.getElementById('operatorModal').classList.add('open');
+    document.getElementById('modalOperatorName').textContent = 'Loading…';
+    document.getElementById('modalContent').innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+
+    apiFetch('/api/founder/operators/' + id)
+      .then(function(d) {
+        operatorModalData = d;
+        var op = d.operator;
+        document.getElementById('modalOperatorName').textContent = (op.name || op.email) + ' — ' + (op.trade || op.business_type || 'Unknown trade');
+        renderModalTab('leads');
+        // Reset tabs
+        document.querySelectorAll('.modal-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelector('.modal-tab[data-tab="leads"]').classList.add('active');
+        currentModalTab = 'leads';
+      })
+      .catch(function(err) {
+        document.getElementById('modalContent').innerHTML = '<div class="empty">Failed to load operator: ' + esc(err.message || '') + '</div>';
+      });
+  };
+
+  window.closeOperatorModal = function() {
+    document.getElementById('operatorModal').classList.remove('open');
+  };
+
+  window.switchModalTab = function(tab, el) {
+    currentModalTab = tab;
+    document.querySelectorAll('.modal-tab').forEach(function(t) { t.classList.remove('active'); });
+    el.classList.add('active');
+    renderModalTab(tab);
+  };
+
+  function renderModalTab(tab) {
+    var content = document.getElementById('modalContent');
+    if (!operatorModalData) return;
+    if (tab === 'leads') {
+      var leads = operatorModalData.leads || [];
+      if (!leads.length) { content.innerHTML = '<div class="empty">No leads yet</div>'; return; }
+      content.innerHTML = '<table class="data-table"><thead><tr>' +
+        '<th>Name</th><th>Phone</th><th>Channel</th><th>Status</th><th>Intent</th><th>Date</th>' +
+        '</tr></thead><tbody>' +
+        leads.map(function(l) {
+          return '<tr>' +
+            '<td>' + esc(l.lead_name || l.caller_name || l.name || '?') + '</td>' +
+            '<td>' + esc(l.lead_phone || l.phone || '—') + '</td>' +
+            '<td>' + channelBadge(l.channel || l.source || '?') + '</td>' +
+            '<td>' + leadStatusBadge(l.status) + '</td>' +
+            '<td>' + intentDots(l.intent_score) + '</td>' +
+            '<td>' + fmtDate(l.created_at) + '</td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    } else if (tab === 'chats') {
+      var chats = operatorModalData.chats || [];
+      if (!chats.length) { content.innerHTML = '<div class="empty">No conversations yet</div>'; return; }
+      content.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.5rem;max-height:400px;overflow-y:auto;padding:0.5rem">' +
+        chats.map(function(m) {
+          var isUser = m.role === 'user';
+          return '<div style="display:flex;' + (isUser ? 'justify-content:flex-end' : '') + '">' +
+            '<div style="max-width:75%;padding:0.6rem 0.9rem;border-radius:10px;font-size:0.85rem;' +
+            (isUser ? 'background:var(--amber-glow);color:var(--amber-light)' : 'background:var(--surface);color:var(--text)') + '">' +
+            esc(truncate(m.content, 200)) +
+            '<div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px">' + fmtDateTime(m.created_at) + '</div>' +
+            '</div></div>';
+        }).reverse().join('') + '</div>';
+    } else if (tab === 'training') {
+      var training = operatorModalData.training || [];
+      if (!training.length) { content.innerHTML = '<div class="empty">No training entries yet</div>'; return; }
+      content.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.75rem;max-height:400px;overflow-y:auto;padding:0.5rem">' +
+        training.map(function(t) {
+          return '<div style="background:var(--surface);border-radius:8px;padding:0.75rem">' +
+            '<div style="font-size:0.8rem;font-weight:600;color:var(--amber);margin-bottom:4px">Q: ' + esc(truncate(t.question, 120)) + '</div>' +
+            '<div style="font-size:0.82rem;color:var(--text)">A: ' + esc(truncate(t.answer, 200)) + '</div>' +
+            '<div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px">' + fmtDateTime(t.created_at) + '</div>' +
+            '</div>';
+        }).join('') + '</div>';
+    }
+  }
+
+  // ── Section 2: Landing Page Analytics ─────────────────────────────────────
+  function loadAnalytics() {
+    var days = document.getElementById('analyticsDays').value || 7;
+    apiFetch('/api/founder/analytics?days=' + days)
+      .then(function(d) {
+        // Summary stat cards — one row per domain
+        var proSummary = (d.summary || []).find(function(r) { return r.domain === 'propops.pro'; }) || {};
+        var tradeSummary = (d.summary || []).find(function(r) { return r.domain === 'propops.trade'; }) || {};
+        var statsEl = document.getElementById('analyticsStats');
+        statsEl.innerHTML = [
+          statCard('propops.pro Visitors', proSummary.total_visitors || 0, 'green', 'Unique sessions'),
+          statCard('propops.pro Views', proSummary.total_page_views || 0, '', 'Page hits'),
+          statCard('propops.trade Visitors', tradeSummary.total_visitors || 0, 'blue', 'Unique sessions'),
+          statCard('propops.trade Views', tradeSummary.total_page_views || 0, '', 'Page hits'),
+          statCard('Total Visitors', ((proSummary.total_visitors || 0) + (tradeSummary.total_visitors || 0)), 'amber', 'Both domains combined'),
+        ].join('');
+
+        // Funnel
+        var funnelEl = document.getElementById('analyticsFunnel');
+        var funnels = d.funnel || [];
+        if (!funnels.length) {
+          funnelEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem">No funnel events yet. Tracking script fires on both landing pages.</div>';
+        } else {
+          funnelEl.innerHTML = funnels.map(function(f) {
+            var views = parseInt(f.page_views || 0, 10);
+            var chatPct = views > 0 ? Math.round(parseInt(f.chat_started || 0, 10) / views * 100) : 0;
+            var leadPct = views > 0 ? Math.round(parseInt(f.lead_captured || 0, 10) / views * 100) : 0;
+            return '<div style="margin-bottom:1.25rem">' +
+              '<div style="font-size:0.75rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:0.5rem">' + esc(f.domain) + '</div>' +
+              funnelStep('Page Views', views, views, views, '#3b82f6') +
+              funnelStep('Chat Started', f.chat_started, views, views, '#8b5cf6') +
+              funnelStep('Lead Captured', f.lead_captured, views, views, '#f0a500') +
+              funnelStep('Operator Notified', f.operator_notified, views, views, '#10b981') +
+              '</div>';
+          }).join('<hr style="border:none;border-top:1px solid var(--border);margin:0.75rem 0">');
+        }
+
+        // Device split
+        var devEl = document.getElementById('analyticsDevices');
+        var devices = d.device_split || [];
+        if (!devices.length) {
+          devEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem">No device data yet</div>';
+        } else {
+          var devGroups = {};
+          devices.forEach(function(r) {
+            if (!devGroups[r.domain]) devGroups[r.domain] = {};
+            devGroups[r.domain][r.device] = parseInt(r.sessions, 10);
+          });
+          devEl.innerHTML = Object.keys(devGroups).map(function(dom) {
+            var g = devGroups[dom];
+            var total = Object.values(g).reduce(function(s, v) { return s + v; }, 0);
+            return '<div style="margin-bottom:1rem">' +
+              '<div style="font-size:0.75rem;font-weight:700;color:var(--text-dim);margin-bottom:0.5rem">' + esc(dom) + '</div>' +
+              Object.entries(g).map(function(e) {
+                var icon = e[0] === 'mobile' ? '📱' : e[0] === 'tablet' ? '📟' : '💻';
+                var pct = total > 0 ? Math.round(e[1] / total * 100) : 0;
+                return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;font-size:0.85rem">' +
+                  icon + ' <span style="width:60px">' + esc(e[0]) + '</span>' +
+                  '<div style="flex:1;height:5px;background:var(--border);border-radius:3px">' +
+                  '<div style="width:' + pct + '%;height:100%;background:var(--amber);border-radius:3px"></div></div>' +
+                  '<span style="font-size:0.75rem;color:var(--text-dim);width:40px;text-align:right">' + pct + '%</span></div>';
+              }).join('') + '</div>';
+          }).join('');
+        }
+
+        // Traffic sources
+        var srcEl = document.getElementById('analyticsSources');
+        var sources = d.traffic_sources || [];
+        if (!sources.length) {
+          srcEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem">No traffic source data yet</div>';
+        } else {
+          var maxSrc = Math.max(1, ...sources.map(function(r) { return parseInt(r.sessions, 10); }));
+          srcEl.innerHTML = sources.slice(0, 10).map(function(r) {
+            var pct = Math.round(parseInt(r.sessions, 10) / maxSrc * 100);
+            return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.83rem">' +
+              '<span style="width:80px;color:var(--text-dim);font-size:0.7rem">' + esc(r.domain).replace('propops.', '.') + '</span>' +
+              '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.source) + '</span>' +
+              '<div style="width:80px;height:5px;background:var(--border);border-radius:3px">' +
+              '<div style="width:' + pct + '%;height:100%;background:var(--blue);border-radius:3px"></div></div>' +
+              '<span style="font-size:0.75rem;color:var(--text-dim);width:30px;text-align:right">' + r.sessions + '</span></div>';
+          }).join('');
+        }
+
+        // Referrers
+        var refEl = document.getElementById('analyticsReferrers');
+        var refs = d.top_referrers || [];
+        if (!refs.length) {
+          refEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem">No referrer data yet</div>';
+        } else {
+          refEl.innerHTML = refs.map(function(r) {
+            return '<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.83rem">' +
+              '<div><span style="color:var(--text-dim);font-size:0.7rem">' + esc(r.domain).replace('propops.', '.') + '</span> ' + esc(truncate(r.referrer, 40)) + '</div>' +
+              '<strong>' + r.sessions + '</strong></div>';
+          }).join('');
+        }
+
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('analyticsStats', err); });
+  }
+
+  window.reloadAnalytics = function() {
+    delete loadedSections['analytics'];
+    loadSection('analytics');
+  };
+
+  function funnelStep(label, count, total, maxVal, color) {
+    var n = parseInt(count || 0, 10);
+    var pct = maxVal > 0 ? Math.round(n / maxVal * 100) : 0;
+    return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;font-size:0.83rem">' +
+      '<span style="width:140px;color:var(--text-dim)">' + label + '</span>' +
+      '<div style="flex:1;height:16px;background:var(--border);border-radius:3px">' +
+      '<div style="width:' + Math.max(2, pct) + '%;height:100%;background:' + color + ';border-radius:3px;opacity:0.8"></div></div>' +
+      '<span style="width:50px;text-align:right;color:var(--text-bright);font-weight:600">' + n + '</span>' +
+      '<span style="width:35px;color:var(--text-dim);font-size:0.75rem">' + pct + '%</span></div>';
+  }
+
+  // ── Section 6: Hugo Performance ────────────────────────────────────────────
+  function loadHugoPerf() {
+    var days = document.getElementById('hugoPerfDays').value || 7;
+    apiFetch('/api/founder/hugo-performance?days=' + days)
+      .then(function(d) {
+        var q = d.lead_qualification || {};
+        var convsByChannel = d.conversations_by_channel || [];
+        var widgetConvs = convsByChannel.find(function(r) { return r.channel === 'widget'; }) || {};
+        var dashConvs = convsByChannel.find(function(r) { return r.channel === 'dashboard'; }) || {};
+        var totalConvs = parseInt(widgetConvs.conversations || 0, 10) + parseInt(dashConvs.conversations || 0, 10);
+
+        document.getElementById('hugoPerfStats').innerHTML = [
+          statCard('Total Conversations', fmtNum(totalConvs), 'green', 'Widget + Dashboard'),
+          statCard('Widget Sessions', widgetConvs.conversations || 0, 'blue', 'Public widget'),
+          statCard('Dashboard Chats', dashConvs.conversations || 0, 'amber', 'Operator dashboard'),
+          statCard('Qualification Rate', (q.qualification_rate_pct || 0) + '%', 'green', 'Intent ≥ 7/10'),
+          statCard('Avg Intent Score', q.avg_intent_score || '—', '', 'out of 10'),
+        ].join('');
+
+        // Channel breakdown bars
+        var chanEl = document.getElementById('hugoChannelBreakdown');
+        var maxConvs = Math.max(1, parseInt(widgetConvs.conversations || 0, 10), parseInt(dashConvs.conversations || 0, 10));
+        chanEl.innerHTML = [
+          { label: '🌐 Widget', count: widgetConvs.conversations || 0, msgs: widgetConvs.total_messages || 0, color: 'var(--blue)' },
+          { label: '💬 Dashboard', count: dashConvs.conversations || 0, msgs: dashConvs.total_messages || 0, color: 'var(--amber)' },
+        ].map(function(c) {
+          var pct = Math.round(parseInt(c.count, 10) / maxConvs * 100);
+          return '<div style="margin-bottom:1rem">' +
+            '<div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;font-size:0.85rem">' +
+            '<span>' + c.label + '</span><span style="color:var(--text-dim)">' + c.count + ' convs · ' + c.msgs + ' msgs</span></div>' +
+            '<div style="height:8px;background:var(--border);border-radius:4px">' +
+            '<div style="width:' + Math.max(2, pct) + '%;height:100%;background:' + c.color + ';border-radius:4px"></div></div></div>';
+        }).join('');
+
+        // Lead channel breakdown
+        var leadChanEl = document.getElementById('hugoLeadChannels');
+        var leadChannels = d.channel_lead_breakdown || [];
+        if (!leadChannels.length) {
+          leadChanEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem">No leads in this period</div>';
+        } else {
+          var maxLeads = Math.max(1, ...leadChannels.map(function(r) { return parseInt(r.leads, 10); }));
+          leadChanEl.innerHTML = leadChannels.map(function(r) {
+            var pct = Math.round(parseInt(r.leads, 10) / maxLeads * 100);
+            return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.83rem">' +
+              '<span style="width:80px">' + channelBadge(r.channel) + '</span>' +
+              '<div style="flex:1;height:6px;background:var(--border);border-radius:3px">' +
+              '<div style="width:' + Math.max(2, pct) + '%;height:100%;background:var(--green);border-radius:3px"></div></div>' +
+              '<span style="width:30px;text-align:right;font-size:0.75rem;color:var(--text-dim)">' + r.leads + '</span>' +
+              '<span style="width:35px;text-align:right;font-size:0.75rem;color:var(--amber)">' + (r.avg_intent || '—') + '</span></div>';
+          }).join('');
+        }
+
+        // Top questions
+        var qEl = document.getElementById('hugoTopQuestions');
+        var topQ = d.top_questions || [];
+        if (!topQ.length) {
+          qEl.innerHTML = '<div class="empty">No training data yet</div>';
+        } else {
+          qEl.innerHTML = '<table class="data-table"><thead><tr><th>#</th><th>Question</th><th>Frequency</th></tr></thead><tbody>' +
+            topQ.map(function(q, i) {
+              return '<tr><td style="color:var(--text-dim);font-size:0.8rem">' + (i+1) + '</td>' +
+                '<td>' + esc(truncate(q.question, 100)) + '</td>' +
+                '<td>' + q.frequency + '</td></tr>';
+            }).join('') + '</tbody></table>';
+        }
+
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('hugoPerfStats', err); });
+  }
+
+  window.reloadHugoPerf = function() {
+    delete loadedSections['hugo-performance'];
+    loadSection('hugo-performance');
+  };
+
+  // ── Section 7: API Costs ───────────────────────────────────────────────────
+  function loadCosts() {
+    var days = document.getElementById('costsDays').value || 7;
+    apiFetch('/api/founder/api-costs?days=' + days)
+      .then(function(d) {
+        document.getElementById('costsStats').innerHTML = [
+          statCard('Total Cost (AUD)', '$' + d.total_cost_aud, 'amber', d.period_days + '-day period'),
+          statCard('Gemini Cost', '$' + d.total_gemini_cost_aud, '', 'Gemini 1.5 Flash est.'),
+          statCard('Embedding Calls', fmtNum(d.embedding_calls), 'blue', 'text-embedding-3-small'),
+          statCard('Embedding Cost', '$' + (d.embedding_cost_aud || 0).toFixed(4), '', 'OpenAI proxy'),
+        ].join('');
+
+        var daily = d.daily_costs || [];
+        var tblEl = document.getElementById('costsDailyTable');
+        if (!daily.length) {
+          tblEl.innerHTML = '<div class="empty">No cost data for this period</div>';
+        } else {
+          tblEl.innerHTML = '<table class="data-table"><thead><tr>' +
+            '<th>Date</th><th>Widget Msgs</th><th>Dashboard Msgs</th><th>Actions</th><th>Est. Tokens</th><th>Cost (AUD)</th>' +
+            '</tr></thead><tbody>' +
+            daily.map(function(r) {
+              return '<tr>' +
+                '<td>' + esc(r.day) + '</td>' +
+                '<td>' + fmtNum(r.widget_msgs) + '</td>' +
+                '<td>' + fmtNum(r.dash_msgs) + '</td>' +
+                '<td>' + fmtNum(r.action_count) + '</td>' +
+                '<td style="color:var(--text-dim)">' + fmtNum(r.total_tokens) + '</td>' +
+                '<td style="color:' + (r.cost_aud > 0.1 ? 'var(--amber)' : 'var(--text)') + '">' +
+                (r.cost_aud > 0 ? '$' + r.cost_aud.toFixed(4) : '<span style="color:var(--text-dim)">—</span>') + '</td>' +
+                '</tr>';
+            }).join('') + '</tbody></table>' +
+            '<div style="padding:0.75rem 1rem;font-size:0.75rem;color:var(--text-dim);border-top:1px solid var(--border)">' +
+            '⚠️ ' + esc(d.note || '') + '</div>';
+        }
+
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('costsStats', err); });
+  }
+
+  window.reloadCosts = function() {
+    delete loadedSections['api-costs'];
+    loadSection('api-costs');
+  };
+
+  // ── Section 8: Training Data ───────────────────────────────────────────────
+  window.loadTrainingData = function() {
+    var tblEl = document.getElementById('trainingTable');
+    tblEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+
+    var params = new URLSearchParams({ limit: '100', offset: '0' });
+    var trade = document.getElementById('filterKTrade').value;
+    var source = document.getElementById('filterKSource').value;
+    var confidence = document.getElementById('filterKConfidence').value;
+    var validated = document.getElementById('filterKValidated').value;
+    if (trade) params.set('trade', trade);
+    if (source) params.set('source', source);
+    if (confidence) params.set('confidence', confidence);
+    if (validated) params.set('validated', validated);
+
+    apiFetch('/api/founder/training-data?' + params.toString())
+      .then(function(d) {
+        var lt = d.legacy_training || {};
+        var entries = d.entries || [];
+        var summary = d.summary || [];
+
+        // Stats
+        var validatedCount = entries.filter(function(e) { return e.validated; }).length;
+        document.getElementById('trainingStats').innerHTML = [
+          statCard('Knowledge Entries', fmtNum(d.total), 'green', 'Phase 2 knowledge base'),
+          statCard('Validated', validatedCount, 'blue', 'of current page'),
+          statCard('Legacy Training', fmtNum(lt.total || 0), 'amber', 'Q&A pairs'),
+          statCard('Operators Trained', lt.operators_with_training || 0, '', 'With custom training'),
+        ].join('');
+
+        // Populate trade filter
+        var tradeFilter = document.getElementById('filterKTrade');
+        var existingTrades = Array.from(tradeFilter.options).map(function(o) { return o.value; });
+        var trades = [...new Set(entries.map(function(e) { return e.trade; }).filter(Boolean))];
+        trades.forEach(function(t) {
+          if (!existingTrades.includes(t)) {
+            var opt = document.createElement('option');
+            opt.value = t; opt.textContent = formatTrade(t);
+            tradeFilter.appendChild(opt);
+          }
+        });
+
+        document.getElementById('trainingEntryCount').textContent = d.total + ' total · ' + entries.length + ' shown';
+
+        if (!entries.length) {
+          tblEl.innerHTML = '<div class="empty">No knowledge entries match these filters</div>';
+        } else {
+          tblEl.innerHTML = '<table class="data-table"><thead><tr>' +
+            '<th>Question</th><th>Answer</th><th>Trade</th><th>Source</th><th>Confidence</th><th>Valid</th><th>Date</th>' +
+            '</tr></thead><tbody>' +
+            entries.map(function(e) {
+              return '<tr>' +
+                '<td style="max-width:200px">' + esc(truncate(e.question, 80)) + '</td>' +
+                '<td style="max-width:250px;color:var(--text-dim)">' + esc(truncate(e.answer, 100)) + '</td>' +
+                '<td>' + tradeBadge(e.trade) + '</td>' +
+                '<td><span class="badge ' + (e.source === 'trained' ? 'badge-green' : e.source === 'learned' ? 'badge-blue' : 'badge-grey') + '">' + esc(e.source || 'default') + '</span></td>' +
+                '<td><span class="badge ' + (e.confidence_level === 'trained' ? 'badge-green' : e.confidence_level === 'learned' ? 'badge-blue' : 'badge-grey') + '">' + esc(e.confidence_level || '—') + '</span></td>' +
+                '<td style="text-align:center">' + (e.validated ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--text-dim)">○</span>') + '</td>' +
+                '<td>' + fmtDate(e.created_at) + '</td>' +
+                '</tr>';
+            }).join('') + '</tbody></table>';
+        }
+
+        // Learned knowledge
+        var learned = d.learned_knowledge || [];
+        var learnedEl = document.getElementById('learnedTable');
+        if (!learned.length) {
+          learnedEl.innerHTML = '<div class="empty">No market intelligence data yet</div>';
+        } else {
+          learnedEl.innerHTML = '<table class="data-table"><thead><tr>' +
+            '<th>Trade</th><th>Region</th><th>Avg Job Value</th><th>Common Services</th><th>Last Updated</th>' +
+            '</tr></thead><tbody>' +
+            learned.map(function(r) {
+              return '<tr>' +
+                '<td>' + tradeBadge(r.trade) + '</td>' +
+                '<td>' + esc(r.region || '—') + '</td>' +
+                '<td style="color:var(--green)">' + (r.avg_job_value ? '$' + fmtNum(r.avg_job_value) : '—') + '</td>' +
+                '<td style="color:var(--text-dim);font-size:0.8rem">' + esc(truncate(r.common_services, 60)) + '</td>' +
+                '<td>' + fmtDate(r.last_updated) + '</td>' +
+                '</tr>';
+            }).join('') + '</tbody></table>';
+        }
+
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('trainingStats', err); });
+  };
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function apiFetch(url, opts) {
+    return fetch(url, Object.assign({ credentials: 'include', headers: { 'Content-Type': 'application/json' } }, opts))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.success && d.message) throw new Error(d.message);
+        return d;
+      });
+  }
+
+  function statCard(label, value, colorClass, sub) {
+    return '<div class="stat-card">' +
+      '<div class="label">' + label + '</div>' +
+      '<div class="value ' + (colorClass || '') + '">' + value + '</div>' +
+      (sub ? '<div class="sub">' + sub + '</div>' : '') +
+      '</div>';
+  }
+
+  function showError(containerId, err) {
+    var el = document.getElementById(containerId);
+    if (el) el.innerHTML = '<div class="empty" style="color:var(--red)">Error: ' + esc((err && err.message) || 'Unknown') + '</div>';
+  }
+
+  function setLastUpdated() {
+    var el = document.getElementById('lastUpdated');
+    if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString();
+  }
+
+  function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function truncate(str, max) {
+    if (!str) return '';
+    return str.length > max ? str.slice(0, max) + '…' : str;
+  }
+
+  function fmtNum(n) {
+    return Number(n || 0).toLocaleString();
+  }
+
+  function fmtDate(dt) {
+    if (!dt) return '<span style="color:var(--text-dim)">—</span>';
+    var d = new Date(dt);
+    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: '2-digit' });
+  }
+
+  function fmtDateTime(dt) {
+    if (!dt) return '—';
+    var d = new Date(dt);
+    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' }) + ' ' + d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatTrade(t) {
+    if (!t) return 'Unknown';
+    return t.replace(/_/g,' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+  }
+
+  function statusBadge(s) {
+    var map = { active: 'badge-green', paid: 'badge-green', trial: 'badge-blue', cancelled: 'badge-grey', canceled: 'badge-grey', past_due: 'badge-orange', suspended: 'badge-red' };
+    return '<span class="badge ' + (map[s] || 'badge-grey') + '">' + esc(s || 'unknown') + '</span>';
+  }
+
+  function tradeBadge(t) {
+    if (!t) return '<span class="badge badge-grey">unknown</span>';
+    var colored = ['re_agent', 'real_estate'].includes(t) ? 'badge-green' :
+      ['small_business'].includes(t) ? 'badge-purple' : 'badge-blue';
+    return '<span class="badge ' + colored + '">' + esc(formatTrade(t)) + '</span>';
+  }
+
+  function channelBadge(ch) {
+    var map = { widget: 'badge-blue', phone: 'badge-green', dashboard: 'badge-amber', email: 'badge-purple', voip: 'badge-orange' };
+    return '<span class="badge ' + (map[ch] || 'badge-grey') + '">' + esc(ch) + '</span>';
+  }
+
+  function leadStatusBadge(s) {
+    var map = { new: 'badge-blue', contacted: 'badge-amber', booked: 'badge-purple', won: 'badge-green', lost: 'badge-grey' };
+    return '<span class="badge ' + (map[s] || 'badge-grey') + '">' + esc(s || 'new') + '</span>';
+  }
+
+  function intentDots(score) {
+    var s = parseInt(score || 0, 10);
+    var dots = '';
+    for (var i = 1; i <= 10; i++) {
+      dots += '<span style="color:' + (i <= s ? 'var(--amber)' : 'var(--border)') + ';font-size:0.65rem">●</span>';
+    }
+    return dots + ' <span style="font-size:0.75rem;color:var(--text-dim)">' + (s || '?') + '</span>';
+  }
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  window.doLogout = function() {
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+      .finally(function() { window.location = '/login'; });
+  };
+
+  // Close modal on background click
+  document.getElementById('operatorModal').addEventListener('click', function(e) {
+    if (e.target === this) closeOperatorModal();
+  });
+
+  // ── Hugo Training Feed ─────────────────────────────────────────────────────
+  var _correctionSimId = null;
+
+  window.loadHugoTrainingFeed = function() {
+    var container = document.getElementById('trainingFeedItems');
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+
+    var status = document.getElementById('filterFeedStatus').value;
+    var trade = document.getElementById('filterFeedTrade').value;
+    var params = new URLSearchParams({ limit: '50' });
+    if (status) params.set('status', status);
+    if (trade) params.set('trade', trade);
+
+    // Load digest summary
+    apiFetch('/api/founder/simulation-digest')
+      .then(function(d) {
+        var el = document.getElementById('trainingFeedDigest');
+        if (d.total === 0) { el.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;">No simulations evaluated yet today. Run simulations from the operator dashboard.</div>'; return; }
+        el.innerHTML = '<div class="stats-grid">' +
+          statCard('Total Today', d.total, '', '') +
+          statCard('Approved', d.approved, 'green', '') +
+          statCard('Rejected', d.rejected, 'red', '') +
+          statCard('Needs Review', d.escalated, 'amber', 'Escalated items') +
+          '</div>';
+      })
+      .catch(function() {});
+
+    apiFetch('/api/founder/hugo-training-feed?' + params.toString())
+      .then(function(d) {
+        var items = d.items || [];
+        document.getElementById('trainingFeedCount').textContent = d.total + ' items';
+
+        if (!items.length) {
+          container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:2rem;">No items match these filters.</div>';
+          return;
+        }
+
+        container.innerHTML = items.map(function(item) {
+          var statusBadge = item.eval_status === 'escalated' ? '<span style="background:rgba(245,158,11,0.2);color:#f59e0b;padding:2px 8px;border-radius:4px;font-size:0.75rem;">⚠️ Escalated</span>'
+            : item.eval_status === 'approved' ? '<span style="background:rgba(16,185,129,0.2);color:#10b981;padding:2px 8px;border-radius:4px;font-size:0.75rem;">✅ Approved</span>'
+            : item.eval_status === 'rejected' ? '<span style="background:rgba(239,68,68,0.2);color:#ef4444;padding:2px 8px;border-radius:4px;font-size:0.75rem;">❌ Rejected</span>'
+            : item.eval_status === 'founder_approved' ? '<span style="background:rgba(16,185,129,0.2);color:#10b981;padding:2px 8px;border-radius:4px;font-size:0.75rem;">✅ Founder Approved</span>'
+            : item.eval_status === 'founder_corrected' ? '<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:2px 8px;border-radius:4px;font-size:0.75rem;">✏️ Corrected</span>'
+            : item.eval_status === 'pending' ? '<span style="background:rgba(156,163,175,0.2);color:#9ca3af;padding:2px 8px;border-radius:4px;font-size:0.75rem;">⏳ Pending</span>'
+            : '<span style="font-size:0.75rem;color:var(--text-dim);">' + esc(item.eval_status || 'unknown') + '</span>';
+
+          var actions = '';
+          if (item.eval_status === 'escalated' || item.eval_status === 'pending') {
+            actions = '<div style="display:flex;gap:0.4rem;margin-top:0.5rem;">' +
+              '<button onclick="feedAction(' + item.id + ',\'approve\')" style="padding:4px 10px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:5px;color:#10b981;font-size:0.78rem;cursor:pointer;">✅ Approve</button>' +
+              '<button onclick="feedAction(' + item.id + ',\'reject\')" style="padding:4px 10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:5px;color:#ef4444;font-size:0.78rem;cursor:pointer;">❌ Reject</button>' +
+              '<button onclick="openCorrectionModal(' + item.id + ',' + JSON.stringify(esc(item.hugo_response_text || '')).replace(/"/g, '&quot;') + ')" style="padding:4px 10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:5px;color:#818cf8;font-size:0.78rem;cursor:pointer;">✏️ Correct</button>' +
+              '</div>';
+          }
+
+          var founderNote = '';
+          if (item.founder_correction) {
+            founderNote = '<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(99,102,241,0.08);border-left:3px solid #818cf8;border-radius:0 6px 6px 0;font-size:0.82rem;color:#a5b4fc;">✏️ Correction: ' + esc(item.founder_correction) + '</div>';
+          }
+
+          return '<div class="card" style="margin-bottom:0.75rem;border-left:3px solid ' +
+            (item.eval_status === 'escalated' ? '#f59e0b' : item.eval_status === 'rejected' ? '#ef4444' : 'var(--border)') + ';">' +
+            '<div class="card-body">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">' +
+            '<div>' + statusBadge + ' <span style="font-size:0.75rem;color:var(--text-dim);margin-left:0.5rem;">' + esc(item.trade_category || '') + '</span>' +
+            (item.operator_name ? ' <span style="font-size:0.75rem;color:var(--text-dim);">— ' + esc(item.operator_name) + '</span>' : '') + '</div>' +
+            '<span style="font-size:0.72rem;color:var(--text-dim);">' + fmtDate(item.created_at) + '</span>' +
+            '</div>' +
+            (item.inquiry_message ? '<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:6px;padding:0.5rem;margin-bottom:0.5rem;font-size:0.82rem;color:#f59e0b;">📩 ' + esc(item.inquiry_message).slice(0, 300) + '</div>' : '') +
+            '<div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:6px;padding:0.5rem;font-size:0.85rem;color:var(--text-bright);white-space:pre-wrap;line-height:1.5;">' + esc(item.hugo_response_text || '').slice(0, 500) + '</div>' +
+            (item.eval_reason ? '<div style="margin-top:0.4rem;font-size:0.78rem;color:var(--text-dim);">💬 ' + esc(item.eval_reason) + '</div>' : '') +
+            founderNote +
+            actions +
+            '</div></div>';
+        }).join('');
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div style="color:#ef4444;padding:1rem;">Failed to load training feed: ' + (err.message || err) + '</div>';
+      });
+  };
+
+  window.feedAction = function(simId, action) {
+    if (action === 'reject' && !confirm('Reject this simulation response? Hugo won\'t learn from it.')) return;
+    apiFetch('/api/founder/hugo-training-feed/' + simId + '/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action }),
+    })
+    .then(function() {
+      delete loadedSections['hugo-training-feed'];
+      loadHugoTrainingFeed();
+    })
+    .catch(function(err) { alert('Action failed: ' + (err.message || err)); });
+  };
+
+  window.openCorrectionModal = function(simId, currentResponse) {
+    _correctionSimId = simId;
+    document.getElementById('correctionContext').textContent = 'Current response: ' + (currentResponse || '').slice(0, 200) + '…';
+    document.getElementById('correctionText').value = '';
+    document.getElementById('correctionModal').style.display = 'flex';
+  };
+
+  window.closeCorrectionModal = function() {
+    document.getElementById('correctionModal').style.display = 'none';
+    _correctionSimId = null;
+  };
+
+  window.submitCorrection = function() {
+    var text = document.getElementById('correctionText').value.trim();
+    if (!text || text.length < 3) { alert('Please enter a correction (min 3 chars)'); return; }
+    apiFetch('/api/founder/hugo-training-feed/' + _correctionSimId + '/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'correct', correction: text }),
+    })
+    .then(function() {
+      closeCorrectionModal();
+      delete loadedSections['hugo-training-feed'];
+      loadHugoTrainingFeed();
+    })
+    .catch(function(err) { alert('Correction failed: ' + (err.message || err)); });
+  };
+
+  document.getElementById('correctionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCorrectionModal();
+  });
+
+  // ── Self-Learning Log ──────────────────────────────────────────────────────
+
+  var PLATFORM_LABELS = {
+    web_pro: '🌐 web_pro',
+    web_trade: '🔧 web_trade',
+    phone: '📞 phone',
+    email: '📧 email',
+    dashboard_sim: '🖥 dashboard_sim',
+  };
+  var CATEGORY_COLORS = {
+    pricing_change: '#ef4444', guardrail_removal: '#ef4444', personality_contradiction: '#ef4444',
+    capability_claim: '#f59e0b', brand_voice_change: '#f59e0b', money_change: '#f59e0b', new_trade_handling: '#f59e0b',
+    tone: '#10b981', clarity: '#10b981', completeness: '#10b981', coaching: '#10b981',
+    greeting_variation: '#3b82f6', faq_accuracy: '#3b82f6',
+  };
+
+  function loadSelfLearningLog() {
+    var container = document.getElementById('selfLearningItems');
+    var statsEl = document.getElementById('selfLearningStats');
+    if (!container) return;
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading…</div>';
+
+    var status = document.getElementById('filterSLStatus')?.value || '';
+    var platform = document.getElementById('filterSLPlatform')?.value || '';
+    var category = document.getElementById('filterSLCategory')?.value || '';
+
+    var params = [];
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (platform) params.push('platform=' + encodeURIComponent(platform));
+    if (category) params.push('category=' + encodeURIComponent(category));
+    var qs = params.length ? '?' + params.join('&') : '';
+
+    apiFetch('/api/founder/self-learning-log' + qs)
+      .then(function(data) {
+        // Stats strip
+        var stats = data.stats || {};
+        var statHtml = Object.entries(stats).map(function(e) {
+          var label = e[0], val = e[1];
+          var color = label === 'pending' ? 'var(--amber)' : label === 'approved' ? 'var(--green)' : 'var(--red)';
+          return '<span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:0.8rem;">'
+            + '<span style="color:' + color + ';font-weight:700;">' + (val.count || 0) + '</span>'
+            + ' <span style="color:var(--text-dim);">' + label + '</span>'
+            + (val.systemic ? ' <span style="font-size:0.7rem;color:var(--orange);">⚠ ' + val.systemic + ' systemic</span>' : '')
+            + '</span>';
+        }).join('');
+        if (statsEl) statsEl.innerHTML = statHtml;
+
+        var countEl = document.getElementById('selfLearningCount');
+        if (countEl) countEl.textContent = (data.total || 0) + ' items';
+
+        if (!data.items || !data.items.length) {
+          container.innerHTML = '<div class="empty">No items match these filters. All clear! 🎉</div>';
+          return;
+        }
+
+        container.innerHTML = data.items.map(function(item) {
+          var catColor = CATEGORY_COLORS[item.category] || 'var(--text-dim)';
+          var statusBadge = item.status === 'approved'
+            ? '<span style="color:var(--green);font-size:0.72rem;font-weight:700;">✅ APPROVED</span>'
+            : item.status === 'rejected'
+            ? '<span style="color:var(--red);font-size:0.72rem;font-weight:700;">❌ REJECTED</span>'
+            : '<span style="color:var(--amber);font-size:0.72rem;font-weight:700;">⏳ PENDING</span>';
+          var systemicBadge = item.is_systemic
+            ? '<span style="background:rgba(249,115,22,0.15);color:var(--orange);font-size:0.68rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;">SYSTEMIC ×' + item.times_repeated + '</span>'
+            : '';
+          var actions = item.status === 'pending' ? (
+            '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">'
+            + '<button onclick="slAction(' + item.id + ',\'approve\')" style="padding:5px 12px;background:var(--green-dim);border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:var(--green);font-size:0.78rem;cursor:pointer;">✅ Approve</button>'
+            + '<button onclick="slAction(' + item.id + ',\'reject\')" style="padding:5px 12px;background:var(--red-dim);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:var(--red);font-size:0.78rem;cursor:pointer;">❌ Reject</button>'
+            + '</div>'
+          ) : '';
+
+          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">'
+            + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">'
+            + '<span style="font-size:0.8rem;color:var(--text-dim);">' + new Date(item.detected_at).toLocaleDateString() + '</span>'
+            + '<span style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:0.72rem;padding:2px 8px;border-radius:4px;">' + (PLATFORM_LABELS[item.source_platform] || item.source_platform) + '</span>'
+            + '<span style="background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;color:' + catColor + ';">' + item.category + '</span>'
+            + systemicBadge
+            + '<span style="margin-left:auto;">' + statusBadge + '</span>'
+            + '</div>'
+            + '<div style="font-size:0.85rem;color:var(--text);margin-bottom:0.4rem;"><strong>What went wrong:</strong> ' + esc(item.mistake_description) + '</div>'
+            + '<div style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.25rem;"><strong>Proposed fix:</strong> ' + esc(item.proposed_fix) + '</div>'
+            + (item.approved_by ? '<div style="font-size:0.72rem;color:var(--text-dim);">By: ' + esc(item.approved_by) + (item.approved_at ? ' · ' + new Date(item.approved_at).toLocaleString() : '') + '</div>' : '')
+            + actions
+            + '</div>';
+        }).join('');
+      })
+      .catch(function(err) {
+        container.innerHTML = '<div style="color:#ef4444;padding:1rem;">Failed to load Self-Learning Log: ' + esc(err.message || String(err)) + '</div>';
+      });
+  }
+
+  window.loadSelfLearningLog = loadSelfLearningLog;
+
+  window.slAction = function(logId, action) {
+    if (action === 'reject' && !confirm('Reject this proposed fix? Hugo won\'t apply it.')) return;
+    apiFetch('/api/founder/self-learning-log/' + logId + '/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action }),
+    })
+    .then(function() {
+      delete loadedSections['self-learning-log'];
+      loadSelfLearningLog();
+    })
+    .catch(function(err) { alert('Action failed: ' + (err.message || err)); });
+  };
+
+  window.bulkApproveSafe = function() {
+    if (!confirm('Approve all low-risk pending items (formatting, greetings, FAQ accuracy)? Pricing and personality items are excluded.')) return;
+    apiFetch('/api/founder/self-learning-log/bulk-approve-safe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(d) {
+      alert('Approved ' + (d.approved_count || 0) + ' safe items. They\'ve been added to Hugo\'s knowledge.');
+      delete loadedSections['self-learning-log'];
+      loadSelfLearningLog();
+    })
+    .catch(function(err) { alert('Bulk approve failed: ' + (err.message || err)); });
+  };
+
+  // ── Live Correction Modal ──────────────────────────────────────────────────
+
+  window.showLiveCorrectionModal = function() {
+    document.getElementById('liveCorrectionModal').style.display = 'flex';
+    document.getElementById('lcTriggerText').value = '';
+    document.getElementById('lcCorrectText').value = '';
+    document.getElementById('lcResult').style.display = 'none';
+  };
+
+  window.closeLiveCorrectionModal = function() {
+    document.getElementById('liveCorrectionModal').style.display = 'none';
+  };
+
+  window.submitLiveCorrection = function() {
+    var trigger = document.getElementById('lcTriggerText').value.trim();
+    var correct = document.getElementById('lcCorrectText').value.trim();
+    var type = document.getElementById('lcType').value;
+    var resultEl = document.getElementById('lcResult');
+
+    if (!trigger || !correct || correct.length < 3) {
+      resultEl.style.display = 'block';
+      resultEl.style.color = '#ef4444';
+      resultEl.textContent = 'Both fields required (correct text min 3 chars)';
+      return;
+    }
+
+    resultEl.style.display = 'block';
+    resultEl.style.color = 'var(--text-dim)';
+    resultEl.textContent = 'Locking correction…';
+
+    apiFetch('/api/founder/live-correction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trigger_text: trigger, correct_text: correct, correction_type: type }),
+    })
+    .then(function(d) {
+      resultEl.style.color = '#10b981';
+      resultEl.textContent = '🔒 Locked! Knowledge entry #' + d.knowledge_entry_id + ' created. Hugo will use this from the next request.';
+      delete loadedSections['self-learning-log'];
+    })
+    .catch(function(err) {
+      resultEl.style.color = '#ef4444';
+      resultEl.textContent = 'Failed: ' + (err.message || err);
+    });
+  };
+
+  document.getElementById('liveCorrectionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeLiveCorrectionModal();
+  });
+
+  // ── God-Layer Controls ──────────────────────────────────────────────────────
+  // Loads and manages founder god-layer config: pricing locks, global rules,
+  // personality overrides, per-vertical defaults.
+
+  var _godLayerEditKey = null; // key currently being edited in the modal
+
+  function loadGodLayerConfig() {
+    apiFetch('/api/founder/god-config')
+      .then(function(d) {
+        var config = d.config || [];
+        renderPricingLocks(config.filter(function(r) { return r.config_key.startsWith('pricing_lock.'); }));
+        renderRuleList(config.filter(function(r) { return r.config_key.startsWith('global_rule.'); }), 'globalRulesList', 'global_rule');
+        renderRuleList(config.filter(function(r) { return r.config_key.startsWith('personality.'); }), 'personalityConfigList', 'personality');
+        renderRuleList(config.filter(function(r) { return r.config_key.startsWith('vertical_default.'); }), 'verticalDefaultsList', 'vertical_default');
+      })
+      .catch(function(err) {
+        ['pricingLocksGrid','globalRulesList','personalityConfigList','verticalDefaultsList'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.innerHTML = '<div style="color:#ef4444;padding:0.75rem;font-size:0.85rem;">Failed to load: ' + esc(err.message || 'Unknown error') + '</div>';
+        });
+      });
+  }
+
+  function renderPricingLocks(rows) {
+    var grid = document.getElementById('pricingLocksGrid');
+    if (!grid) return;
+    if (!rows.length) {
+      grid.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;">No pricing locks found. The migration may need to run.</div>';
+      return;
+    }
+    grid.innerHTML = rows.map(function(r) {
+      var label = r.config_key.replace('pricing_lock.', '').replace(/\./g, ' › ');
+      var isNumeric = !isNaN(parseFloat(r.config_value));
+      var displayVal = isNumeric ? '$' + r.config_value + '/mo' : r.config_value;
+      return '<div style="background:var(--surface);border:1px solid rgba(240,165,0,0.25);border-radius:10px;padding:1rem 1.25rem">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">' +
+        '<span style="font-size:0.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:0.05em">' + esc(label) + '</span>' +
+        '<span style="font-size:0.65rem;background:rgba(240,165,0,0.12);color:var(--amber);padding:2px 7px;border-radius:4px;border:1px solid rgba(240,165,0,0.25)">🔒 LOCKED</span>' +
+        '</div>' +
+        '<div style="font-family:\'Outfit\',sans-serif;font-size:1.8rem;font-weight:700;color:var(--text-bright);margin-bottom:0.4rem">' + esc(displayVal) + '</div>' +
+        '<div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:0.75rem">' + esc(r.description || r.config_key) + '</div>' +
+        '<button onclick="editPricingLock(' + JSON.stringify(r.config_key) + ',' + JSON.stringify(r.config_value) + ')" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:0.75rem;padding:4px 12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor=\'var(--amber)\';this.style.color=\'var(--amber)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">✏️ Edit</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  function renderRuleList(rows, containerId, prefix) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    if (!rows.length) {
+      el.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;padding:0.5rem 0">No ' + prefix.replace('_', ' ') + ' entries yet.</div>';
+      return;
+    }
+    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.6rem">' +
+      rows.map(function(r) {
+        var slug = r.config_key.replace(prefix + '.', '');
+        var canDelete = !r.config_key.startsWith('pricing_lock.');
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px">' +
+          '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:0.8rem;font-weight:700;color:var(--text);margin-bottom:2px">' + esc(slug.replace(/_/g,' ')) + '</div>' +
+          '<div style="font-size:0.8rem;color:var(--text-dim);word-break:break-word">' + esc(r.config_value) + '</div>' +
+          (r.description ? '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;font-style:italic">' + esc(r.description) + '</div>' : '') +
+          '</div>' +
+          '<div style="display:flex;gap:0.4rem;align-items:center;flex-shrink:0">' +
+          (r.is_locked ? '<span style="font-size:0.65rem;background:var(--amber-glow);color:var(--amber);padding:2px 6px;border-radius:4px;border:1px solid rgba(240,165,0,0.2)">🔒</span>' : '') +
+          '<button onclick="editGodLayerEntry(' + JSON.stringify(r.config_key) + ',' + JSON.stringify(r.config_value) + ',' + JSON.stringify(r.description||'') + ',' + (r.is_locked ? 'true' : 'false') + ')" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:0.72rem;padding:3px 9px;cursor:pointer">✏️</button>' +
+          (canDelete ? '<button onclick="deleteGodLayerEntry(' + JSON.stringify(r.config_key) + ')" style="background:transparent;border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;font-size:0.72rem;padding:3px 9px;cursor:pointer">🗑️</button>' : '') +
+          '</div>' +
+          '</div>';
+      }).join('') +
+      '</div>';
+  }
+
+  // Open pricing lock edit modal
+  window.editPricingLock = function(key, currentValue) {
+    document.getElementById('peConfigKey').value = key;
+    document.getElementById('peConfigValue').value = currentValue;
+    document.getElementById('peResult').style.display = 'none';
+    _godLayerEditKey = key;
+    document.getElementById('pricingEditModal').classList.add('open');
+  };
+
+  window.closePricingEditModal = function() {
+    document.getElementById('pricingEditModal').classList.remove('open');
+  };
+
+  window.submitPricingEdit = function() {
+    var key = document.getElementById('peConfigKey').value;
+    var value = document.getElementById('peConfigValue').value.trim();
+    var resultEl = document.getElementById('peResult');
+    if (!value) {
+      resultEl.style.display = 'block';
+      resultEl.style.color = '#ef4444';
+      resultEl.textContent = 'Value is required';
+      return;
+    }
+    resultEl.style.display = 'block';
+    resultEl.style.color = 'var(--text-dim)';
+    resultEl.textContent = 'Saving…';
+    apiFetch('/api/founder/god-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config_key: key, config_value: value, is_locked: true }),
+    })
+    .then(function() {
+      resultEl.style.color = '#10b981';
+      resultEl.textContent = '🔒 Pricing lock updated! Hugo will use this from the next request (cache clears in 60s).';
+      delete loadedSections['god-layer'];
+      setTimeout(function() {
+        closePricingEditModal();
+        loadGodLayerConfig();
+      }, 1500);
+    })
+    .catch(function(err) {
+      resultEl.style.color = '#ef4444';
+      resultEl.textContent = 'Failed: ' + (err.message || err);
+    });
+  };
+
+  // Open add/edit rule modal
+  window.showAddRuleModal = function(prefix) {
+    _godLayerEditKey = null;
+    document.getElementById('glConfigKey').value = prefix + '.';
+    document.getElementById('glConfigKey').readOnly = false;
+    document.getElementById('glConfigValue').value = '';
+    document.getElementById('glConfigDesc').value = '';
+    document.getElementById('glIsLocked').checked = true;
+    document.getElementById('glResult').style.display = 'none';
+    document.getElementById('godLayerModalTitle').textContent = 'Add ' + prefix.replace('_', ' ') + ' entry';
+    document.getElementById('godLayerModal').classList.add('open');
+  };
+
+  window.editGodLayerEntry = function(key, value, desc, locked) {
+    _godLayerEditKey = key;
+    document.getElementById('glConfigKey').value = key;
+    document.getElementById('glConfigKey').readOnly = true;
+    document.getElementById('glConfigValue').value = value;
+    document.getElementById('glConfigDesc').value = desc || '';
+    document.getElementById('glIsLocked').checked = !!locked;
+    document.getElementById('glResult').style.display = 'none';
+    document.getElementById('godLayerModalTitle').textContent = 'Edit Config Entry';
+    document.getElementById('godLayerModal').classList.add('open');
+  };
+
+  window.closeGodLayerModal = function() {
+    document.getElementById('godLayerModal').classList.remove('open');
+  };
+
+  window.submitGodLayerConfig = function() {
+    var key = document.getElementById('glConfigKey').value.trim();
+    var value = document.getElementById('glConfigValue').value.trim();
+    var desc = document.getElementById('glConfigDesc').value.trim();
+    var locked = document.getElementById('glIsLocked').checked;
+    var resultEl = document.getElementById('glResult');
+
+    if (!key || !value) {
+      resultEl.style.display = 'block';
+      resultEl.style.color = '#ef4444';
+      resultEl.textContent = 'Config key and value are required';
+      return;
+    }
+    resultEl.style.display = 'block';
+    resultEl.style.color = 'var(--text-dim)';
+    resultEl.textContent = 'Saving…';
+
+    apiFetch('/api/founder/god-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config_key: key, config_value: value, description: desc || null, is_locked: locked }),
+    })
+    .then(function() {
+      resultEl.style.color = '#10b981';
+      resultEl.textContent = '✅ Saved! Hugo will use this from the next request.';
+      delete loadedSections['god-layer'];
+      setTimeout(function() {
+        closeGodLayerModal();
+        loadGodLayerConfig();
+      }, 1200);
+    })
+    .catch(function(err) {
+      resultEl.style.color = '#ef4444';
+      resultEl.textContent = 'Failed: ' + (err.message || err);
+    });
+  };
+
+  window.deleteGodLayerEntry = function(key) {
+    if (!confirm('Delete "' + key + '"? This cannot be undone.')) return;
+    apiFetch('/api/founder/god-config/' + encodeURIComponent(key), { method: 'DELETE' })
+      .then(function() {
+        delete loadedSections['god-layer'];
+        loadGodLayerConfig();
+      })
+      .catch(function(err) { alert('Delete failed: ' + (err.message || err)); });
+  };
+
+  // Close modals on backdrop click
+  document.getElementById('godLayerModal').addEventListener('click', function(e) { if (e.target === this) closeGodLayerModal(); });
+  document.getElementById('pricingEditModal').addEventListener('click', function(e) { if (e.target === this) closePricingEditModal(); });
+
+  window.loadGodLayerConfig = loadGodLayerConfig;
+
+  // ── Hugo Test Section ───────────────────────────────────────────────────────
+  // Current test persona: 'real_estate' (default) or 'trade'
+  var _founderTestPersona = 'real_estate';
+
+  // ─── Eagle's Eye: Live Network Map ───────────────────────────────────────────
+  // Shows network_leads (blue dots) + network_signups (green pins) + operator areas.
+  // Polls /api/network-leads/eagle-eye every 30s; adds NEW dots without full refresh.
+
+  var _eagleMap = null;
+  var _eagleMapReady = false;
+  var _eaglePollTimer = null;
+  var _eagleLeadLayerGroup = null;
+  var _eagleSignupLayerGroup = null;
+  var _eagleOpLayerGroup = null;
+  var _eagleKnownLeadIds = new Set();
+  var _eagleKnownSignupIds = new Set();
+  var _eagleFirstLoad = true;
+
+  function initNetworkMap() {
+    if (_eagleMapReady) return;
+    // Guard: if Leaflet hasn't loaded yet, retry after a short delay
+    if (typeof L === 'undefined') {
+      setTimeout(initNetworkMap, 300);
+      return;
+    }
+    _eagleMapReady = true;
+    // Defer map creation slightly so the section's display:block has reflowed
+    setTimeout(function() {
+      eagleInitMap();
+      eagleRefresh(false);
+    }, 100);
+  }
+
+  function eagleInitMap() {
+    if (typeof L === 'undefined') return;
+    if (_eagleMap) return;
+
+    _eagleMap = L.map('eagleEyeMap', { zoomControl: true }).setView([-33.8688, 151.2093], 7);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(_eagleMap);
+
+    _eagleOpLayerGroup     = L.layerGroup().addTo(_eagleMap);
+    _eagleLeadLayerGroup   = L.layerGroup().addTo(_eagleMap);
+    _eagleSignupLayerGroup = L.layerGroup().addTo(_eagleMap);
+
+    // Force Leaflet to recalculate container size after browser reflow
+    // (map may init before layout settles when section switches from display:none to block)
+    setTimeout(function() { if (_eagleMap) _eagleMap.invalidateSize(); }, 200);
+  }
+
+  window.eagleRefresh = function(manual) {
+    if (manual) {
+      // On manual refresh reset everything and do a clean reload
+      _eagleKnownLeadIds.clear();
+      _eagleKnownSignupIds.clear();
+      if (_eagleLeadLayerGroup) _eagleLeadLayerGroup.clearLayers();
+      if (_eagleSignupLayerGroup) _eagleSignupLayerGroup.clearLayers();
+      if (_eagleOpLayerGroup) _eagleOpLayerGroup.clearLayers();
+    }
+    eagleLoadData();
+  };
+
+  window.eagleToggleOpTable = function() {
+    var wrap = document.getElementById('eagleOpTableWrap');
+    var chv  = document.getElementById('eagleOpChevron');
+    if (!wrap) return;
+    var open = wrap.style.display !== 'none';
+    wrap.style.display = open ? 'none' : '';
+    if (chv) chv.textContent = open ? '▼' : '▲';
+  };
+
+  function eagleLoadData() {
+    // Fetch eagle-eye data (leads + signups) and operator service areas in parallel
+    Promise.all([
+      fetch('/api/network-leads/eagle-eye', { credentials: 'include' }).then(function(r) { return r.json(); }),
+      fetch('/api/referrals/network-map', { credentials: 'include' }).then(function(r) { return r.json(); }),
+    ]).then(function(results) {
+      var eagleData = results[0];
+      var opData    = results[1];
+
+      if (!_eagleMap) eagleInitMap();
+
+      if (eagleData.success) {
+        eagleRenderLeads(eagleData.leads || []);
+        eagleRenderSignups(eagleData.signups || []);
+        eagleUpdateCounters(eagleData.counts || {}, eagleData.leads || [], eagleData.signups || []);
+        eagleUpdateFeeds(eagleData.leads || [], eagleData.signups || []);
+        eagleToggleEmptyState(eagleData.counts || {});
+      }
+
+      if (opData && opData.success) {
+        eagleRenderOperators(opData.operators || []);
+        renderFounderOpTable(opData.operators || []);
+        var opCountEl = document.getElementById('eagleOpCount');
+        if (opCountEl) opCountEl.textContent = (opData.operators || []).length;
+      }
+
+      var lastEl = document.getElementById('eagleLastUpdated');
+      if (lastEl) lastEl.textContent = new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+
+      _eagleFirstLoad = false;
+
+      // Schedule next poll (30s)
+      clearTimeout(_eaglePollTimer);
+      _eaglePollTimer = setTimeout(function() { eagleLoadData(); }, 30000);
+
+    }).catch(function(err) {
+      console.warn('[EagleEye] load error:', err.message || err);
+      // Retry after 60s on failure
+      clearTimeout(_eaglePollTimer);
+      _eaglePollTimer = setTimeout(function() { eagleLoadData(); }, 60000);
+    });
+  }
+
+  function eagleRenderLeads(leads) {
+    if (!_eagleMap || !_eagleLeadLayerGroup) return;
+    var newCount = 0;
+    leads.forEach(function(lead) {
+      if (_eagleKnownLeadIds.has(lead.id)) return;
+      if (!lead.lat || !lead.lng) return;
+      _eagleKnownLeadIds.add(lead.id);
+      newCount++;
+
+      var urgencyColor = lead.urgency === 'today' ? '#f87171' : lead.urgency === 'this_week' ? '#fbbf24' : '#60a5fa';
+      var ts = lead.created_at ? new Date(lead.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Pulse circle for very recent leads (< 1 hour old)
+      var isRecent = lead.created_at && (Date.now() - new Date(lead.created_at).getTime()) < 3600000;
+      var dotHtml = isRecent
+        ? '<div style="width:12px;height:12px;border-radius:50%;background:' + urgencyColor + ';box-shadow:0 0 0 3px rgba(96,165,250,0.25),0 0 8px rgba(96,165,250,0.5);"></div>'
+        : '<div style="width:10px;height:10px;border-radius:50%;background:#60a5fa;border:1.5px solid rgba(96,165,250,0.5);opacity:0.85;"></div>';
+
+      var icon = L.divIcon({ html: dotHtml, iconSize: [12, 12], iconAnchor: [6, 6], className: '' });
+      L.marker([lead.lat, lead.lng], { icon: icon })
+        .bindPopup(
+          '<strong>🔵 Network Lead</strong><br>' +
+          (lead.trade ? '🔧 ' + lead.trade + '<br>' : '') +
+          (lead.suburb ? '📍 ' + lead.suburb + '<br>' : '') +
+          (lead.urgency ? '⏱ ' + lead.urgency.replace(/_/g, ' ') + '<br>' : '') +
+          (ts ? '🕐 ' + ts : '')
+        )
+        .addTo(_eagleLeadLayerGroup);
+    });
+
+    // Flash the live pulse on new data
+    if (newCount > 0 && !_eagleFirstLoad) {
+      var pulse = document.getElementById('eagleLivePulse');
+      if (pulse) { pulse.style.background = '#34d399'; setTimeout(function() { pulse.style.background = 'var(--green)'; }, 800); }
+    }
+  }
+
+  function eagleRenderSignups(signups) {
+    if (!_eagleMap || !_eagleSignupLayerGroup) return;
+    signups.forEach(function(signup) {
+      if (_eagleKnownSignupIds.has(signup.id)) return;
+      if (!signup.lat || !signup.lng) return;
+      _eagleKnownSignupIds.add(signup.id);
+
+      var ts = signup.created_at ? new Date(signup.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Green radius circle (default 25km service area)
+      L.circle([signup.lat, signup.lng], {
+        radius: 25000,
+        color: '#34d399',
+        fillColor: '#34d399',
+        fillOpacity: 0.05,
+        weight: 1,
+      }).bindPopup(
+        '<strong>🟢 Tradie Signup</strong><br>' +
+        (signup.trade ? '🔧 ' + signup.trade + '<br>' : '') +
+        (signup.business_name ? '🏢 ' + signup.business_name + '<br>' : '') +
+        (signup.service_area ? '📍 ' + signup.service_area + '<br>' : '') +
+        (ts ? '🕐 ' + ts : '')
+      ).addTo(_eagleSignupLayerGroup);
+
+      // Triangle pin for tradie
+      var pinIcon = L.divIcon({
+        html: '<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:11px solid #34d399;filter:drop-shadow(0 1px 4px rgba(52,211,153,0.5));"></div>',
+        iconSize: [12, 11], iconAnchor: [6, 11], className: ''
+      });
+      L.marker([signup.lat, signup.lng], { icon: pinIcon })
+        .bindPopup(
+          '<strong>🟢 Tradie Signup</strong><br>' +
+          (signup.trade ? '🔧 ' + signup.trade + '<br>' : '') +
+          (signup.business_name ? '🏢 ' + signup.business_name + '<br>' : '') +
+          (signup.service_area ? '📍 ' + signup.service_area + '<br>' : '') +
+          (ts ? '🕐 ' + ts : '')
+        )
+        .addTo(_eagleSignupLayerGroup);
+    });
+  }
+
+  function eagleRenderOperators(operators) {
+    if (!_eagleMap || !_eagleOpLayerGroup) return;
+    _eagleOpLayerGroup.clearLayers();
+    operators.forEach(function(op) {
+      if (!op.lat || !op.lng) return;
+      var radiusM = (op.radius_km || 20) * 1000;
+      var color = op.lead_count > 10 ? '#10b981' : op.lead_count > 2 ? '#f0a500' : '#94a3b8';
+
+      L.circle([op.lat, op.lng], {
+        radius: radiusM, color: color, fillColor: color, fillOpacity: 0.06, weight: 1, dashArray: '4 4',
+      }).bindPopup(
+        '<strong>🟠 ' + (op.name || 'Operator') + '</strong><br>' +
+        (op.trade_type ? '🔧 ' + op.trade_type + '<br>' : '') +
+        (op.suburb ? '📍 ' + op.suburb + '<br>' : '') +
+        '🎯 ' + op.lead_count + ' leads · 📤 ' + op.referrals_out + ' referrals'
+      ).addTo(_eagleOpLayerGroup);
+
+      var opIcon = L.divIcon({
+        html: '<div style="font-size:0.85rem;line-height:1;filter:drop-shadow(0 0 3px ' + color + '88);">🟠</div>',
+        iconSize: [14, 14], iconAnchor: [7, 7], className: ''
+      });
+      L.marker([op.lat, op.lng], { icon: opIcon })
+        .bindPopup(
+          '<strong>🟠 ' + (op.name || 'Operator') + '</strong><br>' +
+          (op.trade_type ? '🔧 ' + op.trade_type + '<br>' : '') +
+          '🎯 ' + op.lead_count + ' leads'
+        )
+        .addTo(_eagleOpLayerGroup);
+    });
+  }
+
+  function eagleUpdateCounters(counts, leads, signups) {
+    var leadEl   = document.getElementById('eagleLeadCount');
+    var signupEl = document.getElementById('eagleSignupCount');
+    var mappedLEl = document.getElementById('eagleLeadMapped');
+    var mappedSEl = document.getElementById('eagleSignupMapped');
+    if (leadEl)   leadEl.textContent   = counts.leads_total   || leads.length   || 0;
+    if (signupEl) signupEl.textContent = counts.signups_total || signups.length || 0;
+    if (mappedLEl) mappedLEl.textContent = (counts.leads_mapped || 0) + ' mapped';
+    if (mappedSEl) mappedSEl.textContent = (counts.signups_mapped || 0) + ' mapped';
+  }
+
+  function eagleUpdateFeeds(leads, signups) {
+    var leadFeed   = document.getElementById('eagleLeadFeed');
+    var signupFeed = document.getElementById('eagleSignupFeed');
+
+    if (leadFeed) {
+      if (!leads.length) {
+        leadFeed.innerHTML = '<div style="color:var(--text-dim);font-size:0.78rem;padding:0.75rem;text-align:center;">No leads yet</div>';
+      } else {
+        leadFeed.innerHTML = leads.slice(0, 15).map(function(l) {
+          var ts = l.created_at ? new Date(l.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+          var mapped = l.lat ? '<span style="color:var(--green);font-size:0.65rem;">●</span>' : '<span style="color:var(--text-dim);font-size:0.65rem;">○</span>';
+          return '<div style="display:flex;align-items:flex-start;gap:0.5rem;padding:0.5rem;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+            mapped +
+            '<div style="min-width:0;flex:1;">' +
+              '<div style="font-size:0.78rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (l.trade || '—') + (l.suburb ? ' · ' + l.suburb : '') + '</div>' +
+              '<div style="font-size:0.67rem;color:var(--text-dim);">' + ts + (l.urgency ? ' · ' + l.urgency.replace(/_/g, ' ') : '') + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+    }
+
+    if (signupFeed) {
+      if (!signups.length) {
+        signupFeed.innerHTML = '<div style="color:var(--text-dim);font-size:0.78rem;padding:0.75rem;text-align:center;">No signups yet</div>';
+      } else {
+        signupFeed.innerHTML = signups.slice(0, 15).map(function(s) {
+          var ts = s.created_at ? new Date(s.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+          var mapped = s.lat ? '<span style="color:var(--green);font-size:0.65rem;">●</span>' : '<span style="color:var(--text-dim);font-size:0.65rem;">○</span>';
+          return '<div style="display:flex;align-items:flex-start;gap:0.5rem;padding:0.5rem;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+            mapped +
+            '<div style="min-width:0;flex:1;">' +
+              '<div style="font-size:0.78rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (s.trade || '—') + (s.business_name ? ' · ' + s.business_name : '') + '</div>' +
+              '<div style="font-size:0.67rem;color:var(--text-dim);">' + ts + (s.service_area ? ' · ' + s.service_area.split(',')[0] : '') + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+    }
+  }
+
+  function eagleToggleEmptyState(counts) {
+    var emptyEl = document.getElementById('eagleEmptyState');
+    if (!emptyEl) return;
+    var hasData = (counts.leads_total || 0) + (counts.signups_total || 0) > 0;
+    emptyEl.style.display = hasData ? 'none' : 'flex';
+  }
+
+  function renderFounderOpTable(operators) {
+    var cnt = document.getElementById('networkMapOpCount');
+    if (cnt) cnt.textContent = operators.length + ' operators';
+    var tbody = document.getElementById('networkMapOpTable');
+    if (!tbody) return;
+    if (!operators.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">No operators yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = operators.map(function(op) {
+      var mapLink = (op.lat && op.lng)
+        ? '<a href="https://www.openstreetmap.org/?mlat=' + op.lat + '&mlon=' + op.lng + '&zoom=12" target="_blank" style="color:var(--blue);font-size:0.75rem;">View →</a>'
+        : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>';
+      return '<tr>' +
+        '<td>' + (op.name || '—') + '</td>' +
+        '<td>' + (op.trade_type || '—') + '</td>' +
+        '<td>' + (op.suburb || '<span style="color:var(--text-dim)">Not set</span>') + '</td>' +
+        '<td>' + (op.radius_km || 20) + ' km</td>' +
+        '<td><strong>' + op.lead_count + '</strong></td>' +
+        '<td>' + op.referrals_out + '</td>' +
+        '<td>' + mapLink + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function initHugoTestSection() {
+    // Ensure widget is configured with the current persona on first visit
+    applyFounderTestPersona(_founderTestPersona);
+  }
+
+  // Called by persona toggle buttons in section-hugo-test
+  window.setFounderTestPersona = function(persona) {
+    _founderTestPersona = persona;
+    applyFounderTestPersona(persona);
+  };
+
+  function applyFounderTestPersona(persona) {
+    // Update button styles
+    var reBtn = document.getElementById('hugoTestPersonaRE');
+    var tradeBtn = document.getElementById('hugoTestPersonaTrade');
+    var label = document.getElementById('hugoTestPersonaLabel');
+    if (reBtn) {
+      reBtn.style.background = (persona === 'real_estate') ? 'var(--amber)' : 'var(--surface)';
+      reBtn.style.color = (persona === 'real_estate') ? 'var(--midnight)' : 'var(--text)';
+      reBtn.style.border = (persona === 'real_estate') ? 'none' : '1px solid var(--border)';
+      reBtn.style.fontWeight = (persona === 'real_estate') ? '700' : '600';
+    }
+    if (tradeBtn) {
+      tradeBtn.style.background = (persona !== 'real_estate') ? 'var(--amber)' : 'var(--surface)';
+      tradeBtn.style.color = (persona !== 'real_estate') ? 'var(--midnight)' : 'var(--text)';
+      tradeBtn.style.border = (persona !== 'real_estate') ? 'none' : '1px solid var(--border)';
+      tradeBtn.style.fontWeight = (persona !== 'real_estate') ? '700' : '600';
+    }
+    if (label) {
+      var name = (persona === 'real_estate') ? 'RE Agent (propops.pro)' : 'Tradie (propops.trade)';
+      label.innerHTML = 'Active: <strong style="color:var(--amber)">' + name + '</strong>';
+    }
+    // Configure widget persona — wait for widget script to load if needed
+    (function syncWidget(retries) {
+      if (window.HugoWidget && typeof window.HugoWidget.setBusinessType === 'function') {
+        window.HugoWidget.setBusinessType(persona);
+        // Mark as founder test mode so Brain can tag convs with source_platform: founder_test
+        if (typeof window.HugoWidget.setOperatorContext === 'function') {
+          window.HugoWidget.setOperatorContext('Founder', 'founder@propops.pro', persona === 'real_estate' ? 'real_estate' : 'trade');
+        }
+      } else if (retries > 0) {
+        setTimeout(function() { syncWidget(retries - 1); }, 200);
+      }
+    })(20);
+  }
+
+})();
+</script>
+
+<!-- Hugo chat widget — same brain as landing pages, test mode active -->
+<script src="/hugo-widget.js?v=10" defer></script>
+
+<!-- Leaflet JS — CSS is in <head>; no SRI to avoid silent CDN hash-drift failures -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</body>
+</html>

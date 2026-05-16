@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log in — PropOps.Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --navy: #0f172a;
+            --amber: #f59e0b;
+            --amber-dark: #d97706;
+            --border: #e2e8f0;
+            --bg-off: #f8fafc;
+            --muted: #94a3b8;
+            --slate: #334155;
+            --green: #059669;
+            --green-bg: #d1fae5;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-off);
+            color: var(--navy);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            max-width: 440px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .card-header {
+            background: var(--navy);
+            padding: 24px 40px;
+        }
+        .logo img { height: 32px; width: auto; display: block; }
+        .card-body { padding: 32px 40px 36px; }
+
+        h1 { font-size: 1.35rem; font-weight: 800; margin-bottom: 0.35rem; }
+        .subtitle { font-size: 0.875rem; color: var(--slate); line-height: 1.6; margin-bottom: 1.75rem; }
+        label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--navy); margin-bottom: 0.35rem; }
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.72rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            color: var(--navy);
+            outline: none;
+            transition: border-color 0.15s;
+            margin-bottom: 1.1rem;
+        }
+        input:focus { border-color: var(--amber); }
+
+        .btn {
+            width: 100%;
+            padding: 0.85rem;
+            background: var(--amber);
+            color: var(--navy);
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:hover { background: var(--amber-dark); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: var(--navy);
+            color: #fff;
+        }
+        .btn-secondary:hover { background: #1e293b; }
+
+        .error-banner, .warning-banner, .success-banner {
+            display: none;
+            padding: 0.72rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .error-banner { background: #fee2e2; color: #dc2626; }
+        .warning-banner { background: #fef3c7; color: #92400e; }
+        .success-banner { background: var(--green-bg); color: var(--green); font-weight: 600; }
+
+        /* Magic link sent state */
+        .sent-state { display: none; text-align: center; padding: 1rem 0; }
+        .sent-icon {
+            width: 56px; height: 56px;
+            background: var(--green-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            font-size: 1.6rem;
+        }
+        .sent-state h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .sent-state p { font-size: 0.875rem; color: var(--slate); line-height: 1.6; }
+        .sent-email { font-weight: 700; color: var(--navy); }
+        .resend-btn {
+            display: inline-block;
+            margin-top: 1.25rem;
+            font-size: 0.82rem;
+            color: var(--amber-dark);
+            font-weight: 600;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            text-decoration: underline;
+        }
+        .resend-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Password fallback section */
+        .divider {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.78rem;
+            margin: 1.5rem 0 1.25rem;
+            position: relative;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            display: inline-block;
+            width: calc(50% - 3rem);
+            height: 1px;
+            background: var(--border);
+            vertical-align: middle;
+            margin: 0 0.5rem;
+        }
+        .password-section { display: none; }
+        .password-toggle {
+            text-align: center;
+            font-size: 0.82rem;
+            color: var(--muted);
+            margin-top: 1.25rem;
+        }
+        .password-toggle a {
+            color: var(--amber-dark);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .password-toggle a:hover { text-decoration: underline; }
+        .forgot-link {
+            display: block;
+            text-align: right;
+            font-size: 0.8rem;
+            color: var(--amber-dark);
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: -0.6rem;
+            margin-bottom: 1.25rem;
+        }
+        .forgot-link:hover { text-decoration: underline; }
+        .signup-link {
+            text-align: center;
+            margin-top: 1.4rem;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        .signup-link a { color: var(--amber-dark); font-weight: 600; text-decoration: none; }
+        .signup-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="card-header">
+        <a href="/" class="logo" aria-label="PropOps.Pro — Home">
+            <img src="/logo-white.svg" alt="PropOps.Pro" height="32">
+        </a>
+    </div>
+
+    <div class="card-body">
+
+        <div class="error-banner"  id="errorBanner"></div>
+        <div class="warning-banner" id="warningBanner"></div>
+
+        <!-- ── Magic link form (default) ─────────────────────────── -->
+        <div id="magicForm">
+            <h1>Welcome back</h1>
+            <p class="subtitle">Enter your email and we'll send you a one-click login link — no password needed.</p>
+
+            <form onsubmit="sendMagicLink(event)">
+                <label for="mlEmail">Email address</label>
+                <input type="email" id="mlEmail" placeholder="you@example.com" required autocomplete="email">
+                <button type="submit" class="btn" id="mlSubmitBtn">Send login link</button>
+            </form>
+
+            <div class="password-toggle" id="pwToggleRow">
+                <a onclick="showPasswordForm()" id="pwToggleLink">Sign in with password instead</a>
+            </div>
+        </div>
+
+        <!-- ── Magic link sent confirmation ─────────────────────── -->
+        <div class="sent-state" id="sentState">
+            <div class="sent-icon">✉️</div>
+            <h2>Check your email</h2>
+            <p>We sent a login link to<br><span class="sent-email" id="sentEmailDisplay"></span></p>
+            <p style="margin-top:0.75rem;font-size:0.8rem;color:var(--muted);">The link expires in 15 minutes. Check your spam folder if it doesn't arrive.</p>
+            <button class="resend-btn" id="resendBtn" onclick="resendLink()">Didn't get it? Resend →</button>
+        </div>
+
+        <!-- ── Password form (fallback, hidden by default) ────────── -->
+        <div class="password-section" id="passwordSection">
+            <div class="divider">or sign in with password</div>
+
+            <div class="error" id="passwordError" style="display:none;padding:0.72rem 1rem;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:0.85rem;margin-bottom:1rem;"></div>
+
+            <form onsubmit="doPasswordLogin(event)">
+                <label for="pwEmail">Email address</label>
+                <input type="email" id="pwEmail" placeholder="you@example.com" required autocomplete="email">
+
+                <label for="pwPassword">Password</label>
+                <input type="password" id="pwPassword" placeholder="Your password" required autocomplete="current-password">
+
+                <a href="/forgot-password" class="forgot-link">Forgot password?</a>
+
+                <button type="submit" class="btn btn-secondary" id="pwSubmitBtn">Sign in with password</button>
+            </form>
+
+            <div class="password-toggle" style="margin-top:1rem;">
+                <a onclick="showMagicForm()">Use magic link instead</a>
+            </div>
+        </div>
+
+        <p class="signup-link" id="signupLinkRow">
+            Not signed up yet? <a href="/#pricing">Start your free trial &rarr;</a>
+        </p>
+    </div>
+</div>
+
+<script>
+// ── URL param error/success messages ─────────────────────────────────────────
+var params = new URLSearchParams(window.location.search);
+var urlError = params.get('error');
+var urlSuccess = params.get('success');
+
+// WHY: /pays (and other protected routes) pass ?redirect= so we can return the user
+// there after login instead of always landing on /dashboard (POL-1565942 fix)
+var _loginRedirect = params.get('redirect') || '/dashboard';
+// Persist in a cookie so the server-side magic-link verify can read it too
+document.cookie = 'login_redirect=' + encodeURIComponent(_loginRedirect) + '; path=/; max-age=900; SameSite=Lax';
+
+if (urlError) {
+    var errorBanner = document.getElementById('errorBanner');
+    var errorMessages = {
+        'missing_token': 'Login link is missing. Please request a new one.',
+        'invalid_or_expired': 'That login link has expired or has already been used. Please request a new one.',
+        'server_error': 'Something went wrong. Please try again.'
+    };
+    errorBanner.textContent = errorMessages[urlError] || 'Login failed. Please try again.';
+    errorBanner.style.display = 'block';
+}
+
+if (urlSuccess) {
+    var warningBanner = document.getElementById('warningBanner');
+    var successMessages = {
+        'password_reset': 'Password reset — you can now sign in with your new password.'
+    };
+    warningBanner.textContent = successMessages[urlSuccess] || urlSuccess;
+    warningBanner.style.display = 'block';
+}
+
+// Pre-fill email from URL (e.g. after signup redirect)
+var prefillEmail = params.get('email');
+if (prefillEmail) {
+    document.getElementById('mlEmail').value = prefillEmail;
+}
+
+// ── Magic link flow ──────────────────────────────────────────────────────────
+
+var _lastEmail = '';
+
+async function sendMagicLink(e) {
+    e.preventDefault();
+    var email = document.getElementById('mlEmail').value.trim();
+    var btn   = document.getElementById('mlSubmitBtn');
+    if (!email) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Sending\u2026';
+
+    try {
+        var res = await fetch('/api/auth/magic-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email: email })
+        });
+        var data = await res.json();
+
+        if (data.success) {
+            _lastEmail = email;
+            showSentState(email);
+        } else {
+            var eb = document.getElementById('errorBanner');
+            eb.textContent = data.message || 'Failed to send login link. Please try again.';
+            eb.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Send login link';
+        }
+    } catch (err) {
+        var eb = document.getElementById('errorBanner');
+        eb.textContent = 'Network error \u2014 please check your connection and try again.';
+        eb.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Send login link';
+    }
+}
+
+function showSentState(email) {
+    document.getElementById('magicForm').style.display = 'none';
+    document.getElementById('signupLinkRow').style.display = 'none';
+    document.getElementById('passwordSection').style.display = 'none';
+    document.getElementById('sentEmailDisplay').textContent = email;
+    document.getElementById('sentState').style.display = 'block';
+}
+
+var _resendCooldown = false;
+async function resendLink() {
+    if (_resendCooldown || !_lastEmail) return;
+    var btn = document.getElementById('resendBtn');
+    _resendCooldown = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending\u2026';
+
+    try {
+        await fetch('/api/auth/magic-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email: _lastEmail })
+        });
+    } catch (e) { /* ignore */ }
+
+    btn.textContent = 'Sent! Check your inbox.';
+    setTimeout(function() {
+        btn.textContent = 'Didn\u2019t get it? Resend \u2192';
+        btn.disabled = false;
+        _resendCooldown = false;
+    }, 30000); // 30s cooldown
+}
+
+// ── Password form toggle ──────────────────────────────────────────────────────
+
+function showPasswordForm() {
+    // Sync email input across forms
+    var mlEmail = document.getElementById('mlEmail').value;
+    if (mlEmail) document.getElementById('pwEmail').value = mlEmail;
+    document.getElementById('passwordSection').style.display = 'block';
+    document.getElementById('pwToggleRow').style.display = 'none';
+    document.getElementById('pwEmail').focus();
+}
+
+function showMagicForm() {
+    document.getElementById('passwordSection').style.display = 'none';
+    document.getElementById('pwToggleRow').style.display = 'block';
+    // Sync email back
+    var pwEmail = document.getElementById('pwEmail').value;
+    if (pwEmail) document.getElementById('mlEmail').value = pwEmail;
+}
+
+// ── Password login ────────────────────────────────────────────────────────────
+
+async function doPasswordLogin(e) {
+    e.preventDefault();
+    var email    = document.getElementById('pwEmail').value.trim();
+    var password = document.getElementById('pwPassword').value;
+    var btn      = document.getElementById('pwSubmitBtn');
+    var errorEl  = document.getElementById('passwordError');
+
+    if (!email || !password) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in\u2026';
+    errorEl.style.display = 'none';
+
+    try {
+        // Clear existing session first
+        try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
+
+        // Clear stale caches
+        if ('caches' in window) {
+            try { var keys = await caches.keys(); await Promise.all(keys.map(function(k) { return caches.delete(k); })); } catch (e) {}
+        }
+        localStorage.removeItem('propops_token');
+        localStorage.removeItem('relio_token');
+
+        var res = await fetch('/api/auth/password-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email: email, password: password })
+        });
+        var data = await res.json();
+
+        if (data.success) {
+            if (data.token) localStorage.setItem('propops_token', data.token);
+            window.location.href = _loginRedirect;
+        } else {
+            errorEl.textContent = data.message || 'Sign in failed. Please try again.';
+            errorEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Sign in with password';
+        }
+    } catch (err) {
+        errorEl.textContent = 'Network error \u2014 please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Sign in with password';
+    }
+}
+</script>
+
+</body>
+</html>

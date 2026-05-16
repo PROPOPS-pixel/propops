@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Founder Access — PropOps</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #f59e0b;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+        label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 11px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f8fafc;
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+            margin-bottom: 16px;
+        }
+        input[type="email"]:focus,
+        input[type="password"]:focus {
+            border-color: #f59e0b;
+        }
+        input::placeholder { color: #475569; }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #f59e0b;
+            color: #0f172a;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-top: 4px;
+        }
+        button:hover { background: #d97706; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        .error-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid #1e293b;
+            margin: 28px 0;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            font-size: 0.82rem;
+            color: #475569;
+            text-decoration: none;
+        }
+        .back-link:hover { color: #94a3b8; }
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(15,23,42,0.3);
+            border-top-color: #0f172a;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M5 1L6.18 3.39L8.8 3.76L6.9 5.61L7.36 8.22L5 6.98L2.64 8.22L3.1 5.61L1.2 3.76L3.82 3.39L5 1Z" fill="currentColor"/>
+            </svg>
+            Founder Access
+        </div>
+        <h1>PropOps Dashboard</h1>
+        <p class="subtitle">Private. Not for operators or customers.</p>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <form id="loginForm" autocomplete="on">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+
+            <button type="submit" id="submitBtn">
+                <span id="btnText">Sign in</span>
+                <div class="spinner" id="spinner"></div>
+            </button>
+        </form>
+
+        <a href="/" class="back-link" style="margin-top: 24px; display: block;">← Back to PropOps</a>
+    </div>
+
+    <script>
+        // If already logged in as founder, go straight to dashboard
+        (async () => {
+            try {
+                const r = await fetch('/api/founder/me', { credentials: 'include' });
+                if (r.ok) {
+                    const d = await r.json();
+                    if (d.success && d.is_founder) window.location.replace('/founder');
+                }
+            } catch {}
+        })();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            const errorBox = document.getElementById('errorBox');
+
+            errorBox.style.display = 'none';
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            spinner.style.display = 'block';
+
+            try {
+                const res = await fetch('/api/founder/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password }),
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    window.location.replace('/founder');
+                } else {
+                    errorBox.textContent = data.message || 'Access denied';
+                    errorBox.style.display = 'block';
+                    btn.disabled = false;
+                    btnText.style.display = 'block';
+                    spinner.style.display = 'none';
+                }
+            } catch (err) {
+                errorBox.textContent = 'Network error — try again';
+                errorBox.style.display = 'block';
+                btn.disabled = false;
+                btnText.style.display = 'block';
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

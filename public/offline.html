@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0e1a">
+  <title>PropOps — You're Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: #0a0e1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 24px;
+      opacity: 0.7;
+    }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #f0a500;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 0.92rem;
+      color: #94a3b8;
+      line-height: 1.6;
+      max-width: 320px;
+      margin-bottom: 28px;
+    }
+    a {
+      display: inline-block;
+      background: #f0a500;
+      color: #0a0e1a;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    a:hover { background: #fbbf24; }
+  </style>
+</head>
+<body>
+  <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="#f0a500" stroke-width="1.5"/>
+    <path d="M8 12.5C8 12.5 9.5 9 12 9C14.5 9 16 12.5 16 12.5" stroke="#f0a500" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="9" cy="13.5" r="1" fill="#f0a500"/>
+    <circle cx="15" cy="13.5" r="1" fill="#f0a500"/>
+  </svg>
+  <h1>You're offline</h1>
+  <p>Connect to the internet to see your leads. PropOps needs a live connection to keep your data fresh and secure.</p>
+  <a href="/dashboard">Try again</a>
+</body>
+</html>

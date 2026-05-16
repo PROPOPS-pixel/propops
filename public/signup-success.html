@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to PropOps.Pro — Account Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --navy: #0f172a; --amber: #f59e0b; --amber-dark: #d97706;
+            --green: #059669; --green-bg: #d1fae5; --border: #e2e8f0;
+            --bg-off: #f8fafc; --muted: #94a3b8; --slate: #334155;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-off);
+            color: var(--navy);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            max-width: 480px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .card-header {
+            background: var(--navy);
+            padding: 28px 40px;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.5px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .logo span { color: var(--amber); }
+        .logo img { height: 30px; width: auto; display: block; }
+        .card-body {
+            padding: 40px;
+        }
+        .success-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--green-bg);
+            color: var(--green);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            margin-bottom: 1.5rem;
+        }
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.75rem;
+        }
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--slate);
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.4rem;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: var(--navy);
+            outline: none;
+            transition: border-color 0.15s;
+            margin-bottom: 1rem;
+        }
+        input:focus { border-color: var(--amber); }
+        input[readonly] { background: var(--bg-off); color: var(--muted); }
+        .btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: var(--amber);
+            color: var(--navy);
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:hover { background: var(--amber-dark); transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .error {
+            display: none;
+            color: #dc2626;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            background: #fee2e2;
+            border-radius: 8px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        .loading p { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--amber);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .trial-note {
+            font-size: 0.8rem;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .trial-note strong { color: var(--amber-dark); }
+
+        /* ─── OPERATOR TYPE SELECTOR ─── */
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .step-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: background 0.2s;
+        }
+        .step-dot.active { background: var(--amber); }
+        .step-dot.done { background: var(--green); }
+        .step-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-left: 0.25rem;
+        }
+        .operator-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .operator-card {
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+            font-family: inherit;
+            color: var(--slate);
+        }
+        .operator-card:hover {
+            border-color: var(--amber);
+            background: #fffbeb;
+        }
+        .operator-card.selected {
+            border-color: var(--amber);
+            background: #fef3c7;
+            color: var(--navy);
+        }
+        .operator-icon { font-size: 2.5rem; display: block; margin-bottom: 0.6rem; }
+        .operator-name { font-size: 0.95rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.25rem; }
+        .operator-desc { font-size: 0.75rem; color: var(--slate-light); line-height: 1.4; }
+
+        /* Expanded trade selector */
+        .trade-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+        .trade-chip {
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 0.6rem 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+            font-family: inherit;
+            color: var(--slate);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .trade-chip:hover {
+            border-color: var(--amber);
+            background: #fffbeb;
+        }
+        .trade-chip.selected {
+            border-color: var(--amber);
+            background: #fef3c7;
+            color: var(--navy);
+        }
+        .trade-chip .chip-icon { font-size: 1.2rem; display: block; margin-bottom: 0.25rem; }
+        .trade-chip .chip-name { font-size: 0.75rem; font-weight: 600; }
+        .trade-section-label {
+            font-size: 0.7rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 0.5rem;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        /* Step 3 — address/radius */
+        .radius-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 2px;
+        }
+        .radius-row input[type=range] { flex: 1; accent-color: var(--amber); }
+        .radius-val { font-size: 1rem; font-weight: 700; color: var(--amber-dark); min-width: 48px; text-align: right; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="card-header">
+        <div class="logo">
+            <img src="/logo-white.svg" alt="PropOps.Pro" height="30">
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Loading state -->
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <p>Setting up your account...</p>
+        </div>
+
+        <!-- Step 1: Name + Email -->
+        <div id="step1">
+            <div class="success-badge">
+                ✓ Payment authorised
+            </div>
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot1"></div>
+                <div class="step-dot" id="dot2"></div>
+                <div class="step-dot" id="dot3"></div>
+                <span class="step-label">Step 1 of 3</span>
+            </div>
+            <h1>You're in! Let's set up your account.</h1>
+            <p class="subtitle">Your 14-day free trial is active. No charge until day 15.</p>
+
+            <div class="error" id="errorMsg1"></div>
+
+            <form onsubmit="goToStep2(event)">
+                <label for="nameInput">Your name</label>
+                <input type="text" id="nameInput" placeholder="Sarah Chen" required autocomplete="name">
+
+                <label for="emailInput">Your email</label>
+                <input type="email" id="emailInput" placeholder="you@example.com" required autocomplete="email">
+
+                <button type="submit" class="btn" id="nextBtn">Next →</button>
+            </form>
+
+            <p class="trial-note">
+                <strong>14-day free trial</strong> — from $69/month after. Cancel anytime.
+            </p>
+        </div>
+
+        <!-- Step 2: Operator Type Selector -->
+        <div id="step2" style="display:none">
+            <div class="step-indicator">
+                <div class="step-dot done" id="dot1b"></div>
+                <div class="step-dot active" id="dot2b"></div>
+                <div class="step-dot" id="dot3b"></div>
+                <span class="step-label">Step 2 of 3</span>
+            </div>
+            <h1 style="font-size:1.4rem;margin-bottom:0.5rem;">I am a...</h1>
+            <p class="subtitle" style="margin-bottom:1.25rem;">We'll personalise your dashboard, pipeline, and AI responses for your industry.</p>
+
+            <div class="error" id="errorMsg2"></div>
+
+            <!-- RE Agent option -->
+            <div class="operator-grid" style="grid-template-columns:1fr;margin-bottom:1rem;">
+                <button type="button" class="operator-card selected" data-type="real_estate" onclick="selectOperatorType('real_estate')">
+                    <span class="operator-icon">🏠</span>
+                    <div class="operator-name">Real Estate Agent</div>
+                    <div class="operator-desc">Manage buyer, renter &amp; seller leads from REA, Domain &amp; other portals</div>
+                </button>
+            </div>
+
+            <!-- 26 Authoritative Trade Types -->
+            <div class="trade-section-label">── Trade Types ──</div>
+            <div class="trade-grid">
+                <button type="button" class="trade-chip" data-type="antenna_installer" onclick="selectOperatorType('antenna_installer')">
+                    <span class="chip-icon">📡</span><span class="chip-name">Antenna</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="appliance_repair" onclick="selectOperatorType('appliance_repair')">
+                    <span class="chip-icon">🔌</span><span class="chip-name">Appliance Repair</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="builder" onclick="selectOperatorType('builder')">
+                    <span class="chip-icon">🏗️</span><span class="chip-name">Builder</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="carpenter" onclick="selectOperatorType('carpenter')">
+                    <span class="chip-icon">🪚</span><span class="chip-name">Carpenter</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="cleaner" onclick="selectOperatorType('cleaner')">
+                    <span class="chip-icon">🧽</span><span class="chip-name">Cleaner</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="concreter" onclick="selectOperatorType('concreter')">
+                    <span class="chip-icon">🪨</span><span class="chip-name">Concreter</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="electrician" onclick="selectOperatorType('electrician')">
+                    <span class="chip-icon">⚡</span><span class="chip-name">Electrician</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="fencer" onclick="selectOperatorType('fencer')">
+                    <span class="chip-icon">🪵</span><span class="chip-name">Fencer</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="glazier" onclick="selectOperatorType('glazier')">
+                    <span class="chip-icon">🪟</span><span class="chip-name">Glazier</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="handyman" onclick="selectOperatorType('handyman')" style="border-color:#fca5a5;">
+                    <span class="chip-icon">🔴</span><span class="chip-name">Handyman</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="hvac" onclick="selectOperatorType('hvac')">
+                    <span class="chip-icon">❄️</span><span class="chip-name">HVAC</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="landscaper" onclick="selectOperatorType('landscaper')">
+                    <span class="chip-icon">🌿</span><span class="chip-name">Landscaper</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="locksmith" onclick="selectOperatorType('locksmith')">
+                    <span class="chip-icon">🔑</span><span class="chip-name">Locksmith</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="painter" onclick="selectOperatorType('painter')">
+                    <span class="chip-icon">🎨</span><span class="chip-name">Painter</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="pest_control" onclick="selectOperatorType('pest_control')">
+                    <span class="chip-icon">🐛</span><span class="chip-name">Pest Control</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="plasterer" onclick="selectOperatorType('plasterer')">
+                    <span class="chip-icon">🏛️</span><span class="chip-name">Plasterer</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="plumber" onclick="selectOperatorType('plumber')">
+                    <span class="chip-icon">🔧</span><span class="chip-name">Plumber</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="pool_tech" onclick="selectOperatorType('pool_tech')">
+                    <span class="chip-icon">🏊</span><span class="chip-name">Pool Tech</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="re_agent" onclick="selectOperatorType('re_agent')">
+                    <span class="chip-icon">🏢</span><span class="chip-name">RE Agent</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="refrigeration" onclick="selectOperatorType('refrigeration')">
+                    <span class="chip-icon">🧊</span><span class="chip-name">Refrigeration</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="removalist" onclick="selectOperatorType('removalist')">
+                    <span class="chip-icon">🚚</span><span class="chip-name">Removalist</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="renderer" onclick="selectOperatorType('renderer')">
+                    <span class="chip-icon">🪣</span><span class="chip-name">Renderer</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="roofer" onclick="selectOperatorType('roofer')">
+                    <span class="chip-icon">🏚️</span><span class="chip-name">Roofer</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="solar_installer" onclick="selectOperatorType('solar_installer')">
+                    <span class="chip-icon">☀️</span><span class="chip-name">Solar</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="tiler" onclick="selectOperatorType('tiler')">
+                    <span class="chip-icon">🔲</span><span class="chip-name">Tiler</span>
+                </button>
+                <button type="button" class="trade-chip" data-type="waterproofer" onclick="selectOperatorType('waterproofer')">
+                    <span class="chip-icon">💧</span><span class="chip-name">Waterproofer</span>
+                </button>
+            </div>
+
+            <button class="btn" id="submitBtn" onclick="goToStep3()">Next →</button>
+            <p class="trial-note" style="margin-top:0.75rem;">
+                <a href="#" onclick="goBackToStep1()" style="color:var(--muted);font-size:0.75rem;">← Back</a>
+            </p>
+        </div>
+
+        <!-- Step 3: Base Address + Service Radius -->
+        <div id="step3" style="display:none">
+            <div class="step-indicator">
+                <div class="step-dot done"></div>
+                <div class="step-dot done"></div>
+                <div class="step-dot active"></div>
+                <span class="step-label">Step 3 of 3</span>
+            </div>
+            <h1 style="font-size:1.4rem;margin-bottom:0.4rem;">Where are you based?</h1>
+            <p class="subtitle" style="margin-bottom:1.25rem;">Hugo uses this to route leads to you and refer out-of-area jobs to nearby operators. You can change it anytime in Settings.</p>
+
+            <div class="error" id="errorMsg3"></div>
+
+            <label for="addressInput">Base address <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">(optional)</span></label>
+            <input type="text" id="addressInput" placeholder="e.g. 14 Smith St, Penrith NSW 2750" autocomplete="street-address">
+
+            <label>Service radius</label>
+            <div class="radius-row" style="margin-bottom:1rem;">
+                <input type="range" id="radiusInput" min="5" max="200" step="5" value="25"
+                    oninput="document.getElementById('radiusDisplay').textContent=this.value+'km'">
+                <span id="radiusDisplay" class="radius-val">25km</span>
+            </div>
+            <p style="font-size:0.78rem;color:var(--muted);margin-bottom:1.5rem;margin-top:-0.5rem;">How far you travel from your base — leads further than this get referred to closer operators in the PropOps network.</p>
+
+            <button class="btn" id="finishBtn" onclick="completeSignup()">Complete setup →</button>
+            <p class="trial-note" style="margin-top:0.75rem;">
+                <a href="#" onclick="skipStep3()" style="color:var(--muted);font-size:0.75rem;">Skip for now — set this later in Settings</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+var selectedTrade = 'real_estate';
+var ALL_TYPES = ['real_estate','plumber','electrician','lawn_care','pool_cleaning','carpet_cleaning','pest_control','commercial_cleaner','bricklayer','concreter','painter','renderer','tiler','plasterer','roofer','fencer','waterproofer','handyman'];
+
+// Read params from query string
+var params = new URLSearchParams(window.location.search);
+var billingRequestId = params.get('billing_request_id') || '';
+var prefillEmail = params.get('email') || '';
+// trade param pre-selects operator type
+var presetTrade = params.get('trade') || '';
+
+// Pre-fill email if passed
+if (prefillEmail) {
+    var emailInput = document.getElementById('emailInput');
+    if (emailInput) emailInput.value = prefillEmail;
+}
+
+// Apply preset if valid
+if (ALL_TYPES.indexOf(presetTrade) !== -1) {
+    selectedTrade = presetTrade;
+}
+
+function selectOperatorType(val) {
+    selectedTrade = val;
+    // Deselect all
+    document.querySelectorAll('.operator-card, .trade-chip').forEach(function(el) {
+        el.classList.remove('selected');
+    });
+    // Select the clicked one
+    var sel = document.querySelector('[data-type="' + val + '"]');
+    if (sel) sel.classList.add('selected');
+}
+
+function goToStep2(e) {
+    e.preventDefault();
+    var name = document.getElementById('nameInput').value.trim();
+    var email = document.getElementById('emailInput').value.trim();
+    var errEl = document.getElementById('errorMsg1');
+    if (!name || !email) { errEl.textContent = 'Name and email are required.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+    // Restore selection state
+    selectOperatorType(selectedTrade);
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+}
+
+function goBackToStep1() {
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step1').style.display = 'block';
+    return false;
+}
+
+function goToStep3() {
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step3').style.display = 'block';
+}
+
+function skipStep3() {
+    // Complete signup without address — map will default to Australia-wide
+    completeSignup(true);
+    return false;
+}
+
+async function completeSignup(skipAddress) {
+    var name = document.getElementById('nameInput').value.trim();
+    var email = document.getElementById('emailInput').value.trim();
+    var btn = document.getElementById('finishBtn');
+    var errorEl = document.getElementById('errorMsg3');
+
+    btn.disabled = true;
+    btn.textContent = 'Setting up...';
+    errorEl.style.display = 'none';
+
+    try {
+        var res = await fetch('/api/auth/signup-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                email: email,
+                name: name,
+                billing_request_id: billingRequestId,
+                business_type: selectedTrade,
+            })
+        });
+        var data = await res.json();
+
+        if (data.success) {
+            localStorage.setItem('propops_token', data.token);
+            localStorage.removeItem('relio_token');
+
+            // Save service area if address provided (non-blocking — failure is OK)
+            if (!skipAddress) {
+                var addrEl = document.getElementById('addressInput');
+                var radiusEl = document.getElementById('radiusInput');
+                var address = addrEl ? addrEl.value.trim() : '';
+                var radius = radiusEl ? parseInt(radiusEl.value, 10) : 25;
+                if (address) {
+                    try {
+                        await fetch('/api/service-area', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ base_address: address, radius_km: radius || 25 })
+                        });
+                    } catch (_) { /* non-fatal */ }
+                }
+            }
+
+            document.getElementById('step3').style.display = 'none';
+            document.getElementById('loadingState').style.display = 'block';
+            setTimeout(function() { window.location.href = '/dashboard'; }, 800);
+        } else {
+            errorEl.textContent = data.message || 'Something went wrong. Please try again.';
+            errorEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Complete setup →';
+        }
+    } catch (err) {
+        errorEl.textContent = 'Network error — please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Complete setup →';
+    }
+}
+</script>
+
+</body>
+</html>

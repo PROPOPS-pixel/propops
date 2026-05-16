@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Hugo.pays — Staff Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --amber: #f59e0b; --dark: #0f172a; --slate: #334155; }
+    body { background: #f8fafc; font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    .nav-active { color: #f59e0b; border-bottom: 2px solid #f59e0b; }
+    .badge-pending   { background:#fef3c7; color:#92400e; }
+    .badge-approved  { background:#d1fae5; color:#065f46; }
+    .badge-declined  { background:#fee2e2; color:#991b1b; }
+    .badge-scheduled { background:#dbeafe; color:#1e40af; }
+    .badge-completed { background:#d1fae5; color:#065f46; }
+    .badge-cancelled { background:#f1f5f9; color:#64748b; }
+    .clock-in-btn  { background:#10b981; }
+    .clock-out-btn { background:#ef4444; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .card { background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+    .section { display:none; }
+    .section.active { display:block; }
+    input:focus, select:focus, textarea:focus { outline:none; border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.15); }
+    .shift-card { border-left:4px solid #f59e0b; }
+    .shift-card.past { border-left-color:#cbd5e1; opacity:.8; }
+    #toast { transition:opacity .3s; }
+  </style>
+</head>
+<body>
+
+<!-- ── SCREENS ─────────────────────────────────────────────────────────────── -->
+
+<!-- Invite accept / Login screen -->
+<div id="screen-auth" class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 mb-2">
+        <span class="text-2xl font-bold text-gray-900">Hugo.pays</span>
+        <span class="text-amber-500 text-2xl font-bold">.</span>
+      </div>
+      <p id="auth-employer-name" class="text-gray-500 text-sm">Staff Portal</p>
+    </div>
+
+    <!-- Invite accept form -->
+    <div id="form-invite" class="card p-6 mb-4">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">Welcome!</h2>
+      <p class="text-sm text-gray-500 mb-5">Set a password to access your staff portal.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Your name</label>
+          <input id="invite-name" type="text" readonly class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Create password</label>
+          <input id="invite-password" type="password" placeholder="Min 6 characters" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Confirm password</label>
+          <input id="invite-password2" type="password" placeholder="Repeat password" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <button onclick="acceptInvite()" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm hover:bg-amber-400 transition">
+          Activate Account
+        </button>
+        <p id="invite-error" class="text-xs text-red-500 text-center hidden"></p>
+      </div>
+    </div>
+
+    <!-- Login form -->
+    <div id="form-login" class="card p-6" style="display:none;">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">Sign in</h2>
+      <p class="text-sm text-gray-500 mb-5">Enter your email and password.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+          <input id="login-email" type="email" placeholder="you@example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Password</label>
+          <input id="login-password" type="password" placeholder="••••••" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <button onclick="doLogin()" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm hover:bg-amber-400 transition">
+          Sign in
+        </button>
+        <p id="login-error" class="text-xs text-red-500 text-center hidden"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Boss Preview Banner — shown only when operator is impersonating a staff member -->
+<div id="preview-banner" style="display:none;" class="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-gray-900 text-xs font-bold text-center py-2 px-4 flex items-center justify-center gap-3">
+  <span>👁 PREVIEWING AS: <span id="preview-staff-name">—</span></span>
+  <button onclick="exitPreview()" class="bg-gray-900 text-amber-400 text-xs font-bold px-3 py-1 rounded-lg hover:bg-gray-800 transition">Exit Preview</button>
+</div>
+
+<!-- Main portal app -->
+<div id="screen-app" style="display:none;" class="min-h-screen flex flex-col" id="screen-app-inner">
+
+  <!-- Top bar -->
+  <header class="bg-gray-900 text-white sticky top-0 z-40">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-sm">Hugo.pays</span>
+        <span class="text-amber-400 font-bold">.</span>
+        <span id="header-business-name" class="text-gray-400 text-xs ml-1" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <span class="text-gray-600 text-xs">·</span>
+        <span id="staff-name-badge" class="text-gray-400 text-xs">Staff</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Clock status indicator -->
+        <div id="clock-status-badge" class="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-gray-800 hidden">
+          <span class="w-2 h-2 rounded-full pulse" id="clock-dot"></span>
+          <span id="clock-status-text">Clocked out</span>
+        </div>
+        <button onclick="logout()" class="text-gray-400 hover:text-white text-xs">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Nav tabs -->
+  <nav class="bg-white border-b border-gray-100 sticky top-14 z-30">
+    <div class="max-w-2xl mx-auto px-4 flex gap-0 overflow-x-auto">
+      <button onclick="switchTab('home')"       id="tab-home"       class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">Home</button>
+      <button onclick="switchTab('roster')"     id="tab-roster"     class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">My Roster</button>
+      <button onclick="switchTab('clock')"      id="tab-clock"      class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">Clock In/Out</button>
+      <button onclick="switchTab('swaps')"      id="tab-swaps"      class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">Shift Swaps</button>
+      <button onclick="switchTab('payslips')"   id="tab-payslips"   class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">💰 Pay Slips</button>
+      <button onclick="switchTab('super')"      id="tab-super"      class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">🏦 Super</button>
+      <button onclick="switchTab('tax')"        id="tab-tax"        class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">📋 Tax</button>
+      <button onclick="switchTab('leave')"      id="tab-leave"      class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap">🌴 Leave</button>
+      <button onclick="switchTab('onboarding')" id="tab-onboarding" class="tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap" id="tab-onboarding">📝 Setup</button>
+    </div>
+  </nav>
+
+  <main class="flex-1 max-w-2xl mx-auto w-full px-4 py-5 pb-20">
+
+    <!-- HOME ─────────────────────────────────────────────────────────────── -->
+    <div id="section-home" class="section active space-y-4">
+
+      <!-- Next shift card -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide">Next Shift</h2>
+          <span class="text-xs text-gray-400" id="home-date"></span>
+        </div>
+        <div id="next-shift-card">
+          <div class="flex gap-2 text-gray-400 items-center py-4 justify-center">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span class="text-sm">No upcoming shifts</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick clock-in / out -->
+      <div class="card p-5">
+        <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide mb-3">Quick Clock</h2>
+        <div id="home-clock-area">
+          <div class="flex flex-col gap-3">
+            <div id="gps-status" class="text-xs text-gray-400 text-center">Tap to get location…</div>
+            <button id="clock-btn" onclick="quickClock()" class="w-full py-3 rounded-xl font-bold text-white text-base transition clock-in-btn">
+              Clock In
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div class="card p-5">
+        <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide mb-3">Recent</h2>
+        <div id="notifications-list">
+          <p class="text-sm text-gray-400 text-center py-3">No recent notifications</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ROSTER ──────────────────────────────────────────────────────────── -->
+    <div id="section-roster" class="section space-y-3">
+      <div class="flex items-center justify-between">
+        <h1 class="font-bold text-gray-900 text-lg">My Roster</h1>
+        <div class="flex gap-1">
+          <button onclick="switchRosterViewTab('week')" id="srvt-week" class="text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-medium">📆 Week</button>
+          <button onclick="switchRosterViewTab('list')" id="srvt-list" class="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 font-medium">📋 List</button>
+        </div>
+      </div>
+
+      <!-- Week grid view -->
+      <div id="roster-week-view">
+        <!-- Week navigation -->
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex gap-1">
+            <button onclick="spWvChangeWeek(-1)" class="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">← Prev</button>
+            <button onclick="spWvGoToday()" class="text-xs px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 font-semibold">This Week</button>
+            <button onclick="spWvChangeWeek(1)" class="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">Next →</button>
+          </div>
+          <span id="sp-wv-week-label" class="text-xs font-semibold text-gray-700">Loading…</span>
+        </div>
+        <!-- Grid table -->
+        <div class="card overflow-x-auto">
+          <table id="sp-wv-table" style="width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;min-width:420px;">
+            <thead id="sp-wv-head"></thead>
+            <tbody id="sp-wv-body">
+              <tr><td colspan="8" style="text-align:center;padding:2rem;color:#9ca3af;font-size:0.8rem;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Click shift to expand pay · ⇄ to request swap</p>
+      </div>
+
+      <!-- List view -->
+      <div id="roster-list-view" style="display:none;">
+        <div class="flex gap-2 mb-3">
+          <button onclick="setRosterView('upcoming')" id="rv-upcoming" class="text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-medium">Upcoming</button>
+          <button onclick="setRosterView('past')"     id="rv-past"     class="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 font-medium">Past</button>
+        </div>
+        <div id="roster-list" class="space-y-3">
+          <div class="text-center py-8 text-gray-400 text-sm">Loading shifts…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLOCK IN/OUT ─────────────────────────────────────────────────────── -->
+    <div id="section-clock" class="section space-y-4">
+      <h1 class="font-bold text-gray-900 text-lg">GPS Clock In / Out</h1>
+
+      <!-- Current status -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Current Status</p>
+            <div id="clock-current-status" class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span>
+              <span class="font-semibold text-gray-600">Loading…</span>
+            </div>
+          </div>
+          <div id="clock-elapsed" class="text-right hidden">
+            <p class="text-xs text-gray-400">Elapsed</p>
+            <p class="font-mono font-bold text-gray-800" id="elapsed-time">0:00</p>
+          </div>
+        </div>
+
+        <!-- Shift selector -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Link to shift (optional)</label>
+          <select id="clock-roster-select" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+            <option value="">— No shift selected —</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <div id="clock-gps-detail" class="text-xs text-gray-400 mb-3 text-center">Tap to get GPS location</div>
+          <button id="clock-main-btn" onclick="doClockAction()" class="w-full py-3.5 rounded-xl font-bold text-white text-base clock-in-btn transition">
+            Clock In
+          </button>
+        </div>
+
+        <p class="text-xs text-gray-400 text-center">Your GPS coordinates are recorded at clock-in/out.</p>
+      </div>
+
+      <!-- Clock history -->
+      <div class="card p-5">
+        <h2 class="font-semibold text-gray-800 text-sm uppercase tracking-wide mb-3">History</h2>
+        <div id="clock-history-list" class="space-y-2">
+          <div class="text-center py-4 text-gray-400 text-sm">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHIFT SWAPS ─────────────────────────────────────────────────────── -->
+    <div id="section-swaps" class="section space-y-4">
+      <div class="flex items-center justify-between">
+        <h1 class="font-bold text-gray-900 text-lg">Shift Swaps</h1>
+        <button onclick="openSwapModal()" class="px-3 py-1.5 bg-amber-500 text-gray-900 text-xs font-semibold rounded-lg">
+          + Request Swap
+        </button>
+      </div>
+
+      <div id="swaps-list" class="space-y-3">
+        <div class="text-center py-8 text-gray-400 text-sm">Loading…</div>
+      </div>
+    </div>
+
+    <!-- PAY SLIPS ────────────────────────────────────────────────────── -->
+    <div id="section-payslips" class="section space-y-4">
+      <h1 class="font-bold text-gray-900 text-lg">Pay Slips</h1>
+      <p class="text-xs text-gray-400">All pay runs processed by your employer.</p>
+      <div id="payslips-list" class="space-y-3">
+        <div class="text-center py-8 text-gray-400 text-sm">Loading…</div>
+      </div>
+    </div>
+
+    <!-- SUPER HISTORY ──────────────────────────────────────────────── -->
+    <div id="section-super" class="section space-y-4">
+      <h1 class="font-bold text-gray-900 text-lg">Super History</h1>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="card p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">YTD Super</p>
+          <p class="text-2xl font-bold text-gray-900" id="super-ytd">—</p>
+          <p class="text-xs text-gray-400 mt-0.5" id="super-fy-label"></p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">All Time</p>
+          <p class="text-2xl font-bold text-gray-900" id="super-alltime">—</p>
+          <p class="text-xs text-gray-400 mt-0.5">Total contributed</p>
+        </div>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Your Super Fund</p>
+        <div id="super-fund-info" class="text-sm text-gray-400">No fund details. Add them in Setup.</div>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">By ATO Quarter</p>
+        <div id="super-quarters" class="space-y-2">
+          <p class="text-sm text-gray-400 text-center py-2">Loading…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAX / PAYG ───────────────────────────────────────────────────── -->
+    <div id="section-tax" class="section space-y-4">
+      <h1 class="font-bold text-gray-900 text-lg">Tax (PAYG)</h1>
+      <div class="card p-4 space-y-3">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Year-to-Date (<span id="tax-fy-label">FY—</span>)</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <p class="text-xs text-gray-400">Gross Income</p>
+            <p class="text-xl font-bold text-gray-900" id="tax-ytd-gross">—</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Tax Withheld</p>
+            <p class="text-xl font-bold text-red-500" id="tax-ytd-tax">—</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Super (11.5%)</p>
+            <p class="text-xl font-bold text-blue-500" id="tax-ytd-super">—</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Net Take-Home</p>
+            <p class="text-xl font-bold text-green-600" id="tax-ytd-net">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Your Tax Bracket (ATO 2025–26)</p>
+        <p class="text-sm font-semibold text-gray-800" id="tax-bracket">—</p>
+        <p class="text-xs text-gray-400 mt-1">Annualised income: <span id="tax-annualised">—</span></p>
+      </div>
+      <div class="card p-4 bg-amber-50 border border-amber-100">
+        <p class="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">EOFY Tax Return</p>
+        <p class="text-sm text-amber-700">Use the YTD figures above when lodging your tax return. Your employer submits PAYG via Single Touch Payroll (STP) — your pre-fill will match.</p>
+        <div class="mt-3 space-y-1 text-sm text-amber-800 font-medium" id="eofy-summary-rows"></div>
+      </div>
+    </div>
+
+    <!-- LEAVE ────────────────────────────────────────────────────────── -->
+    <div id="section-leave" class="section space-y-4">
+      <div class="flex items-center justify-between">
+        <h1 class="font-bold text-gray-900 text-lg">Leave Balances</h1>
+        <button onclick="openLeaveModal()" class="px-3 py-1.5 bg-amber-500 text-gray-900 text-xs font-semibold rounded-lg">
+          + Request Leave
+        </button>
+      </div>
+      <div class="space-y-3" id="leave-balance-cards">
+        <div class="text-center py-8 text-gray-400 text-sm">Loading leave balances…</div>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Leave Requests</p>
+        <div id="leave-requests-list" class="space-y-2">
+          <p class="text-sm text-gray-400 text-center py-2">No leave requests yet</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONBOARDING / DIGITAL SETUP ─────────────────────────────────── -->
+    <div id="section-onboarding" class="section space-y-4">
+      <div class="flex items-center justify-between mb-1">
+        <h1 class="font-bold text-gray-900 text-lg">Your Setup</h1>
+        <span id="onboarding-progress-badge" class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0 of 4 done</span>
+      </div>
+      <p class="text-xs text-gray-400">Complete your onboarding paperwork — required for payroll and ATO compliance.</p>
+      <div class="card p-4 space-y-3" id="onboarding-checklist">
+        <button onclick="openOnboardingStep('tfn')" class="w-full flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+          <div class="flex items-center gap-3">
+            <span id="ob-icon-tfn" class="text-xl">⬜</span>
+            <div class="text-left">
+              <p class="text-sm font-medium text-gray-800">TFN Declaration</p>
+              <p class="text-xs text-gray-400">Tax file number + residency status</p>
+            </div>
+          </div>
+          <span class="text-gray-300 text-lg">›</span>
+        </button>
+        <button onclick="openOnboardingStep('super')" class="w-full flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+          <div class="flex items-center gap-3">
+            <span id="ob-icon-super" class="text-xl">⬜</span>
+            <div class="text-left">
+              <p class="text-sm font-medium text-gray-800">Super Choice</p>
+              <p class="text-xs text-gray-400">Fund name, USI, member number</p>
+            </div>
+          </div>
+          <span class="text-gray-300 text-lg">›</span>
+        </button>
+        <button onclick="openOnboardingStep('bank')" class="w-full flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+          <div class="flex items-center gap-3">
+            <span id="ob-icon-bank" class="text-xl">⬜</span>
+            <div class="text-left">
+              <p class="text-sm font-medium text-gray-800">Bank Details</p>
+              <p class="text-xs text-gray-400">BSB, account number, account name</p>
+            </div>
+          </div>
+          <span class="text-gray-300 text-lg">›</span>
+        </button>
+        <button onclick="openOnboardingStep('emergency')" class="w-full flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+          <div class="flex items-center gap-3">
+            <span id="ob-icon-emergency" class="text-xl">⬜</span>
+            <div class="text-left">
+              <p class="text-sm font-medium text-gray-800">Emergency Contact</p>
+              <p class="text-xs text-gray-400">Name, phone, relationship</p>
+            </div>
+          </div>
+          <span class="text-gray-300 text-lg">›</span>
+        </button>
+      </div>
+      <div id="onboarding-complete-banner" class="card p-4 bg-green-50 border border-green-100 hidden">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">✅</span>
+          <div>
+            <p class="text-sm font-semibold text-green-800">Setup complete!</p>
+            <p class="text-xs text-green-600">All your onboarding paperwork is done. Your employer can now process payroll.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── SWAP REQUEST MODAL ──────────────────────────────────────────────────── -->
+<div id="swap-modal" class="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-4" style="display:none!important;">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="font-bold text-gray-900">Request Shift Swap</h3>
+      <button onclick="closeSwapModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Shift to swap</label>
+      <select id="swap-shift-select" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+        <option value="">Loading upcoming shifts…</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Preferred swap partner (optional)</label>
+      <select id="swap-target-select" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+        <option value="">Open request (any colleague)</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Reason</label>
+      <textarea id="swap-reason" rows="2" placeholder="Brief reason…" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"></textarea>
+    </div>
+    <button onclick="submitSwap()" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm">
+      Submit Request
+    </button>
+    <p id="swap-error" class="text-xs text-red-500 text-center hidden"></p>
+  </div>
+</div>
+
+<!-- ── LEAVE REQUEST MODAL ──────────────────────────────────────────────────── -->
+<div id="leave-modal" class="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-4" style="display:none!important;">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="font-bold text-gray-900">Request Leave</h3>
+      <button onclick="closeLeaveModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Leave type</label>
+      <select id="leave-type-select" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+        <option value="annual">Annual leave (holiday pay)</option>
+        <option value="sick">Sick leave</option>
+        <option value="personal">Personal / carer's leave</option>
+      </select>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+        <input id="leave-start-date" type="date" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">End date</label>
+        <input id="leave-end-date" type="date" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Reason (optional)</label>
+      <textarea id="leave-reason" rows="2" placeholder="Brief reason…" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"></textarea>
+    </div>
+    <button onclick="submitLeaveRequest()" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm">
+      Submit Request
+    </button>
+    <p id="leave-error" class="text-xs text-red-500 text-center hidden"></p>
+  </div>
+</div>
+
+<!-- ── ONBOARDING STEP MODAL ───────────────────────────────────────────────── -->
+<div id="onboarding-modal" class="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-4" style="display:none!important;">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 max-h-screen overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h3 class="font-bold text-gray-900" id="ob-modal-title">Setup</h3>
+      <button onclick="closeOnboardingModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div id="ob-modal-body"></div>
+    <p id="ob-error" class="text-xs text-red-500 text-center hidden"></p>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-5 py-3 rounded-xl shadow-xl opacity-0 pointer-events-none transition-opacity max-w-xs text-center"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let staffData = null;
+let clockStatus = { clocked_in: false, last_event: null };
+let rosterData = [];
+let rosterView = 'upcoming';
+let clockStartTime = null;
+let elapsedTimer = null;
+let gpsPosition = null;
+let gpsError = null;
+let isPreviewMode = false;
+let spWvWeekStart = null; // ISO date string for current Mon in staff portal week view
+let spRosterViewTab = 'week'; // 'week' | 'list'
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const inviteToken = params.get('invite');
+  const previewToken = params.get('preview');
+  const previewName = params.get('name');
+
+  // Boss preview mode — token passed as URL param, set cookie then show app
+  if (previewToken) {
+    // Set the staff_portal_token cookie via API call that accepts a Bearer token
+    // Instead: store token in-memory and pass via Authorization header for this session
+    window._previewToken = previewToken;
+    isPreviewMode = true;
+
+    // Show preview banner
+    document.getElementById('preview-banner').style.display = 'flex';
+    document.getElementById('preview-staff-name').textContent = previewName || 'Staff Member';
+
+    // Fetch staff data using preview token
+    const me = await apiWithToken('/api/staff-portal/me', previewToken);
+    if (me?.success) {
+      staffData = me.staff;
+      showApp();
+    } else {
+      document.getElementById('form-invite').style.display = 'none';
+      document.getElementById('form-login').style.display = 'block';
+      document.getElementById('login-error').textContent = 'Preview token expired — boss needs to re-generate.';
+      document.getElementById('login-error').classList.remove('hidden');
+    }
+    return;
+  }
+
+  if (inviteToken) {
+    // Show invite form — pre-fill name if token valid
+    document.getElementById('form-invite').style.display = 'block';
+    document.getElementById('form-login').style.display = 'none';
+    window._inviteToken = inviteToken;
+    // Fetch staff name + employer business name from invite token
+    try {
+      const r = await fetch(`/api/staff-portal/invite-info?token=${inviteToken}`);
+      if (r.ok) {
+        const d = await r.json();
+        if (d.name) document.getElementById('invite-name').value = d.name;
+        if (d.business_name) {
+          document.getElementById('auth-employer-name').textContent = d.business_name + ' — Staff Portal';
+        }
+      }
+    } catch (_) {}
+    return;
+  }
+
+  // Try auto-login from cookie
+  const me = await api('/api/staff-portal/me');
+  if (me?.success) {
+    staffData = me.staff;
+    showApp();
+  } else {
+    document.getElementById('form-invite').style.display = 'none';
+    document.getElementById('form-login').style.display = 'block';
+  }
+})();
+
+// ── API helper ───────────────────────────────────────────────────────────────
+
+async function api(url, options = {}) {
+  try {
+    // In preview mode, pass token via Authorization header (no cookie set)
+    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    if (isPreviewMode && window._previewToken) {
+      headers['Authorization'] = 'Bearer ' + window._previewToken;
+    }
+    const r = await fetch(url, {
+      credentials: 'same-origin',
+      ...options,
+      headers,
+    });
+    return await r.json();
+  } catch (err) {
+    return { success: false, message: 'Network error' };
+  }
+}
+
+// API call with explicit token (used for initial preview auth check)
+async function apiWithToken(url, token, options = {}) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      credentials: 'same-origin',
+      ...options,
+    });
+    return await r.json();
+  } catch (err) {
+    return { success: false, message: 'Network error' };
+  }
+}
+
+function exitPreview() {
+  window.close();
+  // Fallback if window.close() is blocked (e.g., not opened via JS)
+  window.location.href = '/pays';
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+async function acceptInvite() {
+  const pwd = document.getElementById('invite-password').value;
+  const pwd2 = document.getElementById('invite-password2').value;
+  const errEl = document.getElementById('invite-error');
+  errEl.classList.add('hidden');
+
+  if (pwd.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.remove('hidden'); return; }
+  if (pwd !== pwd2) { errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return; }
+
+  const result = await api('/api/staff-portal/accept-invite', {
+    method: 'POST',
+    body: JSON.stringify({ token: window._inviteToken, password: pwd }),
+  });
+
+  if (result.success) {
+    staffData = result.staff;
+    history.replaceState({}, '', '/pays/staff');
+    showApp();
+  } else {
+    errEl.textContent = result.message || 'Failed to activate account.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+
+  const result = await api('/api/staff-portal/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (result.success) {
+    staffData = result.staff;
+    showApp();
+  } else {
+    errEl.textContent = result.message || 'Sign in failed.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function logout() {
+  await api('/api/staff-portal/logout', { method: 'POST' });
+  location.reload();
+}
+
+// ── App init ─────────────────────────────────────────────────────────────────
+
+function showApp() {
+  document.getElementById('screen-auth').style.display = 'none';
+  document.getElementById('screen-app').style.display = 'flex';
+  document.getElementById('staff-name-badge').textContent = staffData.name || 'Staff';
+  const bizNameEl = document.getElementById('header-business-name');
+  if (bizNameEl) bizNameEl.textContent = staffData.business_name || '';
+  // WHY: Hide the dot separator if there's no business name
+  const dotEl = bizNameEl?.nextElementSibling;
+  if (dotEl && !staffData.business_name) { bizNameEl.style.display = 'none'; dotEl.style.display = 'none'; }
+  document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'short' });
+
+  // Preview mode: push banner down so it doesn't overlap header
+  if (isPreviewMode) {
+    const header = document.querySelector('#screen-app header');
+    if (header) header.style.marginTop = '32px';
+  }
+
+  // Kick off GPS immediately (background, non-blocking) — skip in preview mode
+  if (!isPreviewMode) requestGPS();
+
+  loadHomeData();
+  // Roster: load week view by default (lazy-load list on tab switch)
+  spWvLoad();
+  window._spWvLoaded = true;
+  loadClockStatus();
+  loadClockHistory();
+  loadSwaps();
+  loadColleagues();
+  populateClockRosterSelect();
+  loadOnboarding(); // check onboarding status to badge Setup tab
+}
+
+// ── GPS ───────────────────────────────────────────────────────────────────────
+
+function requestGPS() {
+  if (!navigator.geolocation) {
+    gpsError = 'GPS not supported on this device.';
+    updateGPSUI();
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      gpsPosition = pos;
+      gpsError = null;
+      updateGPSUI();
+    },
+    (err) => {
+      gpsError = 'Location denied. Clock-in without GPS?';
+      gpsPosition = null;
+      updateGPSUI();
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+  );
+}
+
+function updateGPSUI() {
+  const gpsEl = document.getElementById('gps-status');
+  const gpsDetailEl = document.getElementById('clock-gps-detail');
+  const msg = gpsPosition
+    ? `📍 ${gpsPosition.coords.latitude.toFixed(4)}, ${gpsPosition.coords.longitude.toFixed(4)} (±${Math.round(gpsPosition.coords.accuracy)}m)`
+    : (gpsError || 'Getting location…');
+  if (gpsEl) gpsEl.textContent = msg;
+  if (gpsDetailEl) gpsDetailEl.textContent = msg;
+}
+
+// ── Home section ─────────────────────────────────────────────────────────────
+
+async function loadHomeData() {
+  const [nextShift, notifs] = await Promise.all([
+    api('/api/staff-portal/next-shift'),
+    api('/api/staff-portal/notifications'),
+  ]);
+
+  // Next shift
+  const el = document.getElementById('next-shift-card');
+  if (nextShift?.shift) {
+    const s = nextShift.shift;
+    el.innerHTML = `
+      <div class="shift-card rounded-lg p-4">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="font-semibold text-gray-800">${esc(s.job_title || 'Shift')}</p>
+            <p class="text-sm text-gray-500 mt-0.5">${formatDate(s.scheduled_date)}</p>
+            ${s.start_time ? `<p class="text-sm text-amber-600 font-medium mt-0.5">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatTime(s.end_time) : ''}</p>` : ''}
+            ${s.job_address ? `<p class="text-xs text-gray-400 mt-1">📍 ${esc(s.job_address)}</p>` : ''}
+          </div>
+          <span class="badge badge-scheduled text-xs px-2 py-0.5 rounded-full font-medium">${s.status}</span>
+        </div>
+      </div>`;
+  } else {
+    el.innerHTML = `<div class="flex gap-2 text-gray-400 items-center py-4 justify-center text-sm">No upcoming shifts scheduled</div>`;
+  }
+
+  // Notifications
+  const nEl = document.getElementById('notifications-list');
+  if (notifs?.notifications?.length) {
+    nEl.innerHTML = notifs.notifications.slice(0, 5).map(n => `
+      <div class="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+        <span class="mt-0.5 text-base">${n.type.startsWith('swap') ? '🔄' : '📅'}</span>
+        <div>
+          <p class="text-sm text-gray-700">${esc(n.message)}</p>
+          <p class="text-xs text-gray-400 mt-0.5">${timeAgo(n.at)}</p>
+        </div>
+      </div>`).join('');
+  } else {
+    nEl.innerHTML = `<p class="text-sm text-gray-400 text-center py-3">No recent notifications</p>`;
+  }
+}
+
+// ── Roster tab toggle (Week / List) ──────────────────────────────────────────
+
+function switchRosterViewTab(tab) {
+  spRosterViewTab = tab;
+  document.getElementById('srvt-week').className = tab === 'week'
+    ? 'text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-medium'
+    : 'text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 font-medium';
+  document.getElementById('srvt-list').className = tab === 'list'
+    ? 'text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-medium'
+    : 'text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 font-medium';
+  document.getElementById('roster-week-view').style.display = tab === 'week' ? '' : 'none';
+  document.getElementById('roster-list-view').style.display = tab === 'list' ? '' : 'none';
+  if (tab === 'week' && !window._spWvLoaded) { spWvLoad(); window._spWvLoaded = true; }
+  if (tab === 'list' && !window._staffRosterLoaded) { loadRoster(); window._staffRosterLoaded = true; }
+}
+
+// ── Staff Portal Week View ────────────────────────────────────────────────────
+// Mirror of boss Week View but scoped to only THIS staff member's shifts.
+// No delete button, no Team Totals, no other workers' data.
+
+function spWvGetMonday(offset) {
+  // offset: weeks relative to current week
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun
+  const daysToMon = dow === 0 ? -6 : 1 - dow;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + daysToMon + offset * 7);
+  return toDateStr(mon);
+}
+
+function spWvGoToday() {
+  spWvWeekStart = null; // null = current week
+  window._spWvLoaded = false;
+  spWvLoad();
+  window._spWvLoaded = true;
+}
+
+function spWvChangeWeek(delta) {
+  // Compute new week_start from current
+  if (!spWvWeekStart) {
+    spWvWeekStart = spWvGetMonday(0);
+  }
+  const d = new Date(spWvWeekStart + 'T12:00:00');
+  d.setDate(d.getDate() + delta * 7);
+  spWvWeekStart = toDateStr(d);
+  spWvLoad();
+}
+
+async function spWvLoad() {
+  const qs = spWvWeekStart ? `?week_start=${spWvWeekStart}` : '';
+  const d = await api('/api/staff-portal/week-view' + qs);
+  if (!d || !d.success) {
+    document.getElementById('sp-wv-body').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#9ca3af;font-size:0.8rem;">Failed to load week view</td></tr>';
+    return;
+  }
+  spWvWeekStart = d.week_start;
+  spWvRender(d);
+}
+
+function spWvCalcPay(sh, hourlyRate) {
+  let hrs = 0;
+  if (sh.start_time && sh.end_time) {
+    const sp = String(sh.start_time).split(':').map(Number);
+    const ep = String(sh.end_time).split(':').map(Number);
+    let mins = ep[0] * 60 + (ep[1]||0) - sp[0] * 60 - (sp[1]||0);
+    // WHY: If end < start (e.g. 09:00–05:00 stored as AM instead of PM), assume
+    // the shift doesn't cross midnight — treat as PM. Common data-entry error.
+    if (mins <= 0) mins += 12 * 60;
+    hrs = Math.max(0, mins / 60);
+  }
+  const gross = Math.round(hrs * (hourlyRate || 0) * 100) / 100;
+  // Annualise for PAYG — simple 19%/32.5%/37%/45% ATO brackets, no LITO for simplicity
+  const annualGross = gross > 0 && hrs > 0 ? gross / hrs * 2000 : 0; // ~2000 working hrs/year
+  let paygRate = 0;
+  if (annualGross > 180000) paygRate = 0.45;
+  else if (annualGross > 120000) paygRate = 0.37;
+  else if (annualGross > 45000) paygRate = 0.325;
+  else if (annualGross > 18200) paygRate = 0.19;
+  const payg = Math.round(gross * paygRate * 100) / 100;
+  const superAmt = Math.round(gross * 0.115 * 100) / 100;
+  const holiday = Math.round(gross * 0.0769 * 100) / 100;
+  const sick = Math.round(gross * 0.0385 * 100) / 100;
+  const net = Math.round((gross - payg) * 100) / 100;
+  return { hours: Math.round(hrs * 100) / 100, gross, payg, super: superAmt, holiday, sick, net };
+}
+
+function spWvRender(d) {
+  const DAYS = ['M','T','W','T','F','S','S'];
+  const today = toDateStr(new Date());
+
+  // Week dates array — uses toDateStr to avoid UTC shift in AEST
+  const weekDates = DAYS.map((_, i) => {
+    const dt = new Date(d.week_start + 'T12:00:00');
+    dt.setDate(dt.getDate() + i);
+    return toDateStr(dt);
+  });
+
+  // Week label
+  const ws = new Date(d.week_start + 'T12:00:00');
+  const we = new Date(d.week_end + 'T12:00:00');
+  const opts = { day: 'numeric', month: 'short' };
+  document.getElementById('sp-wv-week-label').textContent =
+    ws.toLocaleDateString('en-AU', opts) + ' – ' + we.toLocaleDateString('en-AU', opts) + ' ' + we.getFullYear();
+
+  const hourlyRate = parseFloat(d.staff?.hourly_rate || 0);
+
+  // Build thead
+  let headHtml = '<tr style="background:#f9fafb;">'
+    + '<th style="width:60px;text-align:left;padding:6px 8px;font-size:0.6rem;color:#6b7280;font-weight:700;text-transform:uppercase;border-bottom:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">Shift</th>';
+  weekDates.forEach((dt, i) => {
+    const isToday = dt === today;
+    const dayNum = new Date(dt + 'T12:00:00').getDate();
+    headHtml += `<th style="text-align:center;padding:5px 2px;font-size:0.6rem;font-weight:700;text-transform:uppercase;border-bottom:${isToday ? '2px solid #f59e0b' : '1px solid #e5e7eb'};color:${isToday ? '#f59e0b' : '#6b7280'};">${DAYS[i]} ${dayNum}</th>`;
+  });
+  headHtml += '<th style="width:42px;text-align:center;padding:5px 2px;font-size:0.6rem;font-weight:700;text-transform:uppercase;color:#f59e0b;border-bottom:1px solid #e5e7eb;">Hrs</th></tr>';
+  document.getElementById('sp-wv-head').innerHTML = headHtml;
+
+  // Build tbody — single row (this staff member only)
+  let bodyHtml = '';
+  let runningGross = 0;
+  let totalHrs = 0;
+
+  bodyHtml += '<tr>';
+  // Staff label cell
+  bodyHtml += `<td style="padding:4px 6px;font-size:0.72rem;font-weight:600;color:#374151;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;vertical-align:top;">
+    <div>${spEsc(d.staff?.name || 'You')}</div>
+    ${hourlyRate ? `<div style="font-size:0.6rem;color:#9ca3af;">$${hourlyRate.toFixed(2)}/hr</div>` : ''}
+  </td>`;
+
+  // Day cells
+  (d.shifts || []).forEach((dayShifts, di) => {
+    const dt = weekDates[di];
+    const isToday = dt === today;
+    bodyHtml += `<td style="padding:2px;vertical-align:top;border-bottom:1px solid #e5e7eb;background:${isToday ? 'rgba(245,158,11,0.04)' : ''};">`;
+    if (dayShifts.length > 0) {
+      dayShifts.forEach(sh => {
+        const pay = spWvCalcPay(sh, hourlyRate);
+        runningGross += pay.gross;
+        totalHrs += pay.hours;
+        const timeStr = sh.start_time ? String(sh.start_time).slice(0,5) + (sh.end_time ? '–' + String(sh.end_time).slice(0,5) : '') : '';
+        const netLabel = pay.net > 0 ? ` · $${pay.net.toFixed(0)} net` : '';
+        const detailId = `sp-detail-${sh.id}`;
+        const chipId = `sp-chip-${sh.id}`;
+        bodyHtml += `<div id="${chipId}" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:5px;padding:3px 4px;margin-bottom:2px;font-size:0.65rem;color:#92400e;">
+          <div style="display:flex;align-items:center;gap:2px;cursor:pointer;" onclick="document.getElementById('${detailId}').style.display=document.getElementById('${detailId}').style.display==='none'?'':'none'">
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${spEsc(timeStr || sh.job_title || 'Shift')}${spEsc(netLabel)}</span>
+            ${sh.swap_offered ? '' : `<button style="background:none;border:1px solid #fed7aa;border-radius:3px;font-size:0.6rem;padding:1px 3px;cursor:pointer;color:#b45309;" onclick="event.stopPropagation();spWvRequestSwap(${sh.id},'${spEsc(sh.job_title||'')}')">⇄</button>`}
+          </div>
+          <div id="${detailId}" style="display:none;padding-top:3px;border-top:1px solid #fed7aa;margin-top:3px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:1px;"><span>Gross</span><span style="color:#059669;">$${pay.gross.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:1px;"><span>PAYG Tax</span><span style="color:#ef4444;">-$${pay.payg.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:1px;"><span>Super 11.5%</span><span style="color:#8b5cf6;">$${pay.super.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:1px;"><span>Holiday</span><span>$${pay.holiday.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:1px;"><span>Sick Leave</span><span>$${pay.sick.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;font-weight:700;border-top:1px dashed #fed7aa;padding-top:2px;margin-top:2px;"><span>Net Pay</span><span style="color:#f59e0b;">$${pay.net.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:#6b7280;margin-top:1px;"><span>Week Tally</span><span>$${runningGross.toFixed(2)}</span></div>
+          </div>
+        </div>`;
+      });
+    } else {
+      bodyHtml += `<div style="text-align:center;padding:6px 2px;color:#d1d5db;font-size:0.8rem;">—</div>`;
+    }
+    bodyHtml += '</td>';
+  });
+
+  // Hours total cell
+  bodyHtml += `<td style="text-align:center;padding:4px 2px;font-size:0.72rem;font-weight:700;color:#f59e0b;border-bottom:1px solid #e5e7eb;vertical-align:top;">${totalHrs.toFixed(1)}h</td>`;
+  bodyHtml += '</tr>';
+
+  document.getElementById('sp-wv-body').innerHTML = bodyHtml;
+}
+
+function spEsc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function spWvRequestSwap(shiftId, jobTitle) {
+  switchTab('swaps');
+  openSwapModal();
+  setTimeout(() => {
+    const sel = document.getElementById('swap-shift-select');
+    if (sel) sel.value = shiftId;
+  }, 150);
+}
+
+// ── Roster ────────────────────────────────────────────────────────────────────
+
+function setRosterView(v) {
+  rosterView = v;
+  document.getElementById('rv-upcoming').className = v === 'upcoming'
+    ? 'text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-medium'
+    : 'text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 font-medium';
+  document.getElementById('rv-past').className = v === 'past'
+    ? 'text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-medium'
+    : 'text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 font-medium';
+  renderRoster();
+}
+
+async function loadRoster() {
+  const today = toDateStr(new Date());
+  const farPast = toDateStr(new Date(Date.now() - 60 * 86400000));
+  const farFuture = toDateStr(new Date(Date.now() + 60 * 86400000));
+  const r = await api(`/api/staff-portal/roster?start_date=${farPast}&end_date=${farFuture}`);
+  rosterData = r?.roster || [];
+  renderRoster();
+}
+
+function renderRoster() {
+  const today = toDateStr(new Date());
+  const filtered = rosterData.filter(s =>
+    rosterView === 'upcoming' ? s.scheduled_date >= today : s.scheduled_date < today
+  );
+  const el = document.getElementById('roster-list');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm">${rosterView === 'upcoming' ? 'No upcoming shifts' : 'No past shifts'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(s => {
+    const isPast = s.scheduled_date < today;
+    const hasClockedIn = !!s.clocked_in_at;
+    const hasClockedOut = !!s.clocked_out_at;
+    return `<div class="card shift-card ${isPast ? 'past' : ''} p-4">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <p class="font-semibold text-gray-800">${esc(s.job_title || 'Shift')}</p>
+          <p class="text-sm text-gray-500">${formatDate(s.scheduled_date)}</p>
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium badge-${s.status}">${s.status}</span>
+      </div>
+      ${s.start_time ? `<p class="text-sm text-amber-600 font-medium mb-1">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatTime(s.end_time) : ''}</p>` : ''}
+      ${s.job_address ? `<p class="text-xs text-gray-400 mb-2">📍 ${esc(s.job_address)}</p>` : ''}
+      ${s.notes ? `<p class="text-xs text-gray-400 mb-2 italic">${esc(s.notes)}</p>` : ''}
+      <div class="flex gap-2 mt-2 text-xs text-gray-400">
+        ${hasClockedIn ? `<span class="text-green-600">✓ In ${formatDateTime(s.clocked_in_at)}</span>` : ''}
+        ${hasClockedOut ? `<span class="text-red-500">✓ Out ${formatDateTime(s.clocked_out_at)}</span>` : ''}
+      </div>
+      ${!isPast && s.status !== 'cancelled' ? `
+        <div class="flex gap-2 mt-3">
+          <button onclick="swapFromRoster(${s.id})" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">Request Swap</button>
+        </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Clock in/out ──────────────────────────────────────────────────────────────
+
+async function loadClockStatus() {
+  const r = await api('/api/staff-portal/clock-status');
+  if (r?.success) {
+    clockStatus = r;
+    updateClockUI();
+    if (r.clocked_in && r.last_event) {
+      clockStartTime = new Date(r.last_event.occurred_at);
+      startElapsedTimer();
+    }
+  }
+}
+
+function updateClockUI() {
+  const isClockedIn = clockStatus.clocked_in;
+
+  // Header badge
+  const badge = document.getElementById('clock-status-badge');
+  const dot = document.getElementById('clock-dot');
+  const statusText = document.getElementById('clock-status-text');
+  badge.classList.remove('hidden');
+  dot.className = `w-2 h-2 rounded-full pulse ${isClockedIn ? 'bg-green-400' : 'bg-gray-400'}`;
+  statusText.textContent = isClockedIn ? 'Clocked in' : 'Clocked out';
+
+  // Clock section status
+  const statusEl = document.getElementById('clock-current-status');
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <span class="w-2.5 h-2.5 rounded-full ${isClockedIn ? 'bg-green-500 pulse' : 'bg-gray-300'}"></span>
+      <span class="font-semibold ${isClockedIn ? 'text-green-600' : 'text-gray-600'}">${isClockedIn ? 'Clocked in' : 'Clocked out'}</span>`;
+  }
+
+  // Main clock button
+  const mainBtn = document.getElementById('clock-main-btn');
+  if (mainBtn) {
+    mainBtn.className = `w-full py-3.5 rounded-xl font-bold text-white text-base transition ${isClockedIn ? 'clock-out-btn' : 'clock-in-btn'}`;
+    mainBtn.textContent = isClockedIn ? 'Clock Out' : 'Clock In';
+  }
+
+  // Home quick clock button
+  const homeBtn = document.getElementById('clock-btn');
+  if (homeBtn) {
+    homeBtn.className = `w-full py-3 rounded-xl font-bold text-white text-base transition ${isClockedIn ? 'clock-out-btn' : 'clock-in-btn'}`;
+    homeBtn.textContent = isClockedIn ? 'Clock Out' : 'Clock In';
+  }
+
+  // Elapsed timer
+  const elapsedDiv = document.getElementById('clock-elapsed');
+  if (elapsedDiv) elapsedDiv.classList.toggle('hidden', !isClockedIn);
+}
+
+function startElapsedTimer() {
+  if (elapsedTimer) clearInterval(elapsedTimer);
+  function tick() {
+    if (!clockStartTime) return;
+    const elapsed = Math.floor((Date.now() - clockStartTime) / 1000);
+    const h = Math.floor(elapsed / 3600);
+    const m = Math.floor((elapsed % 3600) / 60);
+    const s = elapsed % 60;
+    const el = document.getElementById('elapsed-time');
+    if (el) el.textContent = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  }
+  tick();
+  elapsedTimer = setInterval(tick, 1000);
+}
+
+async function doClockAction() {
+  requestGPS();
+  const rosterSelect = document.getElementById('clock-roster-select');
+  const rosterId = rosterSelect?.value || null;
+  await sendClockEvent(rosterId);
+}
+
+async function quickClock() {
+  requestGPS();
+  await sendClockEvent(null);
+}
+
+async function sendClockEvent(rosterEntryId) {
+  const eventType = clockStatus.clocked_in ? 'clock_out' : 'clock_in';
+  const payload = {
+    event_type: eventType,
+    roster_entry_id: rosterEntryId || undefined,
+  };
+  if (gpsPosition) {
+    payload.latitude = gpsPosition.coords.latitude;
+    payload.longitude = gpsPosition.coords.longitude;
+    payload.accuracy_meters = gpsPosition.coords.accuracy;
+  }
+
+  const r = await api('/api/staff-portal/clock', { method: 'POST', body: JSON.stringify(payload) });
+  if (r?.success) {
+    clockStatus.clocked_in = eventType === 'clock_in';
+    clockStatus.last_event = r.event;
+    if (eventType === 'clock_in') {
+      clockStartTime = new Date();
+      startElapsedTimer();
+    } else {
+      if (elapsedTimer) clearInterval(elapsedTimer);
+      clockStartTime = null;
+    }
+    updateClockUI();
+    loadClockHistory();
+    showToast(eventType === 'clock_in' ? '✅ Clocked in' : '👋 Clocked out');
+    if (r.geofence_ok === false) showToast('⚠️ Outside geofence — recorded anyway', 3500);
+  } else {
+    showToast(r?.message || 'Clock event failed', 3000, true);
+  }
+}
+
+async function loadClockHistory() {
+  const r = await api('/api/staff-portal/clock-history');
+  const el = document.getElementById('clock-history-list');
+  if (!r?.events?.length) {
+    el.innerHTML = `<p class="text-sm text-gray-400 text-center py-3">No clock events yet</p>`;
+    return;
+  }
+  el.innerHTML = r.events.slice(0, 20).map(e => `
+    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+      <div class="flex items-center gap-3">
+        <span class="text-lg">${e.event_type === 'clock_in' ? '🟢' : '🔴'}</span>
+        <div>
+          <p class="text-sm font-medium text-gray-700">${e.event_type === 'clock_in' ? 'Clocked in' : 'Clocked out'}</p>
+          ${e.job_title ? `<p class="text-xs text-gray-400">${esc(e.job_title)}</p>` : ''}
+        </div>
+      </div>
+      <div class="text-right">
+        <p class="text-xs text-gray-500">${formatDateTime(e.occurred_at)}</p>
+        ${e.latitude ? `<p class="text-xs text-gray-400">📍 GPS</p>` : ''}
+        ${e.geofence_ok === false ? `<p class="text-xs text-amber-500">⚠️ Out of zone</p>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function populateClockRosterSelect() {
+  const today = toDateStr(new Date());
+  const tomorrow = toDateStr(new Date(Date.now() + 24 * 3600000));
+  const r = await api(`/api/staff-portal/roster?start_date=${today}&end_date=${tomorrow}`);
+  const sel = document.getElementById('clock-roster-select');
+  if (!sel) return;
+  const shifts = r?.roster?.filter(s => s.status !== 'cancelled') || [];
+  if (shifts.length) {
+    sel.innerHTML = `<option value="">— No shift selected —</option>` +
+      shifts.map(s => `<option value="${s.id}">${esc(s.job_title || 'Shift')} — ${formatDate(s.scheduled_date)}</option>`).join('');
+  }
+}
+
+// ── Swaps ─────────────────────────────────────────────────────────────────────
+
+let colleaguesData = [];
+let upcomingShiftsForSwap = [];
+
+async function loadSwaps() {
+  const r = await api('/api/staff-portal/swap-requests');
+  const el = document.getElementById('swaps-list');
+  if (!r?.requests?.length) {
+    el.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm">No swap requests yet</div>`;
+    return;
+  }
+  el.innerHTML = r.requests.map(s => `
+    <div class="card p-4">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <p class="font-semibold text-gray-800">${esc(s.job_title || 'Shift')} — ${formatDate(s.scheduled_date)}</p>
+          ${s.start_time ? `<p class="text-sm text-gray-500">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatTime(s.end_time) : ''}</p>` : ''}
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium badge-${s.status}">${s.status}</span>
+      </div>
+      ${s.target_name ? `<p class="text-xs text-gray-500">With: ${esc(s.target_name)}</p>` : '<p class="text-xs text-gray-400">Open request</p>'}
+      ${s.reason ? `<p class="text-xs text-gray-400 mt-1 italic">"${esc(s.reason)}"</p>` : ''}
+      ${s.operator_note ? `<p class="text-xs text-blue-600 mt-1">Employer: ${esc(s.operator_note)}</p>` : ''}
+      <p class="text-xs text-gray-400 mt-2">${timeAgo(s.created_at)}</p>
+    </div>`).join('');
+}
+
+async function loadColleagues() {
+  const r = await api('/api/staff-portal/colleagues');
+  colleaguesData = r?.colleagues || [];
+  const sel = document.getElementById('swap-target-select');
+  if (sel && colleaguesData.length) {
+    sel.innerHTML = `<option value="">Open request (any colleague)</option>` +
+      colleaguesData.map(c => `<option value="${c.id}">${esc(c.name)} (${esc(c.role || 'staff')})</option>`).join('');
+  }
+}
+
+function openSwapModal() {
+  const today = toDateStr(new Date());
+  upcomingShiftsForSwap = rosterData.filter(s => s.scheduled_date >= today && s.status !== 'cancelled');
+  const sel = document.getElementById('swap-shift-select');
+  if (!upcomingShiftsForSwap.length) {
+    sel.innerHTML = `<option value="">No upcoming shifts</option>`;
+  } else {
+    sel.innerHTML = `<option value="">Select a shift…</option>` +
+      upcomingShiftsForSwap.map(s => `<option value="${s.id}">${esc(s.job_title || 'Shift')} — ${formatDate(s.scheduled_date)}</option>`).join('');
+  }
+  document.getElementById('swap-modal').style.cssText = 'display:flex!important;align-items:flex-end;justify-content:center;';
+}
+
+function closeSwapModal() {
+  document.getElementById('swap-modal').style.cssText = 'display:none!important;';
+  document.getElementById('swap-error').classList.add('hidden');
+}
+
+function swapFromRoster(shiftId) {
+  switchTab('swaps');
+  openSwapModal();
+  setTimeout(() => {
+    const sel = document.getElementById('swap-shift-select');
+    if (sel) sel.value = shiftId;
+  }, 100);
+}
+
+async function submitSwap() {
+  const shiftId = document.getElementById('swap-shift-select').value;
+  const targetId = document.getElementById('swap-target-select').value;
+  const reason = document.getElementById('swap-reason').value.trim();
+  const errEl = document.getElementById('swap-error');
+  errEl.classList.add('hidden');
+
+  if (!shiftId) { errEl.textContent = 'Please select a shift.'; errEl.classList.remove('hidden'); return; }
+
+  const r = await api('/api/staff-portal/swap-requests', {
+    method: 'POST',
+    body: JSON.stringify({
+      roster_entry_id: parseInt(shiftId),
+      target_staff_id: targetId ? parseInt(targetId) : undefined,
+      reason: reason || undefined,
+    }),
+  });
+
+  if (r?.success) {
+    closeSwapModal();
+    showToast('🔄 Swap request sent');
+    loadSwaps();
+  } else {
+    errEl.textContent = r?.message || 'Failed to submit swap request.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+const ALL_TABS = ['home', 'roster', 'clock', 'swaps', 'payslips', 'super', 'tax', 'leave', 'onboarding'];
+
+function switchTab(tab) {
+  ALL_TABS.forEach(t => {
+    document.getElementById(`section-${t}`)?.classList.toggle('active', t === tab);
+    const btn = document.getElementById(`tab-${t}`);
+    if (btn) {
+      btn.className = t === tab
+        ? 'tab-btn px-4 py-3 text-sm font-medium text-amber-500 border-b-2 border-amber-500 whitespace-nowrap'
+        : 'tab-btn px-4 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent whitespace-nowrap';
+    }
+  });
+  // Lazy-load financial sections on first visit
+  if (tab === 'roster' && !window._spWvLoaded) { spWvLoad(); window._spWvLoaded = true; }
+  if (tab === 'payslips' && !window._payslipsLoaded) { loadPayslips(); window._payslipsLoaded = true; }
+  if (tab === 'super' && !window._superLoaded) { loadSuperHistory(); window._superLoaded = true; }
+  if (tab === 'tax' && !window._taxLoaded) { loadTaxSummary(); window._taxLoaded = true; }
+  if (tab === 'leave' && !window._leaveLoaded) { loadLeave(); window._leaveLoaded = true; }
+  if (tab === 'onboarding' && !window._onboardingLoaded) { loadOnboarding(); window._onboardingLoaded = true; }
+}
+
+// ── Pay Slips ─────────────────────────────────────────────────────────────────
+
+async function loadPayslips() {
+  const el = document.getElementById('payslips-list');
+  const r = await api('/api/staff-portal/payslips');
+  if (!r?.payslips?.length) {
+    el.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">No pay slips yet. Your employer processes payroll in the Hugo.pays dashboard.</div>`;
+    return;
+  }
+  el.innerHTML = r.payslips.map(p => {
+    const gross   = parseFloat(p.amount || 0);
+    const tax     = parseFloat(p.tax_withheld || 0);
+    const spr     = parseFloat(p.super_amount || 0);
+    const net     = parseFloat(p.net_pay || 0);
+    const hrs     = parseFloat(p.hours_worked || 0);
+    const rate    = parseFloat(p.hourly_rate || 0);
+    return `
+    <div class="card p-4">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <p class="font-semibold text-gray-800">${formatDate2(p.period_start)} – ${formatDate2(p.period_end)}</p>
+          ${hrs ? `<p class="text-xs text-gray-400">${hrs} hrs × $${rate.toFixed(2)}/hr</p>` : ''}
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium badge-${p.status}">${p.status}</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div class="flex justify-between border-b border-gray-50 pb-1">
+          <span class="text-gray-500">Gross pay</span>
+          <span class="font-medium text-gray-800">$${gross.toFixed(2)}</span>
+        </div>
+        <div class="flex justify-between border-b border-gray-50 pb-1">
+          <span class="text-gray-500">PAYG tax</span>
+          <span class="font-medium text-red-500">−$${tax.toFixed(2)}</span>
+        </div>
+        <div class="flex justify-between border-b border-gray-50 pb-1">
+          <span class="text-gray-500">Super (11.5%)</span>
+          <span class="font-medium text-blue-500">$${spr.toFixed(2)}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="font-semibold text-gray-700">Net pay</span>
+          <span class="font-bold text-green-600">$${net.toFixed(2)}</span>
+        </div>
+      </div>
+      ${p.super_fund_name ? `<p class="text-xs text-gray-400 mt-2">🏦 Super to: ${esc(p.super_fund_name)}</p>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Super History ─────────────────────────────────────────────────────────────
+
+async function loadSuperHistory() {
+  const r = await api('/api/staff-portal/super-history');
+  if (!r?.success) return;
+
+  document.getElementById('super-ytd').textContent = `$${r.ytd_super.toFixed(2)}`;
+  document.getElementById('super-alltime').textContent = `$${r.all_time_super.toFixed(2)}`;
+  document.getElementById('super-fy-label').textContent = r.fy_label;
+
+  const fund = r.fund || {};
+  const fundEl = document.getElementById('super-fund-info');
+  if (fund.super_fund_name) {
+    fundEl.innerHTML = `
+      <p class="text-sm font-medium text-gray-800">${esc(fund.super_fund_name)}</p>
+      ${fund.super_usi ? `<p class="text-xs text-gray-500">USI: ${esc(fund.super_usi)}</p>` : ''}
+      ${fund.super_member_number ? `<p class="text-xs text-gray-500">Member #: ${esc(fund.super_member_number)}</p>` : ''}`;
+  }
+
+  const qEl = document.getElementById('super-quarters');
+  if (r.quarters?.length) {
+    qEl.innerHTML = r.quarters.map(q => `
+      <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+        <div>
+          <p class="text-sm font-medium text-gray-700">${esc(q.quarter)} <span class="text-gray-400 text-xs">${q.year}–${String(parseInt(q.year)+1).slice(2)}</span></p>
+          <div class="flex gap-2 mt-0.5">
+            ${q.paid > 0 ? `<span class="text-xs text-green-600">✓ Paid $${parseFloat(q.paid).toFixed(2)}</span>` : ''}
+            ${q.pending > 0 ? `<span class="text-xs text-amber-500">⏳ Pending $${parseFloat(q.pending).toFixed(2)}</span>` : ''}
+          </div>
+        </div>
+        <p class="text-sm font-bold text-gray-800">$${parseFloat(q.total).toFixed(2)}</p>
+      </div>`).join('');
+  } else {
+    qEl.innerHTML = `<p class="text-sm text-gray-400 text-center py-2">No super contributions yet</p>`;
+  }
+}
+
+// ── Tax / PAYG ────────────────────────────────────────────────────────────────
+
+async function loadTaxSummary() {
+  const r = await api('/api/staff-portal/tax-summary');
+  if (!r?.success) return;
+
+  document.getElementById('tax-fy-label').textContent = r.fy_label;
+  document.getElementById('tax-ytd-gross').textContent = `$${r.ytd.gross.toFixed(2)}`;
+  document.getElementById('tax-ytd-tax').textContent   = `$${r.ytd.tax_withheld.toFixed(2)}`;
+  document.getElementById('tax-ytd-super').textContent = `$${r.ytd.super.toFixed(2)}`;
+  document.getElementById('tax-ytd-net').textContent   = `$${r.ytd.net.toFixed(2)}`;
+  document.getElementById('tax-bracket').textContent   = r.tax_bracket;
+  document.getElementById('tax-annualised').textContent = `$${r.annualised_income.toLocaleString('en-AU')} (estimated)`;
+
+  const eofy = document.getElementById('eofy-summary-rows');
+  eofy.innerHTML = `
+    <div class="flex justify-between"><span>Total gross income</span><span>$${r.all_time.gross.toFixed(2)}</span></div>
+    <div class="flex justify-between"><span>Total PAYG withheld</span><span>$${r.all_time.tax_withheld.toFixed(2)}</span></div>`;
+}
+
+// ── Leave ─────────────────────────────────────────────────────────────────────
+
+async function loadLeave() {
+  const r = await api('/api/staff-portal/leave');
+  if (!r?.success) return;
+
+  const balEl = document.getElementById('leave-balance-cards');
+  const b = r.balances;
+  balEl.innerHTML = [
+    { key: 'annual',   label: 'Annual Leave',          emoji: '🌴', color: 'blue' },
+    { key: 'sick',     label: 'Sick Leave',             emoji: '🤒', color: 'amber' },
+    { key: 'personal', label: 'Personal/Carer\'s Leave', emoji: '💛', color: 'green' },
+  ].map(({ key, label, emoji, color }) => {
+    const bal = b[key];
+    return `
+    <div class="card p-4">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">${emoji}</span>
+          <div>
+            <p class="text-sm font-semibold text-gray-800">${label}</p>
+            <p class="text-xs text-gray-400">NES accrual · ${r.years_employed.toFixed(1)} yrs service</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="text-xl font-bold text-${color === 'blue' ? 'blue' : color === 'amber' ? 'amber' : 'green'}-600">${bal.balance_days} days</p>
+          <p class="text-xs text-gray-400">${bal.balance_hours} hrs</p>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500">
+        <span>Accrued: ${bal.accrued_hours} hrs</span>
+        <span>Taken: ${bal.taken_hours} hrs</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const reqEl = document.getElementById('leave-requests-list');
+  if (r.requests?.length) {
+    reqEl.innerHTML = r.requests.map(req => `
+      <div class="flex items-start justify-between py-2 border-b border-gray-50 last:border-0">
+        <div>
+          <p class="text-sm font-medium text-gray-700 capitalize">${req.leave_type} leave</p>
+          <p class="text-xs text-gray-400">${formatDate2(req.start_date)}${req.start_date !== req.end_date ? ' – ' + formatDate2(req.end_date) : ''} · ${req.days_requested} day${req.days_requested != 1 ? 's' : ''}</p>
+          ${req.operator_note ? `<p class="text-xs text-blue-500 mt-0.5">Employer: ${esc(req.operator_note)}</p>` : ''}
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium badge-${req.status}">${req.status}</span>
+      </div>`).join('');
+  } else {
+    reqEl.innerHTML = `<p class="text-sm text-gray-400 text-center py-2">No leave requests yet</p>`;
+  }
+}
+
+function openLeaveModal() {
+  // Set min date to today
+  const today = toDateStr(new Date());
+  document.getElementById('leave-start-date').min = today;
+  document.getElementById('leave-end-date').min = today;
+  document.getElementById('leave-error').classList.add('hidden');
+  document.getElementById('leave-modal').style.cssText = 'display:flex!important;align-items:flex-end;justify-content:center;';
+}
+
+function closeLeaveModal() {
+  document.getElementById('leave-modal').style.cssText = 'display:none!important;';
+}
+
+async function submitLeaveRequest() {
+  const leave_type = document.getElementById('leave-type-select').value;
+  const start_date = document.getElementById('leave-start-date').value;
+  const end_date   = document.getElementById('leave-end-date').value;
+  const reason     = document.getElementById('leave-reason').value.trim();
+  const errEl      = document.getElementById('leave-error');
+  errEl.classList.add('hidden');
+
+  if (!start_date || !end_date) { errEl.textContent = 'Please select start and end dates.'; errEl.classList.remove('hidden'); return; }
+  if (start_date > end_date) { errEl.textContent = 'End date must be after start date.'; errEl.classList.remove('hidden'); return; }
+
+  const r = await api('/api/staff-portal/leave', {
+    method: 'POST',
+    body: JSON.stringify({ leave_type, start_date, end_date, reason: reason || undefined }),
+  });
+  if (r?.success) {
+    closeLeaveModal();
+    showToast(`🌴 Leave request submitted (${r.days_requested} day${r.days_requested !== 1 ? 's' : ''})`);
+    window._leaveLoaded = false;
+    loadLeave();
+  } else {
+    errEl.textContent = r?.message || 'Failed to submit leave request.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ── Onboarding ────────────────────────────────────────────────────────────────
+
+let onboardingData = null;
+
+async function loadOnboarding() {
+  const r = await api('/api/staff-portal/onboarding');
+  onboardingData = r?.onboarding;
+  renderOnboardingChecklist(onboardingData);
+}
+
+function renderOnboardingChecklist(ob) {
+  const steps = [
+    { key: 'tfn',       done: !!(ob?.tfn_declared_at) },
+    { key: 'super',     done: !!(ob?.super_submitted_at) },
+    { key: 'bank',      done: !!(ob?.bank_submitted_at) },
+    { key: 'emergency', done: !!(ob?.emergency_submitted_at) },
+  ];
+  const doneCount = steps.filter(s => s.done).length;
+
+  document.getElementById('onboarding-progress-badge').textContent = `${doneCount} of 4 done`;
+  document.getElementById('onboarding-progress-badge').className =
+    `text-xs font-medium px-2 py-0.5 rounded-full ${doneCount === 4 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`;
+
+  steps.forEach(({ key, done }) => {
+    const icon = document.getElementById(`ob-icon-${key}`);
+    if (icon) icon.textContent = done ? '✅' : '⬜';
+  });
+
+  // Show completion banner if all done
+  const banner = document.getElementById('onboarding-complete-banner');
+  if (banner) banner.classList.toggle('hidden', doneCount < 4);
+
+  // Badge the Setup tab if onboarding incomplete
+  const setupTab = document.getElementById('tab-onboarding');
+  if (setupTab && doneCount < 4 && doneCount > 0) {
+    setupTab.textContent = `📝 Setup (${doneCount}/4)`;
+  }
+}
+
+const ONBOARDING_FORMS = {
+  tfn: {
+    title: 'TFN Declaration',
+    html: (ob) => `
+      <p class="text-xs text-gray-400 mb-3">Your TFN is used by your employer to calculate the correct PAYG tax. Stored securely.</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Tax File Number (TFN)</label>
+          <input id="ob-tfn" type="text" inputmode="numeric" maxlength="11" placeholder="XXX XXX XXX" value="${ob?.tfn ? '••• ••• •••' : ''}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" id="ob-resident" ${ob?.is_resident !== false ? 'checked' : ''} class="rounded" />
+          I am an Australian resident for tax purposes
+        </label>
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" id="ob-taxfree" ${ob?.claim_tax_free !== false ? 'checked' : ''} class="rounded" />
+          I claim the tax-free threshold
+        </label>
+        <button onclick="submitOnboardingStep('tfn')" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm">Save TFN Declaration</button>
+      </div>`,
+  },
+  super: {
+    title: 'Super Choice',
+    html: (ob) => `
+      <p class="text-xs text-gray-400 mb-3">Your employer pays 11.5% SGC into this fund. If you don't choose, your employer's default fund applies.</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Fund name</label>
+          <input id="ob-super-fund" type="text" placeholder="e.g. Australian Retirement Trust" value="${esc(ob?.super_fund_name || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Unique Superannuation Identifier (USI)</label>
+          <input id="ob-super-usi" type="text" placeholder="e.g. 60905115063001" value="${esc(ob?.super_usi || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Member number</label>
+          <input id="ob-super-member" type="text" placeholder="Your fund member number" value="${esc(ob?.super_member_number || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <button onclick="submitOnboardingStep('super')" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm">Save Super Details</button>
+      </div>`,
+  },
+  bank: {
+    title: 'Bank Details',
+    html: (ob) => `
+      <p class="text-xs text-gray-400 mb-3">Your net pay is deposited to this account.</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">BSB</label>
+          <input id="ob-bank-bsb" type="text" inputmode="numeric" maxlength="7" placeholder="063-000" value="${esc(ob?.bank_bsb ? ob.bank_bsb.replace(/(\d{3})(\d{3})/, '$1-$2') : '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Account number</label>
+          <input id="ob-bank-account" type="text" inputmode="numeric" placeholder="12345678" value="${esc(ob?.bank_account || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Account name</label>
+          <input id="ob-bank-name" type="text" placeholder="Full name as on bank account" value="${esc(ob?.bank_account_name || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <button onclick="submitOnboardingStep('bank')" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm">Save Bank Details</button>
+      </div>`,
+  },
+  emergency: {
+    title: 'Emergency Contact',
+    html: (ob) => `
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Full name</label>
+          <input id="ob-em-name" type="text" placeholder="Contact name" value="${esc(ob?.emergency_name || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Phone number</label>
+          <input id="ob-em-phone" type="tel" placeholder="+61 4XX XXX XXX" value="${esc(ob?.emergency_phone || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Relationship</label>
+          <input id="ob-em-relation" type="text" placeholder="e.g. Partner, Parent, Sibling" value="${esc(ob?.emergency_relation || '')}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <button onclick="submitOnboardingStep('emergency')" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm">Save Emergency Contact</button>
+      </div>`,
+  },
+};
+
+function openOnboardingStep(step) {
+  const form = ONBOARDING_FORMS[step];
+  if (!form) return;
+  document.getElementById('ob-modal-title').textContent = form.title;
+  document.getElementById('ob-modal-body').innerHTML = form.html(onboardingData);
+  document.getElementById('ob-error').classList.add('hidden');
+  document.getElementById('onboarding-modal').style.cssText = 'display:flex!important;align-items:flex-end;justify-content:center;';
+  window._currentObStep = step;
+}
+
+function closeOnboardingModal() {
+  document.getElementById('onboarding-modal').style.cssText = 'display:none!important;';
+}
+
+async function submitOnboardingStep(step) {
+  const errEl = document.getElementById('ob-error');
+  errEl.classList.add('hidden');
+  let payload = {};
+
+  if (step === 'tfn') {
+    const tfn = document.getElementById('ob-tfn')?.value.replace(/[•\s]/g, '');
+    if (!tfn.match(/^\d{8,9}$/)) {
+      errEl.textContent = 'TFN must be 8 or 9 digits.'; errEl.classList.remove('hidden'); return;
+    }
+    payload = {
+      tfn,
+      is_resident: document.getElementById('ob-resident')?.checked !== false,
+      claim_tax_free: document.getElementById('ob-taxfree')?.checked !== false,
+    };
+  } else if (step === 'super') {
+    const fund = document.getElementById('ob-super-fund')?.value.trim();
+    if (!fund) { errEl.textContent = 'Fund name required.'; errEl.classList.remove('hidden'); return; }
+    payload = {
+      super_fund_name: fund,
+      super_usi: document.getElementById('ob-super-usi')?.value.trim() || undefined,
+      super_member_number: document.getElementById('ob-super-member')?.value.trim() || undefined,
+    };
+  } else if (step === 'bank') {
+    payload = {
+      bank_bsb: document.getElementById('ob-bank-bsb')?.value.trim(),
+      bank_account: document.getElementById('ob-bank-account')?.value.trim(),
+      bank_account_name: document.getElementById('ob-bank-name')?.value.trim(),
+    };
+    if (!payload.bank_bsb || !payload.bank_account || !payload.bank_account_name) {
+      errEl.textContent = 'All bank fields required.'; errEl.classList.remove('hidden'); return;
+    }
+  } else if (step === 'emergency') {
+    payload = {
+      emergency_name: document.getElementById('ob-em-name')?.value.trim(),
+      emergency_phone: document.getElementById('ob-em-phone')?.value.trim(),
+      emergency_relation: document.getElementById('ob-em-relation')?.value.trim() || undefined,
+    };
+    if (!payload.emergency_name || !payload.emergency_phone) {
+      errEl.textContent = 'Name and phone required.'; errEl.classList.remove('hidden'); return;
+    }
+  }
+
+  const r = await api(`/api/staff-portal/onboarding/${step}`, { method: 'POST', body: JSON.stringify(payload) });
+  if (r?.success) {
+    closeOnboardingModal();
+    showToast('✅ Saved!');
+    // Refresh onboarding data
+    const fresh = await api('/api/staff-portal/onboarding');
+    onboardingData = fresh?.onboarding;
+    renderOnboardingChecklist(onboardingData);
+    // Try to mark complete if all 4 done
+    if (onboardingData?.tfn_declared_at && onboardingData?.super_submitted_at && onboardingData?.bank_submitted_at && onboardingData?.emergency_submitted_at && !onboardingData?.completed_at) {
+      await api('/api/staff-portal/onboarding/complete', { method: 'POST', body: '{}' });
+    }
+    // Reload super history if super was updated
+    if (step === 'super') { window._superLoaded = false; }
+  } else {
+    errEl.textContent = r?.message || 'Failed to save.'; errEl.classList.remove('hidden');
+  }
+}
+
+function formatDate2(d) {
+  if (!d) return '';
+  const ds = toDateStr(d);
+  const date = new Date(ds + 'T12:00:00');
+  if (isNaN(date)) return '';
+  return date.toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'2-digit' });
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+
+// WHY: node-pg returns DATE columns as JS Date objects. Concatenating a Date with
+// a string produces garbage like "[object]T12:00:00". This helper normalises any
+// input (Date, ISO string, YYYY-MM-DD) into a plain YYYY-MM-DD string.
+function toDateStr(d) {
+  if (!d) return '';
+  if (d instanceof Date) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  return String(d).split('T')[0];
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const ds = toDateStr(d);
+  const date = new Date(ds + 'T12:00:00');
+  if (isNaN(date)) return '';
+  return date.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' });
+}
+
+function formatTime(t) {
+  if (!t) return '';
+  // WHY: TIME columns from Postgres come as "HH:MM:SS" strings.
+  // Parse 24h format and convert to 12h with am/pm.
+  const str = String(t);
+  const [h, m] = str.split(':');
+  const hour = parseInt(h, 10);
+  if (isNaN(hour)) return str;
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  const mins = (m || '00').slice(0, 2);
+  return `${hour % 12 || 12}:${mins}${ampm}`;
+}
+
+function formatDateTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d)) return '';
+  return d.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit' }) + ' ' +
+    d.toLocaleDateString('en-AU', { day:'numeric', month:'short' });
+}
+
+// WHY: format a date for AEST-friendly display in the RECENT notifications section.
+// The notification API now returns ISO date strings, but this handles any format.
+function formatNotifDate(d) {
+  if (!d) return '';
+  const ds = toDateStr(d);
+  const date = new Date(ds + 'T12:00:00');
+  if (isNaN(date)) return String(d);
+  return date.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' });
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts);
+  const m = Math.floor(diff / 60000);
+  if (m < 2) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function esc(s) { return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function showToast(msg, duration = 2500, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#ef4444' : '#0f172a';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, duration);
+}
+</script>
+</body>
+</html>

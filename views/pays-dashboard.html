@@ -1,0 +1,2171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hugo.pays">
+    <meta name="theme-color" content="#0a0e1a">
+    <title>💰 Hugo.pays — Payroll Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --midnight: #0a0e1a;
+            --deep: #111827;
+            --surface: #1a2035;
+            --surface-hover: #1f2742;
+            --pays: #fbbf24;
+            --pays-light: #fde68a;
+            --pays-glow: rgba(251,191,36,0.12);
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --text-bright: #ffffff;
+            --border: rgba(255,255,255,0.06);
+            --green: #10b981;
+            --green-glow: rgba(16,185,129,0.12);
+            --blue: #3b82f6;
+            --blue-glow: rgba(59,130,246,0.12);
+            --red: #ef4444;
+            --red-glow: rgba(239,68,68,0.12);
+            --purple: #8b5cf6;
+            --purple-glow: rgba(139,92,246,0.12);
+        }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--midnight); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+        /* ── Ambient glow ── */
+        .pays-glow { position: fixed; top: -200px; left: 50%; transform: translateX(-50%); width: 900px; height: 600px; background: radial-gradient(ellipse, rgba(251,191,36,0.05) 0%, transparent 70%); pointer-events: none; z-index: -1; }
+
+        /* ── Nav ── */
+        .pays-nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; padding: 0.9rem 2rem; background: var(--midnight); border-bottom: 1px solid rgba(251,191,36,0.15); box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+        .pays-nav .inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .pays-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+        .pays-logo .badge { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.2rem; color: var(--pays); letter-spacing: -0.5px; }
+        .pays-logo .business-name { font-size: 0.82rem; color: var(--text-dim); font-weight: 400; }
+        .nav-back { font-size: 0.8rem; color: var(--text-dim); background: transparent; padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 500; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+        .nav-back:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+        .nav-right { display: flex; align-items: center; gap: 0.75rem; }
+        .nav-badge-pays { font-size: 0.7rem; color: var(--pays); background: var(--pays-glow); padding: 0.3rem 0.65rem; border-radius: 20px; border: 1px solid rgba(251,191,36,0.25); font-weight: 600; }
+        .btn-logout-pays { font-size: 0.8rem; color: rgba(248,113,113,0.85); background: transparent; padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid rgba(248,113,113,0.25); font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+        .btn-logout-pays:hover { color: #f87171; border-color: rgba(248,113,113,0.5); background: rgba(248,113,113,0.06); }
+        /* mobile-menu-btn removed — sidebar replaced with horizontal sub-nav */
+
+        /* ── Layout ── */
+        .pays-layout { max-width: 1440px; margin: 0 auto; padding: 7.5rem 1.5rem 3rem; }
+
+        /* ── Horizontal Sub-Nav (replaces sidebar) ── */
+        .pays-subnav { position: fixed; top: 52px; left: 0; width: 100%; z-index: 9998; background: var(--deep); border-bottom: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+        .pays-subnav .subnav-inner { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 0.15rem; padding: 0.35rem 1.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .subnav-item { display: flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.65rem; border-radius: 7px; cursor: pointer; font-size: 0.78rem; color: var(--text-dim); transition: all 0.15s; border: 1px solid transparent; font-family: 'DM Sans', sans-serif; background: transparent; white-space: nowrap; flex-shrink: 0; }
+        .subnav-item:hover { background: var(--surface); color: var(--text); }
+        .subnav-item.active { background: var(--pays-glow); color: var(--pays); border-color: rgba(251,191,36,0.2); font-weight: 600; }
+        .subnav-item .icon { font-size: 0.85rem; }
+        .subnav-divider { width: 1px; height: 20px; background: var(--border); margin: 0 0.15rem; flex-shrink: 0; }
+
+        /* ── Main content ── */
+        .pays-main {}
+
+        /* ── Pays header banner (compact) ── */
+        .pays-header-banner { background: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(251,191,36,0.02) 100%); border: 1px solid rgba(251,191,36,0.2); border-radius: 12px; padding: 0.85rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
+        .pays-header-title { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--pays); letter-spacing: -0.5px; }
+        .pays-header-sub { font-size: 0.78rem; color: var(--text-dim); margin-top: 1px; }
+        .premium-badge { font-size: 0.7rem; color: var(--purple); background: var(--purple-glow); padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid rgba(139,92,246,0.25); font-weight: 700; letter-spacing: 0.5px; }
+        .upgrade-banner { background: linear-gradient(135deg, rgba(251,191,36,0.06), rgba(139,92,246,0.06)); border: 1px solid rgba(251,191,36,0.2); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+        .upgrade-banner p { font-size: 0.88rem; color: var(--text-dim); }
+        .upgrade-banner strong { color: var(--pays); }
+        .btn-upgrade { font-size: 0.82rem; color: var(--midnight); background: var(--pays); padding: 0.5rem 1.25rem; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: 'DM Sans', sans-serif; text-decoration: none; }
+
+        /* ── Stats grid (compact 50% treatment) ── */
+        .pays-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; margin-bottom: 1rem; }
+        .pays-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.75rem; transition: border-color 0.2s; }
+        .pays-stat:hover { border-color: rgba(255,255,255,0.1); }
+        .pays-stat .stat-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-dim); margin-bottom: 0.2rem; font-weight: 600; }
+        .pays-stat .stat-val { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-bright); letter-spacing: -0.5px; }
+        .pays-stat .stat-val.gold { color: var(--pays); }
+        .pays-stat .stat-val.green { color: var(--green); }
+        .pays-stat .stat-val.purple { color: var(--purple); }
+        .pays-stat .stat-sub { font-size: 0.62rem; color: var(--text-dim); margin-top: 2px; }
+
+        /* ── Section card (compact) ── */
+        .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
+        .section-card-header { padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+        .section-card-title { font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; }
+        .section-card-body { padding: 1rem; }
+        .section-card-empty { padding: 1.5rem 1rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+
+        /* ── Staff table ── */
+        .staff-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .staff-table th { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 0.65rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600; }
+        .staff-table td { padding: 0.85rem 1rem; font-size: 0.875rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .staff-table tbody tr:last-child td { border-bottom: none; }
+        .staff-table tbody tr:hover td { background: var(--surface-hover); }
+        .staff-name { font-weight: 600; color: var(--text-bright); }
+        .staff-role { font-size: 0.78rem; color: var(--text-dim); margin-top: 1px; }
+        .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+        .status-pill.active { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+        .status-pill.inactive { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid rgba(255,255,255,0.1); }
+        .status-pill.scheduled { background: var(--blue-glow); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+        .status-pill.completed { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+        .status-pill.pending { background: var(--pays-glow); color: var(--pays); border: 1px solid rgba(251,191,36,0.25); }
+        .status-pill.paid { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+        .status-pill.sent { background: var(--blue-glow); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+        .status-pill.draft { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid var(--border); }
+        .status-pill.overdue { background: var(--red-glow); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+
+        /* ── Buttons ── */
+        .btn-primary { font-size: 0.82rem; color: var(--midnight); background: var(--pays); padding: 0.5rem 1.15rem; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; white-space: nowrap; }
+        .btn-primary:hover { background: var(--pays-light); transform: translateY(-1px); }
+        .btn-secondary { font-size: 0.8rem; color: var(--text-dim); background: transparent; padding: 0.45rem 1rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+        .btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+        .btn-danger { font-size: 0.78rem; color: var(--red); background: transparent; padding: 0.35rem 0.75rem; border-radius: 6px; border: 1px solid rgba(239,68,68,0.25); font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+        .btn-danger:hover { background: var(--red-glow); border-color: rgba(239,68,68,0.5); }
+
+        /* ── Compliance row (compact) ── */
+        .compliance-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .compliance-card { background: var(--midnight); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.75rem; }
+        .compliance-card .c-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-dim); margin-bottom: 2px; font-weight: 600; }
+        .compliance-card .c-value { font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-bright); }
+        .compliance-card .c-note { font-size: 0.62rem; color: var(--text-dim); margin-top: 2px; }
+
+        /* ── Setup guide ── */
+        .setup-step { display: flex; gap: 0.85rem; margin-bottom: 1rem; align-items: flex-start; }
+        .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--pays); color: var(--midnight); font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+        .step-num.done { background: var(--green); color: white; }
+        .step-content h4 { font-size: 0.88rem; font-weight: 700; color: var(--text-bright); margin-bottom: 2px; }
+        .step-content p { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; }
+
+        /* ── Settings form ── */
+        .settings-form { display: flex; flex-direction: column; gap: 1rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+        .form-label { font-size: 0.78rem; color: var(--text-dim); font-weight: 500; }
+        .form-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0.6rem 0.85rem; color: var(--text); font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+        .form-input:focus { border-color: var(--pays); }
+        .form-input::placeholder { color: rgba(148,163,184,0.5); }
+        .form-select { appearance: none; background: rgba(255,255,255,0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 0.6rem 2rem 0.6rem 0.85rem; color: var(--text); font-size: 0.85rem; font-family: 'DM Sans', sans-serif; outline: none; cursor: pointer; }
+        .form-select:focus { border-color: var(--pays); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--midnight); border: 1px solid var(--border); border-radius: 10px; }
+        .toggle-row label { font-size: 0.85rem; color: var(--text); font-weight: 500; }
+        .toggle-row .toggle-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 1px; }
+        .toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.1); border-radius: 22px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .toggle-slider { background: var(--pays); }
+        input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+        /* ── Map placeholder ── */
+        .map-container { height: 320px; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.03); border: 1px dashed var(--border); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0.5rem; }
+        .map-container .map-placeholder-icon { font-size: 2.5rem; }
+        .map-container .map-placeholder-text { font-size: 0.85rem; color: var(--text-dim); }
+
+        /* ── Modal ── */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: #141c2e; border: 1px solid rgba(251,191,36,0.2); border-radius: 16px; padding: 1.75rem; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+        .modal-title { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.35rem; }
+        .modal-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 1.25rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem; }
+
+        /* ── Toast ── */
+        #paysToast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%); background: var(--pays); color: var(--midnight); padding: 0.65rem 1.5rem; border-radius: 30px; font-size: 0.85rem; font-weight: 700; z-index: 20000; display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+
+        /* ── Roster tabs ── */
+        .roster-tabs { display: flex; gap: 0.35rem; margin-bottom: 1rem; }
+        .roster-tab { background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); padding: 0.45rem 1rem; cursor: pointer; font-size: 0.82rem; font-family: 'DM Sans', sans-serif; font-weight: 600; transition: all 0.2s; }
+        .roster-tab:hover { border-color: var(--pays); color: var(--pays); }
+        .roster-tab.active { background: var(--pays-glow); border-color: rgba(251,191,36,0.4); color: var(--pays); }
+
+        /* ── Week View grid (compact — fits 1440px viewport) ── */
+        .wv-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+        .wv-nav { display: flex; align-items: center; gap: 0.35rem; }
+        .wv-week-label { font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--text-bright); }
+        .wv-nav-btn { background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); padding: 0.35rem 0.6rem; cursor: pointer; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+        .wv-nav-btn:hover { border-color: var(--pays); color: var(--pays); }
+        .wv-this-week { background: var(--pays-glow); border-color: rgba(251,191,36,0.3); color: var(--pays); font-weight: 600; }
+        .wv-swap-badge { font-size: 0.68rem; background: var(--red-glow); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 2px 8px; border-radius: 20px; font-weight: 700; display: none; }
+        .wv-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 220px); }
+        .wv-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+        .wv-table th { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); padding: 0.45rem 0.25rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: 600; white-space: nowrap; background: var(--midnight); overflow: hidden; }
+        .wv-table th.wv-staff-col { text-align: left; width: 100px; padding-left: 0.5rem; }
+        .wv-table th.wv-day-col { }
+        .wv-table th.wv-totals-col { color: var(--pays); width: 52px; }
+        .wv-table th.wv-today { color: var(--pays); border-bottom: 2px solid var(--pays); }
+        .wv-table td { padding: 0.3rem 0.2rem; font-size: 0.72rem; border-bottom: 1px solid var(--border); vertical-align: top; position: relative; overflow: hidden; }
+        .wv-table tr:last-child td { border-bottom: none; }
+        .wv-staff-cell { width: 100px; padding: 0.4rem 0.5rem !important; }
+        .wv-staff-name { font-weight: 700; color: var(--text-bright); font-size: 0.75rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wv-staff-rate { font-size: 0.65rem; color: var(--text-dim); }
+        .wv-day-cell { min-height: 48px; cursor: pointer; border-left: 1px solid var(--border); transition: background 0.15s; }
+        .wv-day-cell:hover { background: var(--surface-hover); }
+        .wv-day-cell.wv-today-col { background: rgba(251,191,36,0.03); }
+        .wv-shift-chip { background: var(--blue-glow); border: 1px solid rgba(59,130,246,0.25); border-radius: 4px; padding: 2px 4px; margin: 1px; font-size: 0.62rem; color: var(--blue); line-height: 1.25; cursor: pointer; transition: all 0.15s; display: block; }
+        .wv-shift-chip:hover { border-color: rgba(59,130,246,0.5); background: rgba(59,130,246,0.15); }
+        .wv-shift-chip.swap-offered { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.5); color: var(--pays); }
+        /* Bug 6 fix: gap increased from 1px to 12px, delete button shifted far-right to prevent fat-finger */
+        .wv-chip-actions { display: inline-flex; gap: 12px; margin-left: 4px; flex-shrink: 0; align-items: center; }
+        .wv-swap-btn, .wv-del-btn { background: transparent; border: none; cursor: pointer; font-size: 0.65rem; padding: 2px 3px; line-height: 1; opacity: 0.5; transition: opacity 0.15s; color: inherit; font-family: inherit; border-radius: 3px; }
+        .wv-swap-btn:hover { opacity: 1; color: var(--pays); background: rgba(251,191,36,0.15); }
+        .wv-swap-btn.swap-active { opacity: 1; color: var(--pays); }
+        .wv-del-btn:hover { opacity: 1; color: var(--red); background: rgba(239,68,68,0.15); }
+        .wv-shift-detail { margin-top: 3px; padding: 4px 5px; background: rgba(0,0,0,0.25); border-radius: 3px; font-size: 0.58rem; }
+        .wv-detail-row { display: flex; justify-content: space-between; padding: 1px 0; color: var(--text-dim); }
+        .wv-detail-net { font-weight: 700; }
+        .wv-add-hint { color: rgba(148,163,184,0.25); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; height: 100%; transition: color 0.15s; }
+        .wv-day-cell:hover .wv-add-hint { color: rgba(148,163,184,0.5); }
+        .wv-total-cell { text-align: right; padding: 0.35rem 0.3rem; color: var(--text-dim); font-size: 0.72rem; border-left: 1px solid rgba(255,255,255,0.1); }
+        .wv-total-cell .wv-t-val { font-family: 'Outfit', sans-serif; font-size: 0.75rem; font-weight: 700; color: var(--text-bright); }
+        .wv-total-cell .wv-t-sub { font-size: 0.6rem; color: var(--text-dim); }
+        .wv-team-row td { background: var(--deep); border-top: 2px solid rgba(251,191,36,0.3); font-weight: 700; }
+        .wv-team-row .wv-staff-cell { color: var(--pays); font-size: 0.72rem; font-weight: 800; }
+        /* Fix 8: Team totals pinned at bottom of scroll container */
+        .wv-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+        .wv-table tfoot td { background: var(--deep) !important; }
+        .wv-pending-swaps-panel { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2); border-radius: 12px; padding: 1rem 1.25rem; margin-top: 1.25rem; }
+        .wv-swap-row { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); gap: 1rem; flex-wrap: wrap; }
+        .wv-swap-row:last-child { border-bottom: none; }
+        .wv-swap-info { font-size: 0.82rem; color: var(--text); flex: 1; }
+        .wv-swap-info small { color: var(--text-dim); font-size: 0.72rem; }
+        .wv-swap-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+            .pays-layout { padding: 7rem 0.75rem 3rem; }
+            .pays-subnav .subnav-inner { padding: 0.3rem 0.75rem; gap: 0.1rem; }
+            .subnav-item { font-size: 0.7rem; padding: 0.35rem 0.5rem; }
+            .subnav-item .icon { font-size: 0.75rem; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="pays-glow"></div>
+
+    <nav class="pays-nav">
+        <div class="inner">
+            <div class="pays-logo">
+                <span class="badge">💰 Hugo.pays</span>
+                <span class="business-name" id="paysBusinessName"></span>
+            </div>
+            <div class="nav-right">
+                <span class="nav-badge-pays">PAYROLL</span>
+                <a href="/dashboard" class="nav-back">← Leads Dashboard</a>
+                <button class="btn-logout-pays" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Horizontal sub-nav (replaces sidebar) -->
+    <nav class="pays-subnav" id="paysSubnav">
+        <div class="subnav-inner">
+            <button class="subnav-item active" id="nav-overview" onclick="showSection('overview')">
+                <span class="icon">📊</span> Overview
+            </button>
+            <button class="subnav-item" id="nav-staff" onclick="showSection('staff')">
+                <span class="icon">👥</span> Staff
+            </button>
+            <button class="subnav-item" id="nav-rosters" onclick="showSection('rosters')">
+                <span class="icon">📅</span> Rosters
+                <span id="wvSwapBadgeNav" style="display:none;background:var(--red);color:#fff;border-radius:20px;font-size:0.55rem;padding:1px 5px;font-weight:800;margin-left:2px;"></span>
+            </button>
+            <button class="subnav-item" id="nav-payruns" onclick="showSection('payruns')">
+                <span class="icon">💵</span> Pay Runs
+            </button>
+            <button class="subnav-item" id="nav-invoices" onclick="showSection('invoices')">
+                <span class="icon">🧾</span> Invoices
+            </button>
+            <div class="subnav-divider"></div>
+            <button class="subnav-item" id="nav-map" onclick="showSection('map')">
+                <span class="icon">🗺️</span> GPS
+            </button>
+            <button class="subnav-item" id="nav-setup" onclick="showSection('setup')">
+                <span class="icon">🚀</span> Setup
+            </button>
+            <button class="subnav-item" id="nav-settings" onclick="showSection('settings')">
+                <span class="icon">⚙️</span> Settings
+            </button>
+            <button class="subnav-item" id="nav-export" onclick="showSection('export')">
+                <span class="icon">📤</span> Export
+            </button>
+        </div>
+    </nav>
+
+    <div class="pays-layout">
+        <!-- Main content (full width — sidebar removed) -->
+        <main class="pays-main" id="paysMain">
+            
+            <!-- Overview section -->
+            <div id="section-overview">
+                <div class="pays-header-banner">
+                    <div>
+                        <div class="pays-header-title">💰 Hugo.pays</div>
+                        <div class="pays-header-sub" id="headerBusinessSub">Payroll, staff, invoicing — all in one place</div>
+                    </div>
+                    <span class="premium-badge" id="premiumBadge" style="display:none;">PREMIUM</span>
+                </div>
+
+                <div class="pays-stats" id="paysSummaryStats">
+                    <div class="pays-stat">
+                        <div class="stat-label">Active Staff</div>
+                        <div class="stat-val gold" id="statActiveStaff">—</div>
+                        <div class="stat-sub" id="statTotalStaff">Loading…</div>
+                    </div>
+                    <div class="pays-stat">
+                        <div class="stat-label">Jobs Upcoming</div>
+                        <div class="stat-val" id="statUpcomingJobs">—</div>
+                        <div class="stat-sub">Next 7 days</div>
+                    </div>
+                    <div class="pays-stat">
+                        <div class="stat-label">Revenue (Paid)</div>
+                        <div class="stat-val green" id="statRevenuePaid">—</div>
+                        <div class="stat-sub">All-time invoices</div>
+                    </div>
+                    <div class="pays-stat">
+                        <div class="stat-label">Outstanding</div>
+                        <div class="stat-val" style="color:var(--red)" id="statOutstanding">—</div>
+                        <div class="stat-sub">Unpaid invoices</div>
+                    </div>
+                    <div class="pays-stat">
+                        <div class="stat-label">Payroll Pending</div>
+                        <div class="stat-val purple" id="statPayrollPending">—</div>
+                        <div class="stat-sub">Awaiting processing</div>
+                    </div>
+                </div>
+
+                <!-- Compliance row -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🏛️ ATO Compliance (FY2025-26)</div>
+                    </div>
+                    <div class="section-card-body">
+                        <div class="compliance-row">
+                            <div class="compliance-card">
+                                <div class="c-label">Super This Quarter</div>
+                                <div class="c-value" id="compSuper">$0</div>
+                                <div class="c-note">11.5% SGC rate</div>
+                            </div>
+                            <div class="compliance-card">
+                                <div class="c-label">PAYG This Month</div>
+                                <div class="c-value" id="compPayg">$0</div>
+                                <div class="c-note">Withheld from wages</div>
+                            </div>
+                            <div class="compliance-card">
+                                <div class="c-label">GST Collected</div>
+                                <div class="c-value" id="compGst">$0</div>
+                                <div class="c-note" id="compGstNote">This quarter</div>
+                            </div>
+                        </div>
+                        <p style="font-size:0.75rem;color:var(--text-dim);margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);">⚠️ Always confirm ATO lodgement amounts with your accountant before submitting. Hugo.pays calculates estimates — final figures may vary.</p>
+                    </div>
+                </div>
+
+                <!-- Recent activity -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🕐 Recent Activity</div>
+                    </div>
+                    <div id="recentActivity" class="section-card-empty">Loading activity…</div>
+                </div>
+            </div>
+
+            <!-- Staff section -->
+            <div id="section-staff" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">👥 Staff</div>
+                        <button class="btn-primary" onclick="openAddStaffModal()">+ Add Staff</button>
+                    </div>
+                    <div id="staffTableWrap">
+                        <table class="staff-table" id="staffTable">
+                            <thead>
+                                <tr>
+                                    <th>Name / Role</th>
+                                    <th>Rate</th>
+                                    <th>TFN</th>
+                                    <th>Phone</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffTableBody">
+                                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading staff…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rosters section (Week View + List View tabs) -->
+            <div id="section-rosters" style="display:none;">
+                <!-- Tab toggle -->
+                <div class="roster-tabs">
+                    <button class="roster-tab active" id="rosterTabWeek" onclick="switchRosterTab('week')">📆 Week View</button>
+                    <button class="roster-tab" id="rosterTabList" onclick="switchRosterTab('list')">📋 List</button>
+                </div>
+
+                <!-- Week View tab content -->
+                <div id="rosterWeekContent">
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <div class="section-card-title">📆 Week View — Staff Roster + Pay</div>
+                            <button class="btn-primary" onclick="openAddShiftFromWeek()">+ Add Shift</button>
+                        </div>
+                        <div class="section-card-body" style="padding-bottom:0;">
+                            <div class="wv-header">
+                                <div class="wv-nav">
+                                    <button class="wv-nav-btn" onclick="wvChangeWeek(-1)">← Prev</button>
+                                    <button class="wv-nav-btn wv-this-week" onclick="wvGoToday()">This Week</button>
+                                    <button class="wv-nav-btn" onclick="wvChangeWeek(1)">Next →</button>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:0.75rem;">
+                                    <span class="wv-week-label" id="wvWeekLabel">Loading…</span>
+                                    <span class="wv-swap-badge" id="wvSwapBadge"></span>
+                                </div>
+                                <select class="form-select form-input" id="wvStaffFilter" style="width:auto;min-width:120px;font-size:0.78rem;" onchange="wvLoad()">
+                                    <option value="">All Staff</option>
+                                </select>
+                            </div>
+                            <div id="wvStaffLegend" style="display:none;padding:0.4rem 0;margin-bottom:0.3rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;"></div>
+                            <div class="wv-scroll" id="wvScrollContainer">
+                                <table class="wv-table" id="wvTable">
+                                    <thead id="wvHead"></thead>
+                                    <tbody id="wvBody">
+                                        <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-dim);">Loading week view…</td></tr>
+                                    </tbody>
+                                    <tfoot id="wvFoot"></tfoot>
+                                </table>
+                            </div>
+                            <div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:0.6rem 0 0.4rem;border-top:1px solid var(--border);margin-top:0.5rem;">
+                                <span style="font-size:0.68rem;color:var(--text-dim);">Hrs column · pay detail in each shift cell (click to expand)</span>
+                                <span style="font-size:0.68rem;color:var(--text-dim);">Click shift → expand pay · ⇄ swap · × delete · Empty cell → add</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="wvPendingSwapsPanel" style="display:none;" class="wv-pending-swaps-panel">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                            <div style="font-family:'Outfit',sans-serif;font-size:0.9rem;font-weight:700;color:var(--pays);">⇄ Pending Swap Requests</div>
+                            <button class="btn-secondary" onclick="wvLoad()">Refresh</button>
+                        </div>
+                        <div id="wvSwapList"></div>
+                    </div>
+                </div>
+
+                <!-- List View tab content -->
+                <div id="rosterListContent" style="display:none;">
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <div class="section-card-title">📋 Roster List</div>
+                            <button class="btn-primary" onclick="openAddRosterModal()">+ Schedule Job</button>
+                        </div>
+                        <div id="rosterTableWrap">
+                            <table class="staff-table" id="rosterTable">
+                                <thead>
+                                    <tr>
+                                        <th>Staff</th>
+                                        <th>Job</th>
+                                        <th>Date / Time</th>
+                                        <th>Address</th>
+                                        <th>Status</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rosterTableBody">
+                                    <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading roster…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pay Runs section -->
+            <div id="section-payruns" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">💵 Pay Runs</div>
+                        <button class="btn-primary" onclick="openPayRunModal()">+ New Pay Run</button>
+                    </div>
+                    <div id="payrunTableWrap">
+                        <table class="staff-table" id="payrunTable">
+                            <thead>
+                                <tr>
+                                    <th>Staff</th>
+                                    <th>Period</th>
+                                    <th>Gross</th>
+                                    <th>Super (11.5%)</th>
+                                    <th>PAYG Tax</th>
+                                    <th>Net Pay</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payrunTableBody">
+                                <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading payroll…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoices section -->
+            <div id="section-invoices" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🧾 Invoices</div>
+                        <button class="btn-primary" onclick="openAddInvoiceModal()">+ New Invoice</button>
+                    </div>
+                    <div id="invoiceTableWrap">
+                        <table class="staff-table" id="invoiceTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Customer</th>
+                                    <th>Subtotal</th>
+                                    <th>GST</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceTableBody">
+                                <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading invoices…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GPS Map section -->
+            <div id="section-map" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🗺️ GPS Map — Today's Jobs</div>
+                    </div>
+                    <div class="section-card-body">
+                        <div id="paysMap" class="map-container">
+                            <span class="map-placeholder-icon">📍</span>
+                            <span class="map-placeholder-text" id="mapStatus">Loading today's jobs…</span>
+                        </div>
+                        <div id="todayJobsList" style="margin-top:1rem;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Setup Guide section -->
+            <div id="section-setup" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🚀 Setup Guide</div>
+                        <span style="font-size:0.78rem;color:var(--text-dim);" id="setupProgress">0 of 4 complete</span>
+                    </div>
+                    <div class="section-card-body">
+                        <div class="setup-step">
+                            <div class="step-num" id="step1Num">1</div>
+                            <div class="step-content">
+                                <h4>Add your business details</h4>
+                                <p>ABN, business name, GST registration status — Hugo uses this for invoice compliance. <button class="btn-secondary" onclick="showSection('settings')" style="font-size:0.75rem;padding:2px 8px;margin-left:6px;">Open Settings →</button></p>
+                            </div>
+                        </div>
+                        <div class="setup-step">
+                            <div class="step-num" id="step2Num">2</div>
+                            <div class="step-content">
+                                <h4>Add your first staff member</h4>
+                                <p>Name, role, hourly rate, TFN status. Hugo calculates PAYG + super automatically. <button class="btn-secondary" onclick="showSection('staff')" style="font-size:0.75rem;padding:2px 8px;margin-left:6px;">Add Staff →</button></p>
+                            </div>
+                        </div>
+                        <div class="setup-step">
+                            <div class="step-num" id="step3Num">3</div>
+                            <div class="step-content">
+                                <h4>Schedule your first job</h4>
+                                <p>Assign a staff member to a job date, time, and address. The GPS map updates in real time. <button class="btn-secondary" onclick="showSection('rosters')" style="font-size:0.75rem;padding:2px 8px;margin-left:6px;">Add Job →</button></p>
+                            </div>
+                        </div>
+                        <div class="setup-step">
+                            <div class="step-num" id="step4Num">4</div>
+                            <div class="step-content">
+                                <h4>Create and send your first invoice</h4>
+                                <p>Hugo adds GST automatically (if registered) and generates a professional invoice. <button class="btn-secondary" onclick="showSection('invoices')" style="font-size:0.75rem;padding:2px 8px;margin-left:6px;">Create Invoice →</button></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings section -->
+            <div id="section-settings" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">⚙️ Payroll Settings</div>
+                    </div>
+                    <div class="section-card-body">
+                        <div class="settings-form" id="payrollSettingsForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Business Name</label>
+                                    <input type="text" class="form-input" id="settingsBizName" placeholder="e.g. Smith Plumbing Pty Ltd">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">ABN</label>
+                                    <input type="text" class="form-input" id="settingsABN" placeholder="e.g. 12 345 678 901">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Superannuation Fund</label>
+                                    <input type="text" class="form-input" id="settingsSuperFund" placeholder="e.g. AustralianSuper">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Pay Cycle</label>
+                                    <select class="form-select form-input" id="settingsPayCycle">
+                                        <option value="weekly">Weekly</option>
+                                        <option value="fortnightly" selected>Fortnightly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="toggle-row">
+                                <div>
+                                    <label style="font-size:0.85rem;font-weight:600;color:var(--text);">GST Registered</label>
+                                    <div class="toggle-sub">10% GST added to invoices automatically</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="settingsGST" onchange="toggleGSTBadge(this)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div style="margin-top:0.5rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+                                <button class="btn-primary" onclick="savePayrollSettings()">Save Settings</button>
+                                <span id="settingsSaveMsg" style="font-size:0.82rem;color:var(--green);align-self:center;display:none;">✅ Saved</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ── Export section ── -->
+            <div id="section-export" style="display:none;">
+                <div class="pays-header-banner">
+                    <div>
+                        <div class="pays-header-title">📤 Export & Compliance</div>
+                        <div class="pays-header-sub">MYOB-ready payroll, SuperStream, STP2 summary, and Xero CSV — one click to your accountant.</div>
+                    </div>
+                </div>
+
+                <!-- Date range controls -->
+                <div class="section-card" style="margin-bottom:1.25rem;">
+                    <div class="section-card-header">
+                        <div class="section-card-title">📅 Export Period</div>
+                    </div>
+                    <div class="section-card-body">
+                        <div class="form-row" style="max-width:480px;">
+                            <div class="form-group">
+                                <label class="form-label">Period Start</label>
+                                <input type="date" class="form-input" id="exportStart">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Period End</label>
+                                <input type="date" class="form-input" id="exportEnd">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:0.75rem;max-width:240px;">
+                            <label class="form-label">Staff Member (optional)</label>
+                            <select class="form-select form-input" id="exportStaffFilter">
+                                <option value="">All staff</option>
+                            </select>
+                        </div>
+                        <div style="margin-top:0.85rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button class="btn-secondary" onclick="setExportFY()">Current FY (Jul–Jun)</button>
+                            <button class="btn-secondary" onclick="setExportQtr()">Current Quarter</button>
+                            <button class="btn-secondary" onclick="setExportMonth()">This Month</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MYOB Export -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🏦 MYOB AccountRight — Payroll CSV</div>
+                    </div>
+                    <div class="section-card-body">
+                        <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;">
+                            MYOB-import-ready CSV. Includes <strong style="color:var(--text);">gross wages, PAYG withholding, superannuation (11.5% SGC)</strong>, net pay, hours worked, and pay period per staff member.<br>
+                            In MYOB: <em>File → Import → Payroll → select this CSV.</em>
+                        </p>
+                        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="downloadExport('payroll-csv')">⬇ Download MYOB Payroll CSV</button>
+                            <span style="font-size:0.78rem;color:var(--text-dim);">Payroll Import format</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SuperStream Export -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🏛️ SuperStream — Super Contributions CSV</div>
+                    </div>
+                    <div class="section-card-body">
+                        <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;">
+                            Electronic super contribution file ready for the <strong style="color:var(--text);">ATO Small Business Superannuation Clearing House (SBSCH)</strong> or any SuperStream clearing house (Beam, Webjet, etc.).<br>
+                            Includes employee name, TFN status, super fund USI, member number, SGC contribution amount, and pay period. Contributions must be paid within <strong style="color:var(--pays);">28 days of quarter end</strong>.
+                        </p>
+                        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="downloadExport('superstream-csv')">⬇ Download SuperStream CSV</button>
+                            <span style="font-size:0.78rem;color:var(--text-dim);">Upload to SBSCH or clearing house</span>
+                        </div>
+                        <div style="margin-top:0.85rem;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:0.75rem 1rem;">
+                            <div style="font-size:0.78rem;color:var(--pays);font-weight:600;margin-bottom:4px;">⚠️ Super fund details required</div>
+                            <div style="font-size:0.78rem;color:var(--text-dim);">Staff must complete onboarding (super fund name, USI, member number) via the Staff Portal for their contributions to appear correctly. Missing details are flagged in the CSV.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STP2 Summary -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🏛️ STP2 — Single Touch Payroll Phase 2</div>
+                        <span style="font-size:0.72rem;color:var(--blue);background:var(--blue-glow);padding:2px 8px;border-radius:12px;border:1px solid rgba(59,130,246,0.2);font-weight:600;">ATO Compliant</span>
+                    </div>
+                    <div class="section-card-body">
+                        <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;">
+                            STP2 Phase 2 YTD summary for the financial year — all required ATO fields: <strong style="color:var(--text);">gross wages, PAYG withholding, super (SGC), YTD totals, income type (SAW), pay categories</strong>.<br>
+                            Use this to review with your accountant, or lodge via your payroll software's ATO DSP connection. Includes per-employee YTD breakdown.
+                        </p>
+                        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+                            <select class="form-select form-input" id="stp2Year" style="width:auto;min-width:160px;">
+                                <option value="2026">FY2025-26 (current)</option>
+                                <option value="2025">FY2024-25</option>
+                                <option value="2024">FY2023-24</option>
+                            </select>
+                            <button class="btn-primary" onclick="downloadSTP2()">⬇ Download STP2 Summary (JSON)</button>
+                        </div>
+                        <div id="stp2Preview" style="display:none;background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.78rem;color:var(--text-dim);max-height:300px;overflow-y:auto;font-family:monospace;white-space:pre-wrap;"></div>
+                        <button class="btn-secondary" style="margin-top:0.75rem;" onclick="previewSTP2()">Preview STP2 Summary</button>
+                    </div>
+                </div>
+
+                <!-- Xero Export -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🔵 Xero Payroll CSV</div>
+                    </div>
+                    <div class="section-card-body">
+                        <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;">
+                            Xero-compatible payroll import CSV. Same payroll data mapped to <strong style="color:var(--text);">Xero's earnings/deductions format</strong> — Employee Name, Payroll Code, Ordinary Time earnings, PAYG withholding, super.<br>
+                            In Xero: <em>Payroll → Pay Runs → Import → select this CSV.</em>
+                        </p>
+                        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                            <button class="btn-primary" onclick="downloadExport('xero-csv')">⬇ Download Xero Payroll CSV</button>
+                            <span style="font-size:0.78rem;color:var(--text-dim);">Xero Payroll import format</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compliance checklist -->
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">✅ ATO Compliance Checklist</div>
+                    </div>
+                    <div class="section-card-body">
+                        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                            <div style="background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;">
+                                <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">🏛️ Super Guarantee (SGC) — 11.5% FY2025-26</div>
+                                <div style="font-size:0.78rem;color:var(--text-dim);">Pay super within <strong style="color:var(--pays);">28 days of each quarter end</strong>: 28 Oct, 28 Jan, 28 Apr, 28 Jul. Via SuperStream clearing house.</div>
+                            </div>
+                            <div style="background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;">
+                                <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">💸 PAYG Withholding — lodge monthly or quarterly</div>
+                                <div style="font-size:0.78rem;color:var(--text-dim);">Small withholders (annual PAYG &lt; $25k) lodge quarterly BAS. Medium withholders lodge monthly. Use the PAYG figures from your STP2 summary.</div>
+                            </div>
+                            <div style="background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;">
+                                <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">📋 STP2 — report every pay event</div>
+                                <div style="font-size:0.78rem;color:var(--text-dim);">Report each pay run to the ATO on or before pay day via your payroll software's STP2 connection. Use the STP2 summary above with your accountant or MYOB/Xero.</div>
+                            </div>
+                            <div style="background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;">
+                                <div style="font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:2px;">🧾 GST — lodge with BAS</div>
+                                <div style="font-size:0.78rem;color:var(--text-dim);">GST collected appears in your Invoice export data. If GST-registered, include in your BAS. Use the Invoices section to download a compliance report.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ── Toast ── -->
+    <div id="paysToast"></div>
+
+    <!-- ── Add Staff Modal ── -->
+    <div class="modal-overlay" id="addStaffModal">
+        <div class="modal-box">
+            <div class="modal-title">Add Staff Member</div>
+            <div class="modal-sub">Staff are added to pay runs and scheduled jobs. Adding an email auto-sends a portal invite.</div>
+            <div class="settings-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" class="form-input" id="newStaffName" placeholder="e.g. Jordan Smith">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-input" id="newStaffRole" placeholder="e.g. Plumber">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email — portal invite sent automatically</label>
+                    <input type="email" class="form-input" id="newStaffEmail" placeholder="e.g. jordan@example.com">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Hourly Rate ($)</label>
+                        <input type="number" class="form-input" id="newStaffRate" placeholder="e.g. 45.00" min="0" step="0.50">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-input" id="newStaffPhone" placeholder="e.g. 0412 345 678">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">TFN Status</label>
+                    <select class="form-select form-input" id="newStaffTFN">
+                        <option value="provided">TFN Provided</option>
+                        <option value="not_provided">No TFN (withhold at 47%)</option>
+                        <option value="exemption">Exemption</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal('addStaffModal')">Cancel</button>
+                    <button class="btn-primary" onclick="saveNewStaff()">Add Staff</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Schedule Job Modal ── -->
+    <div class="modal-overlay" id="addRosterModal">
+        <div class="modal-box">
+            <div class="modal-title">Schedule a Job</div>
+            <div class="modal-sub">Assign a staff member to a job. Shows on the GPS map.</div>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label class="form-label">Staff Member *</label>
+                    <select class="form-select form-input" id="rosterStaffSelect"><option value="">Select staff…</option></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date *</label>
+                        <input type="date" class="form-input" id="rosterDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Start Time</label>
+                        <input type="time" class="form-input" id="rosterTime">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">End Time <span style="color:var(--text-dim);font-weight:400;">(for pay calc)</span></label>
+                        <input type="time" class="form-input" id="rosterEndTime">
+                    </div>
+                    <div class="form-group" style="align-self:flex-end;">
+                        <div style="font-size:0.72rem;color:var(--text-dim);padding-bottom:0.4rem;">Hours auto-calculated in Week View</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Job Title</label>
+                    <input type="text" class="form-input" id="rosterJobTitle" placeholder="e.g. Hot water system install">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <input type="text" class="form-input" id="rosterAddress" placeholder="e.g. 42 Smith St, Sydney NSW 2000">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal('addRosterModal')">Cancel</button>
+                    <button class="btn-primary" onclick="saveNewRoster()">Schedule Job</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── New Invoice Modal ── -->
+    <div class="modal-overlay" id="addInvoiceModal">
+        <div class="modal-box">
+            <div class="modal-title">New Invoice</div>
+            <div class="modal-sub">GST applied automatically based on your registration status.</div>
+            <div class="settings-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Invoice # *</label>
+                        <input type="text" class="form-input" id="invNumber" placeholder="e.g. INV-001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Customer Name *</label>
+                        <input type="text" class="form-input" id="invCustomer" placeholder="e.g. Acme Corp">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Subtotal (ex GST) *</label>
+                        <input type="number" class="form-input" id="invAmount" placeholder="e.g. 500.00" min="0" step="0.01" oninput="updateInvTotal()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">GST Amount (auto)</label>
+                        <input type="text" class="form-input" id="invGST" placeholder="$0.00" readonly style="background:rgba(255,255,255,0.03);cursor:not-allowed;">
+                    </div>
+                </div>
+                <div style="background:var(--midnight);border:1px solid var(--border);border-radius:10px;padding:0.75rem 1rem;font-size:0.85rem;color:var(--text-dim);">
+                    Total inc. GST: <strong style="color:var(--pays);font-size:1rem;" id="invTotal">$0.00</strong>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes (optional)</label>
+                    <input type="text" class="form-input" id="invNotes" placeholder="e.g. Blocked drain repair — 2 hrs">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal('addInvoiceModal')">Cancel</button>
+                    <button class="btn-primary" onclick="saveNewInvoice()">Create Invoice</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── New Pay Run Modal ── -->
+    <div class="modal-overlay" id="payRunModal">
+        <div class="modal-box">
+            <div class="modal-title">New Pay Run</div>
+            <div class="modal-sub">Hugo calculates super (11.5%) and PAYG tax automatically.</div>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label class="form-label">Staff Member *</label>
+                    <select class="form-select form-input" id="payrunStaffSelect"><option value="">Select staff…</option></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Period Start *</label>
+                        <input type="date" class="form-input" id="payrunStart">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Period End *</label>
+                        <input type="date" class="form-input" id="payrunEnd">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Hours Worked *</label>
+                        <input type="number" class="form-input" id="payrunHours" placeholder="e.g. 76" min="0" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Gross Pay ($) *</label>
+                        <input type="number" class="form-input" id="payrunGross" placeholder="Auto from hours × rate" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal('payRunModal')">Cancel</button>
+                    <button class="btn-primary" onclick="saveNewPayRun()">Process Pay Run</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // WHY: Server-side auth (server.js /pays route) already verifies the session cookie
+    // before serving this page. A client-side cookie check is redundant AND broken:
+    // the session cookie is HttpOnly, so document.cookie can never see it.
+    // Removed the client-side check that caused the flash-then-redirect auth loop (POL-1570811).
+
+    // ── Navigate to /pays/settings if hash is #settings ─────────────────────
+    if (window.location.pathname === '/pays/settings') {
+        window.addEventListener('load', function() { showSection('settings'); });
+    }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    var state = { isPremium: true, gstRegistered: false, staffList: [], businessName: '', operatorName: '' };
+    var CURRENT_SECTION = 'overview';
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSummary();
+        loadSettingsData();
+        // Fetch operator name for Hugo widget context — Hugo needs to greet by name
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success && d.user && d.user.name) {
+                    state.operatorName = d.user.name;
+                    // Re-configure Hugo widget with operator's actual name
+                    if (window.HugoWidget && window.HugoWidget.setOperatorContext) {
+                        HugoWidget.setOperatorContext(state.operatorName, d.user.email || '', 'pays');
+                    }
+                }
+            })
+            .catch(function() { /* non-fatal — Hugo falls back to business name */ });
+        // WHY: localDateStr avoids UTC shift for AEST users
+        var today = localDateStr(new Date());
+        var dateInputs = ['rosterDate', 'payrunStart', 'payrunEnd'];
+        dateInputs.forEach(function(id) { var el = document.getElementById(id); if (el) el.value = today; });
+        var rosterEndEl = document.getElementById('rosterEndTime');
+        if (rosterEndEl) rosterEndEl.value = '';
+    });
+
+    // ── Section navigation ───────────────────────────────────────────────────
+    // WHY: 'weekview' removed — now a tab inside 'rosters' (Bug #1617092)
+    var _rosterTab = 'week'; // default to week view
+    function showSection(name) {
+        var sections = ['overview', 'staff', 'rosters', 'payruns', 'invoices', 'map', 'setup', 'settings', 'export'];
+        sections.forEach(function(s) {
+            var el = document.getElementById('section-' + s);
+            if (el) el.style.display = s === name ? '' : 'none';
+            var nav = document.getElementById('nav-' + s);
+            if (nav) { nav.classList.toggle('active', s === name); }
+        });
+        CURRENT_SECTION = name;
+        if (name === 'staff') loadStaff();
+        if (name === 'rosters') { switchRosterTab(_rosterTab); }
+        if (name === 'payruns') loadPayRuns();
+        if (name === 'invoices') loadInvoices();
+        if (name === 'map') loadMap();
+        if (name === 'settings') loadSettingsData();
+    }
+
+    function switchRosterTab(tab) {
+        _rosterTab = tab;
+        var weekEl = document.getElementById('rosterWeekContent');
+        var listEl = document.getElementById('rosterListContent');
+        var tabWeek = document.getElementById('rosterTabWeek');
+        var tabList = document.getElementById('rosterTabList');
+        if (tab === 'week') {
+            weekEl.style.display = '';
+            listEl.style.display = 'none';
+            tabWeek.classList.add('active');
+            tabList.classList.remove('active');
+            wvLoad();
+        } else {
+            weekEl.style.display = 'none';
+            listEl.style.display = '';
+            tabWeek.classList.remove('active');
+            tabList.classList.add('active');
+            loadRosters();
+        }
+    }
+
+    // ── Load summary stats ───────────────────────────────────────────────────
+    function loadSummary() {
+        fetch('/api/paydeck/summary', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                state.isPremium = true;
+                document.getElementById('premiumBadge').style.display = '';
+                var s = d.summary || {};
+                // PAYDECK summary is nested: { staff: {active, total}, roster: {upcoming}, invoices: {...}, payroll: {...}, compliance: {...} }
+                var staffData = s.staff || {}; var rosterData = s.roster || {}; var invData = s.invoices || {}; var payData = s.payroll || {}; var comp = s.compliance || {};
+                setStatVal('statActiveStaff', staffData.active || 0);
+                document.getElementById('statTotalStaff').textContent = (staffData.total || 0) + ' total';
+                setStatVal('statUpcomingJobs', rosterData.upcoming || 0);
+                setStatVal('statRevenuePaid', fmtMoney(invData.revenue_paid));
+                setStatVal('statOutstanding', fmtMoney(invData.outstanding));
+                setStatVal('statPayrollPending', fmtMoney(payData.pending_amount));
+                // Compliance
+                document.getElementById('compSuper').textContent = fmtMoney(comp.super_this_quarter);
+                document.getElementById('compPayg').textContent = fmtMoney(comp.payg_this_month);
+                document.getElementById('compGst').textContent = fmtMoney(comp.gst_this_quarter);
+                if (!d.gst_registered) document.getElementById('compGstNote').textContent = 'Not GST registered';
+                // Recent activity — build from available data (PAYDECK doesn't return recent_activity natively, show placeholder)
+                renderRecentActivity(d.recent_activity || []);
+                // Setup guide progress — map from nested summary
+                updateSetupProgress({ abn_set: false, total_staff: staffData.total, total_roster: rosterData.total, total_invoices: invData.total });
+            })
+            .catch(function(err) {
+                console.warn('[pays] Summary load failed:', err.message);
+                document.getElementById('recentActivity').innerHTML = '<div style="padding:1.25rem;text-align:center;color:var(--text-dim);font-size:0.85rem;">Could not load data.</div>';
+            });
+    }
+
+    function renderRecentActivity(items) {
+        var el = document.getElementById('recentActivity');
+        if (!items || items.length === 0) {
+            el.innerHTML = '<div style="padding:1.25rem;text-align:center;color:var(--text-dim);font-size:0.85rem;">No activity yet — add staff or create an invoice to get started.</div>';
+            return;
+        }
+        el.style.padding = '0';
+        el.innerHTML = items.map(function(item) {
+            return '<div style="padding:0.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.75rem;">'
+                + '<span style="font-size:1rem;">' + (item.icon || '📋') + '</span>'
+                + '<div><div style="font-size:0.85rem;color:var(--text);">' + escHtml(item.label || '') + '</div>'
+                + '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:1px;">' + escHtml(item.time || '') + '</div></div>'
+                + '</div>';
+        }).join('');
+    }
+
+    function updateSetupProgress(s) {
+        var steps = [
+            s.abn_set,
+            (s.total_staff || 0) > 0,
+            (s.total_roster || 0) > 0,
+            (s.total_invoices || 0) > 0
+        ];
+        var done = steps.filter(Boolean).length;
+        var progressEl = document.getElementById('setupProgress');
+        if (progressEl) progressEl.textContent = done + ' of 4 complete';
+        steps.forEach(function(isDone, i) {
+            var el = document.getElementById('step' + (i+1) + 'Num');
+            if (el) { el.className = 'step-num' + (isDone ? ' done' : ''); el.textContent = isDone ? '✓' : (i+1); }
+        });
+    }
+
+    // ── Staff ────────────────────────────────────────────────────────────────
+    function loadStaff() {
+        fetch('/api/paydeck/staff', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                state.staffList = d.staff || [];
+                renderStaff(state.staffList);
+            })
+            .catch(function() { showErrorInTable('staffTableBody', 6); });
+    }
+
+    function renderStaff(list) {
+        var tbody = document.getElementById('staffTableBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:2rem;font-size:0.85rem;">No staff yet — click "+ Add Staff" to get started.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(function(s) {
+            return '<tr>'
+                + '<td><div class="staff-name">' + escHtml(s.name) + '</div><div class="staff-role">' + escHtml(s.role || '—') + '</div></td>'
+                + '<td>$' + fmtNum(s.hourly_rate || 0) + '/hr</td>'
+                + '<td><span class="status-pill ' + (s.tfn_status === 'provided' ? 'active' : 'pending') + '">' + escHtml(s.tfn_status || 'pending') + '</span></td>'
+                + '<td>' + escHtml(s.phone || '—') + '</td>'
+                + '<td><span class="status-pill ' + (s.is_active ? 'active' : 'inactive') + '">' + (s.is_active ? 'Active' : 'Inactive') + '</span></td>'
+                + '<td style="display:flex;gap:0.4rem;align-items:center;">'
+                + '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="previewAsStaff(' + s.id + ',\'' + escHtml(s.name) + '\')">👁 Preview</button>'
+                + (s.email ? '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="sendStaffInvite(' + s.id + ',\'' + escHtml(s.name) + '\')">✉ Invite</button>' : '')
+                + '<button class="btn-danger" onclick="deleteStaff(' + s.id + ')">Remove</button>'
+                + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function openAddStaffModal() {
+        ['newStaffName','newStaffRole','newStaffPhone','newStaffEmail'].forEach(function(id) { var el = document.getElementById(id); if(el) el.value = ''; });
+        document.getElementById('newStaffRate').value = '';
+        document.getElementById('newStaffTFN').value = 'provided';
+        openModal('addStaffModal');
+    }
+
+    function saveNewStaff() {
+        var name = document.getElementById('newStaffName').value.trim();
+        if (!name) { showToast('Name is required'); return; }
+        var email = document.getElementById('newStaffEmail').value.trim() || null;
+        fetch('/api/paydeck/staff', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                role: document.getElementById('newStaffRole').value.trim() || null,
+                hourly_rate: parseFloat(document.getElementById('newStaffRate').value) || null,
+                phone: document.getElementById('newStaffPhone').value.trim() || null,
+                email: email,
+                tfn_status: document.getElementById('newStaffTFN').value
+            })
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed to add staff'); return; }
+            closeModal('addStaffModal'); loadStaff(); loadSummary();
+            // Auto-send portal invite if an email was provided
+            if (email && d.staff && d.staff.id) {
+                fetch('/api/paydeck/staff/' + d.staff.id + '/send-invite', { method: 'POST', credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(inv) {
+                        showToast(inv.success ? 'Staff added — invite sent to ' + email + '! ✉' : 'Staff added! (invite failed — resend manually)');
+                    }).catch(function() { showToast('Staff added! 👤'); });
+            } else {
+                showToast('Staff added! 👤');
+            }
+        }).catch(function() { showToast('Network error — try again'); });
+    }
+
+    function deleteStaff(id) {
+        if (!confirm('Remove this staff member?')) return;
+        fetch('/api/paydeck/staff/' + id, { method: 'DELETE', credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if(d.success) { loadStaff(); showToast('Staff removed'); } })
+            .catch(function() {});
+    }
+
+    // Boss preview — opens /pays/staff in a new tab impersonating a staff member.
+    // No credentials needed; the boss's operator session is the proof of ownership.
+    function previewAsStaff(staffId, staffName) {
+        fetch('/api/staff-portal/boss-preview/' + staffId, { method: 'POST', credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success || !d.token) { showToast(d.message || 'Preview failed'); return; }
+                window.open('/pays/staff?preview=' + encodeURIComponent(d.token) + '&name=' + encodeURIComponent(staffName), '_blank');
+            })
+            .catch(function() { showToast('Network error — try again'); });
+    }
+
+    function sendStaffInvite(staffId, staffName) {
+        if (!confirm('Send a portal invite to ' + staffName + '?')) return;
+        fetch('/api/paydeck/staff/' + staffId + '/send-invite', { method: 'POST', credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { showToast(d.success ? 'Invite sent to ' + staffName + '! ✉' : (d.message || 'Failed to send invite')); })
+            .catch(function() { showToast('Network error — try again'); });
+    }
+
+    // ── Rosters ──────────────────────────────────────────────────────────────
+    function loadRosters() {
+        fetch('/api/paydeck/roster', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                renderRosters(d.roster || []);
+            })
+            .catch(function() { showErrorInTable('rosterTableBody', 6); });
+    }
+
+    function renderRosters(list) {
+        var tbody = document.getElementById('rosterTableBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:2rem;font-size:0.85rem;">No jobs scheduled — click "+ Schedule Job" to add one.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(function(r) {
+            var date = r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'}) : '—';
+            var time = r.start_time ? r.start_time.slice(0,5) : '';
+            return '<tr>'
+                + '<td>' + escHtml(r.staff_name || '—') + '</td>'
+                + '<td>' + escHtml(r.job_title || '—') + '</td>'
+                + '<td>' + date + (time ? ' ' + time : '') + '</td>'
+                + '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(r.job_address || '—') + '</td>'
+                + '<td><span class="status-pill ' + (r.status || 'scheduled') + '">' + escHtml(r.status || 'scheduled') + '</span></td>'
+                + '<td><button class="btn-danger" onclick="deleteRoster(' + r.id + ')">Cancel</button></td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function openAddRosterModal() {
+        // Populate staff select
+        var sel = document.getElementById('rosterStaffSelect');
+        sel.innerHTML = '<option value="">Select staff…</option>';
+        (state.staffList || []).forEach(function(s) {
+            sel.innerHTML += '<option value="' + s.id + '">' + escHtml(s.name) + '</option>';
+        });
+        if (!state.staffList.length) {
+            fetch('/api/paydeck/staff', { credentials: 'include' }).then(function(r){ return r.json(); }).then(function(d){
+                state.staffList = d.staff || [];
+                state.staffList.forEach(function(s){ sel.innerHTML += '<option value="'+s.id+'">'+escHtml(s.name)+'</option>'; });
+            }).catch(function(){});
+        }
+        openModal('addRosterModal');
+    }
+
+    function saveNewRoster() {
+        var staffId = document.getElementById('rosterStaffSelect').value;
+        var date = document.getElementById('rosterDate').value;
+        if (!staffId || !date) { showToast('Staff and date are required'); return; }
+        fetch('/api/paydeck/roster', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                staff_id: parseInt(staffId),
+                scheduled_date: date,
+                start_time: document.getElementById('rosterTime').value || null,
+                end_time: document.getElementById('rosterEndTime').value || null,
+                job_title: document.getElementById('rosterJobTitle').value.trim() || null,
+                job_address: document.getElementById('rosterAddress').value.trim() || null
+            })
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed to schedule job'); return; }
+            closeModal('addRosterModal'); loadSummary(); showToast('Job scheduled! 📅');
+            // Refresh whichever roster tab is active
+            if (_rosterTab === 'week') wvLoad();
+            else loadRosters();
+        }).catch(function() { showToast('Network error — try again'); });
+    }
+
+    function deleteRoster(id) {
+        if (!confirm('Cancel this scheduled job?')) return;
+        fetch('/api/paydeck/roster/' + id, { method: 'DELETE', credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if(d.success) { if(_rosterTab==='week') wvLoad(); else loadRosters(); showToast('Job cancelled'); } })
+            .catch(function() {});
+    }
+
+    // ── Pay Runs ─────────────────────────────────────────────────────────────
+    function loadPayRuns() {
+        fetch('/api/paydeck/payroll', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                renderPayRuns(d.payroll || []);
+            })
+            .catch(function() { showErrorInTable('payrunTableBody', 7); });
+    }
+
+    function renderPayRuns(list) {
+        var tbody = document.getElementById('payrunTableBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;font-size:0.85rem;">No pay runs yet — click "+ New Pay Run" to process payroll.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(function(p) {
+            var start = p.period_start ? new Date(p.period_start).toLocaleDateString('en-AU', {day:'numeric',month:'short'}) : '—';
+            var end = p.period_end ? new Date(p.period_end).toLocaleDateString('en-AU', {day:'numeric',month:'short'}) : '—';
+            return '<tr>'
+                + '<td>' + escHtml(p.staff_name || '—') + '</td>'
+                + '<td>' + start + ' – ' + end + '</td>'
+                + '<td>' + fmtMoney(p.amount) + '</td>'
+                + '<td>' + fmtMoney(p.super_amount) + '</td>'
+                + '<td>' + fmtMoney(p.tax_withheld) + '</td>'
+                + '<td class="' + (parseFloat(p.net_pay||0) > 0 ? 'stat-val green" style="color:var(--green)' : '') + '">' + fmtMoney(p.net_pay) + '</td>'
+                + '<td><span class="status-pill ' + (p.status || 'pending') + '">' + escHtml(p.status || 'pending') + '</span></td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function openPayRunModal() {
+        var sel = document.getElementById('payrunStaffSelect');
+        sel.innerHTML = '<option value="">Select staff…</option>';
+        (state.staffList || []).forEach(function(s){ sel.innerHTML += '<option value="'+s.id+'">'+escHtml(s.name)+'</option>'; });
+        if (!state.staffList.length) {
+            fetch('/api/paydeck/staff', {credentials:'include'}).then(function(r){ return r.json(); }).then(function(d){
+                state.staffList = d.staff || [];
+                state.staffList.forEach(function(s){ sel.innerHTML += '<option value="'+s.id+'">'+escHtml(s.name)+'</option>'; });
+            }).catch(function(){});
+        }
+        openModal('payRunModal');
+    }
+
+    function saveNewPayRun() {
+        var staffId = document.getElementById('payrunStaffSelect').value;
+        var start = document.getElementById('payrunStart').value;
+        var end = document.getElementById('payrunEnd').value;
+        var hours = parseFloat(document.getElementById('payrunHours').value);
+        var gross = parseFloat(document.getElementById('payrunGross').value);
+        if (!staffId || !start || !end || !hours || !gross) { showToast('All fields required'); return; }
+        fetch('/api/paydeck/payroll', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staff_id: parseInt(staffId), period_start: start, period_end: end, hours_worked: hours, amount: gross })
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed to create pay run'); return; }
+            closeModal('payRunModal'); loadPayRuns(); loadSummary(); showToast('Pay run processed! 💵');
+        }).catch(function() { showToast('Network error — try again'); });
+    }
+
+    // ── Invoices ─────────────────────────────────────────────────────────────
+    function loadInvoices() {
+        fetch('/api/paydeck/invoices', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                renderInvoices(d.invoices || []);
+            })
+            .catch(function() { showErrorInTable('invoiceTableBody', 7); });
+    }
+
+    function renderInvoices(list) {
+        var tbody = document.getElementById('invoiceTableBody');
+        if (!list || list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;font-size:0.85rem;">No invoices yet — click "+ New Invoice" to create one.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(function(inv) {
+            var total = parseFloat(inv.total_inc_gst || inv.amount || 0);
+            var gst = parseFloat(inv.gst_amount || 0);
+            var subtotal = parseFloat(inv.subtotal || (total - gst) || 0);
+            return '<tr>'
+                + '<td style="font-family:monospace;font-size:0.82rem;">' + escHtml(inv.invoice_number || '—') + '</td>'
+                + '<td>' + escHtml(inv.customer_name || '—') + '</td>'
+                + '<td>' + fmtMoney(subtotal) + '</td>'
+                + '<td>' + (gst > 0 ? fmtMoney(gst) : '<span style="color:var(--text-dim);font-size:0.78rem;">—</span>') + '</td>'
+                + '<td><strong>' + fmtMoney(total) + '</strong></td>'
+                + '<td><span class="status-pill ' + (inv.status || 'draft') + '">' + escHtml(inv.status || 'draft') + '</span></td>'
+                + '<td>' + (inv.status === 'sent' || inv.status === 'draft' ? '<button class="btn-secondary" style="font-size:0.75rem;padding:3px 8px;" onclick="markInvoicePaid('+inv.id+')">Mark Paid</button>' : '') + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function openAddInvoiceModal() {
+        ['invNumber','invCustomer','invAmount','invNotes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+        document.getElementById('invGST').value = '$0.00';
+        document.getElementById('invTotal').textContent = '$0.00';
+        // Auto-generate invoice number
+        document.getElementById('invNumber').value = 'INV-' + String(Date.now()).slice(-4);
+        openModal('addInvoiceModal');
+    }
+
+    function updateInvTotal() {
+        var amt = parseFloat(document.getElementById('invAmount').value) || 0;
+        var gstAmt = state.gstRegistered ? Math.round(amt * 0.10 * 100)/100 : 0;
+        var total = Math.round((amt + gstAmt) * 100)/100;
+        document.getElementById('invGST').value = '$' + gstAmt.toFixed(2);
+        document.getElementById('invTotal').textContent = '$' + total.toFixed(2);
+    }
+
+    function toggleGSTBadge(cb) {
+        state.gstRegistered = cb.checked;
+        updateInvTotal();
+    }
+
+    function saveNewInvoice() {
+        var num = document.getElementById('invNumber').value.trim();
+        var customer = document.getElementById('invCustomer').value.trim();
+        var amount = parseFloat(document.getElementById('invAmount').value);
+        if (!num || !customer || !amount) { showToast('Invoice #, customer, and amount required'); return; }
+        fetch('/api/paydeck/invoices', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer_name: customer, amount: amount, description: document.getElementById('invNotes').value.trim() || null })
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed to create invoice'); return; }
+            closeModal('addInvoiceModal'); loadInvoices(); loadSummary(); showToast('Invoice created! 🧾');
+        }).catch(function() { showToast('Network error — try again'); });
+    }
+
+    function markInvoicePaid(id) {
+        if (!confirm('Mark this invoice as paid?')) return;
+        fetch('/api/paydeck/invoices/' + id + '/mark-paid', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(function(r){ return r.json(); }).then(function(d){ if(d.success){ loadInvoices(); loadSummary(); showToast('Invoice marked paid! ✅'); } }).catch(function(){});
+    }
+
+    // ── GPS Map ──────────────────────────────────────────────────────────────
+    // WHY: Map always initialises with tiles (Sydney metro default). GPS pins come
+    // from staff_clock_events (real lat/lng), NOT random offsets around Sydney.
+    var leafletMap = null;
+    var mapMarkers = [];
+    function loadMap() {
+        var statusEl = document.getElementById('mapStatus');
+        statusEl.textContent = 'Loading map…';
+        // Always init the map first — even with no data we show tiles
+        ensureLeafletLoaded(function() {
+            initMapTiles();
+            // Fetch real GPS clock events for today
+            var today = new Date().toISOString().split('T')[0];
+            Promise.all([
+                fetch('/api/paydeck/clock-events?date=' + today, { credentials: 'include' }).then(function(r) { return r.json(); }),
+                fetch('/api/paydeck/roster?start_date=' + today + '&end_date=' + today, { credentials: 'include' }).then(function(r) { return r.json(); })
+            ]).then(function(results) {
+                var events = (results[0].success && results[0].events) ? results[0].events : [];
+                var jobs = (results[1].success && results[1].roster) ? results[1].roster : [];
+                renderMapData(events, jobs);
+            }).catch(function() {
+                statusEl.textContent = 'Could not load map data';
+            });
+        });
+    }
+
+    function ensureLeafletLoaded(cb) {
+        if (typeof L !== 'undefined') { cb(); return; }
+        document.getElementById('mapStatus').textContent = 'Loading map library…';
+        var script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = cb;
+        script.onerror = function() { document.getElementById('mapStatus').textContent = 'Map library failed to load'; };
+        document.head.appendChild(script);
+    }
+
+    function initMapTiles() {
+        var mapEl = document.getElementById('paysMap');
+        // Clear placeholder content so Leaflet can render
+        mapEl.innerHTML = '';
+        mapEl.style.height = '320px';
+        if (!leafletMap) {
+            leafletMap = L.map('paysMap').setView([-33.87, 151.21], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(leafletMap);
+        }
+        // Force Leaflet to recalculate after container resize
+        setTimeout(function() { leafletMap.invalidateSize(); }, 200);
+    }
+
+    function renderMapData(clockEvents, rosterJobs) {
+        // Clear existing markers
+        mapMarkers.forEach(function(m) { leafletMap.removeLayer(m); });
+        mapMarkers = [];
+
+        var statusEl = document.getElementById('mapStatus');
+        // Remove the status overlay since map is now showing tiles
+        statusEl.style.display = 'none';
+
+        // Plot real GPS pins from clock events (these have actual lat/lng)
+        var gpsEvents = clockEvents.filter(function(e) { return e.latitude && e.longitude; });
+        var bounds = [];
+
+        gpsEvents.forEach(function(ev, i) {
+            var lat = parseFloat(ev.latitude);
+            var lng = parseFloat(ev.longitude);
+            if (isNaN(lat) || isNaN(lng)) return;
+            bounds.push([lat, lng]);
+            var color = ev.event_type === 'clock_in' ? '#22c55e' : '#ef4444';
+            var label = ev.event_type === 'clock_in' ? 'IN' : 'OUT';
+            var icon = L.divIcon({
+                html: '<div style="background:' + color + ';color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.65rem;border:2px solid #0a0e1a;">' + label + '</div>',
+                iconSize: [28, 28], className: ''
+            });
+            var time = ev.occurred_at ? new Date(ev.occurred_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : '';
+            var marker = L.marker([lat, lng], { icon: icon }).addTo(leafletMap)
+                .bindPopup('<strong>' + escHtml(ev.staff_name || 'Staff') + '</strong><br>' + label + ' at ' + time + (ev.job_title ? '<br>' + escHtml(ev.job_title) : '') + (ev.job_address ? '<br><small>' + escHtml(ev.job_address) + '</small>' : '') + (ev.geofence_ok === false ? '<br><span style="color:#ef4444;">⚠ Outside geofence</span>' : ''));
+            mapMarkers.push(marker);
+        });
+
+        // Fit bounds if we have GPS pins
+        if (bounds.length > 0) {
+            leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+        }
+
+        // Build the info list below the map
+        var jobsListEl = document.getElementById('todayJobsList');
+        if (gpsEvents.length === 0 && rosterJobs.length === 0) {
+            jobsListEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:0.85rem;">No GPS clock-ins or scheduled jobs for today. Staff GPS pins will appear here when they clock in.</div>';
+            return;
+        }
+
+        var html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+        // GPS events first
+        if (gpsEvents.length > 0) {
+            html += '<div style="font-size:0.75rem;color:var(--text-dim);font-weight:600;padding:0 0.25rem;">GPS CLOCK EVENTS TODAY</div>';
+            gpsEvents.forEach(function(ev) {
+                var color = ev.event_type === 'clock_in' ? '#22c55e' : '#ef4444';
+                var label = ev.event_type === 'clock_in' ? '🟢 Clock In' : '🔴 Clock Out';
+                var time = ev.occurred_at ? new Date(ev.occurred_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : '';
+                html += '<div style="display:flex;gap:0.75rem;align-items:center;padding:0.5rem 0.75rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);">'
+                    + '<div style="font-size:0.85rem;">' + label + '</div>'
+                    + '<div><div style="font-size:0.85rem;font-weight:600;color:var(--text-bright);">' + escHtml(ev.staff_name || 'Staff') + ' — ' + time + '</div>'
+                    + '<div style="font-size:0.75rem;color:var(--text-dim);">' + escHtml(ev.job_title || '') + (ev.job_address ? ' @ ' + escHtml(ev.job_address) : '') + '</div></div></div>';
+            });
+        }
+        // Scheduled jobs (no GPS yet)
+        if (rosterJobs.length > 0) {
+            html += '<div style="font-size:0.75rem;color:var(--text-dim);font-weight:600;padding:0.5rem 0.25rem 0;">SCHEDULED JOBS TODAY</div>';
+            rosterJobs.forEach(function(j, i) {
+                html += '<div style="display:flex;gap:0.75rem;align-items:center;padding:0.5rem 0.75rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);">'
+                    + '<div style="background:var(--pays);color:var(--midnight);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.75rem;flex-shrink:0;">' + (i+1) + '</div>'
+                    + '<div><div style="font-size:0.85rem;font-weight:600;color:var(--text-bright);">' + escHtml(j.staff_name||'Staff') + ' — ' + escHtml(j.job_title||'Job') + '</div>'
+                    + '<div style="font-size:0.75rem;color:var(--text-dim);">' + escHtml(j.job_address||'No address') + (j.start_time ? ' · ' + j.start_time.slice(0,5) : '') + '</div></div></div>';
+            });
+        }
+        html += '</div>';
+        jobsListEl.innerHTML = html;
+    }
+
+    // ── Settings ─────────────────────────────────────────────────────────────
+    function loadSettingsData() {
+        fetch('/api/settings', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) return;
+                var s = d.settings || d;
+                if (s.business_name) {
+                    document.getElementById('settingsBizName').value = s.business_name || '';
+                    state.businessName = s.business_name;
+                    document.getElementById('paysBusinessName').textContent = s.business_name;
+                    document.getElementById('headerBusinessSub').textContent = s.business_name + ' — Payroll & Staff';
+                }
+                if (s.abn) document.getElementById('settingsABN').value = s.abn || '';
+                if (s.gst_registered !== undefined) {
+                    document.getElementById('settingsGST').checked = !!s.gst_registered;
+                    state.gstRegistered = !!s.gst_registered;
+                }
+            })
+            .catch(function() {});
+
+        // PAYDECK config (super fund, pay cycle) is stored in operator_profiles
+        // No separate endpoint — settings form uses sensible defaults
+    }
+
+    function savePayrollSettings() {
+        var bizName = document.getElementById('settingsBizName').value.trim();
+        var abn = document.getElementById('settingsABN').value.trim();
+        var gst = document.getElementById('settingsGST').checked;
+        var superFund = document.getElementById('settingsSuperFund').value.trim();
+        var payCycle = document.getElementById('settingsPayCycle').value;
+
+        // Save to /api/settings (core business settings)
+        fetch('/api/settings', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ business_name: bizName, abn: abn, gst_registered: gst })
+        }).then(function(r){ return r.json(); }).catch(function(){ return {}; });
+
+        // Update UI
+        state.gstRegistered = gst;
+        if (bizName) { document.getElementById('paysBusinessName').textContent = bizName; document.getElementById('headerBusinessSub').textContent = bizName + ' — Payroll & Staff'; }
+        var msg = document.getElementById('settingsSaveMsg');
+        msg.style.display = '';
+        setTimeout(function() { msg.style.display = 'none'; }, 2500);
+        showToast('Settings saved ✅');
+    }
+
+    // ── Export ───────────────────────────────────────────────────────────────
+    // WHY: export section initialised lazily on first show to avoid unnecessary queries
+
+    function initExportSection() {
+        // Default to current FY
+        setExportFY();
+        // Populate staff filter from already-loaded state
+        var sel = document.getElementById('exportStaffFilter');
+        if (sel && state.staffList && state.staffList.length > 0) {
+            state.staffList.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id; opt.textContent = s.name;
+                sel.appendChild(opt);
+            });
+        } else if (sel && sel.options.length === 1) {
+            // staff not yet loaded — load now
+            fetch('/api/paydeck/staff', { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    (d.staff || []).forEach(function(s) {
+                        var opt = document.createElement('option');
+                        opt.value = s.id; opt.textContent = s.name;
+                        sel.appendChild(opt);
+                    });
+                }).catch(function(){});
+        }
+    }
+
+    var _exportInited = false;
+    // Patch showSection to init export on first show
+    var _origShowSection = showSection;
+    showSection = function(name) {
+        _origShowSection(name);
+        if (name === 'export' && !_exportInited) {
+            _exportInited = true;
+            initExportSection();
+        }
+    };
+
+    function getExportParams() {
+        var start = document.getElementById('exportStart').value;
+        var end   = document.getElementById('exportEnd').value;
+        var staff = document.getElementById('exportStaffFilter').value;
+        var params = [];
+        if (start) params.push('start=' + encodeURIComponent(start));
+        if (end)   params.push('end='   + encodeURIComponent(end));
+        if (staff) params.push('staff_id=' + encodeURIComponent(staff));
+        return params.length ? '?' + params.join('&') : '';
+    }
+
+    function downloadExport(type) {
+        var qs = getExportParams();
+        var url = '/api/paydeck/export/' + type + qs;
+        // Trigger browser download by navigating to the CSV endpoint
+        var a = document.createElement('a');
+        a.href = url; a.download = ''; a.style.display = 'none';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        showToast('Preparing download…');
+    }
+
+    function downloadSTP2() {
+        var fy = document.getElementById('stp2Year').value;
+        var url = '/api/paydeck/export/stp2-summary?financial_year=' + fy;
+        fetch(url, { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) { showToast('Export failed — try again'); return; }
+                var blob = new Blob([JSON.stringify(d.stp2, null, 2)], { type: 'application/json' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'stp2-fy' + fy + '.json';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                showToast('STP2 summary downloaded');
+            })
+            .catch(function() { showToast('Download failed — check connection'); });
+    }
+
+    function previewSTP2() {
+        var fy = document.getElementById('stp2Year').value;
+        var url = '/api/paydeck/export/stp2-summary?financial_year=' + fy;
+        var previewEl = document.getElementById('stp2Preview');
+        previewEl.textContent = 'Loading…'; previewEl.style.display = '';
+        fetch(url, { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) { previewEl.textContent = 'Failed to load: ' + (d.message || 'unknown error'); return; }
+                var stp = d.stp2;
+                var summary = [
+                    '=== STP2 Phase 2 Summary — ' + stp.financial_year + ' ===',
+                    'Period: ' + stp.fy_start + ' to ' + stp.fy_end,
+                    'Employer: ' + (stp.employer.name || 'N/A') + ' | ABN: ' + stp.employer.abn,
+                    '',
+                    '--- TOTALS ---',
+                    'Employees:     ' + stp.totals.employee_count,
+                    'Pay Runs:      ' + stp.totals.pay_run_count,
+                    'YTD Gross:     $' + parseFloat(stp.totals.ytd_gross).toLocaleString('en-AU', {minimumFractionDigits:2}),
+                    'YTD PAYG:      $' + parseFloat(stp.totals.ytd_payg).toLocaleString('en-AU', {minimumFractionDigits:2}),
+                    'YTD Super SGC: $' + parseFloat(stp.totals.ytd_super).toLocaleString('en-AU', {minimumFractionDigits:2}),
+                    'YTD Net Pay:   $' + parseFloat(stp.totals.ytd_net).toLocaleString('en-AU', {minimumFractionDigits:2}),
+                    '',
+                    '--- EMPLOYEES ---',
+                ].concat(stp.employees.map(function(e) {
+                    return e.name + ' | Gross: $' + parseFloat(e.ytd.gross_wages).toLocaleString('en-AU', {minimumFractionDigits:2})
+                        + ' | PAYG: $' + parseFloat(e.ytd.payg_withholding).toLocaleString('en-AU', {minimumFractionDigits:2})
+                        + ' | Super: $' + parseFloat(e.ytd.super_sgc).toLocaleString('en-AU', {minimumFractionDigits:2})
+                        + ' | Pay runs: ' + e.pay_run_count;
+                }));
+                previewEl.textContent = summary.join('\n');
+            })
+            .catch(function() { previewEl.textContent = 'Failed to load preview.'; });
+    }
+
+    function setExportFY() {
+        var now = new Date();
+        var fy = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+        document.getElementById('exportStart').value = fy + '-07-01';
+        document.getElementById('exportEnd').value   = (now < new Date(fy + 1, 5, 30) ? now.toISOString().split('T')[0] : (fy + 1) + '-06-30');
+    }
+
+    function setExportQtr() {
+        var now = new Date();
+        var m = now.getMonth();
+        // ATO quarters: Jul-Sep (Q1), Oct-Dec (Q2), Jan-Mar (Q3), Apr-Jun (Q4)
+        var qtr;
+        if (m <= 2)       qtr = { start: [now.getFullYear(), 0, 1],  end: [now.getFullYear(), 2,  31] };
+        else if (m <= 5)  qtr = { start: [now.getFullYear(), 3, 1],  end: [now.getFullYear(), 5,  30] };
+        else if (m <= 8)  qtr = { start: [now.getFullYear(), 6, 1],  end: [now.getFullYear(), 8,  30] };
+        else              qtr = { start: [now.getFullYear(), 9, 1],  end: [now.getFullYear(), 11, 31] };
+        document.getElementById('exportStart').value = new Date(qtr.start[0], qtr.start[1], qtr.start[2]).toISOString().split('T')[0];
+        document.getElementById('exportEnd').value   = new Date(qtr.end[0],   qtr.end[1],   qtr.end[2]).toISOString().split('T')[0];
+    }
+
+    function setExportMonth() {
+        var now = new Date();
+        document.getElementById('exportStart').value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        document.getElementById('exportEnd').value   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    }
+
+    // ── Week View ─────────────────────────────────────────────────────────────
+    // Staff color palette: deterministic per staff_id, cycling through 6 colours.
+    // Shift boxes get the colour at 15% opacity + darker border. Staff names get a swatch.
+    var STAFF_COLORS = [
+        { hex: '#3B82F6', name: 'Blue' },
+        { hex: '#8B5CF6', name: 'Purple' },
+        { hex: '#14B8A6', name: 'Teal' },
+        { hex: '#F59E0B', name: 'Amber' },
+        { hex: '#EC4899', name: 'Pink' },
+        { hex: '#06B6D4', name: 'Cyan' },
+    ];
+    function staffColor(staffId) {
+        var idx = (staffId || 0) % STAFF_COLORS.length;
+        return STAFF_COLORS[idx];
+    }
+    // Convert hex to rgba at given opacity
+    function hexToRgba(hex, alpha) {
+        var r = parseInt(hex.slice(1,3), 16);
+        var g = parseInt(hex.slice(3,5), 16);
+        var b = parseInt(hex.slice(5,7), 16);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    }
+
+    var wvState = {
+        weekStart: null,    // ISO date string (Monday)
+        staffFilter: '',
+        data: null,
+    };
+
+    // WHY: uses localDateStr instead of toISOString to avoid UTC shift in AEST
+    function wvCurrentMonday() {
+        var now = new Date();
+        var dow = now.getDay(); // 0=Sun…6=Sat
+        var diff = dow === 0 ? -6 : 1 - dow;
+        var d = new Date(now); d.setDate(d.getDate() + diff);
+        return localDateStr(d);
+    }
+
+    function wvGoToday() {
+        wvState.weekStart = wvCurrentMonday();
+        wvLoad();
+    }
+
+    function wvChangeWeek(dir) {
+        var d = new Date((wvState.weekStart || wvCurrentMonday()) + 'T12:00:00');
+        d.setDate(d.getDate() + dir * 7);
+        wvState.weekStart = localDateStr(d);
+        wvLoad();
+    }
+
+    function wvLoad() {
+        if (!wvState.weekStart) wvState.weekStart = wvCurrentMonday();
+        wvState.staffFilter = document.getElementById('wvStaffFilter').value;
+
+        var url = '/api/paydeck/week-view?week_start=' + wvState.weekStart;
+        if (wvState.staffFilter) url += '&staff_id=' + encodeURIComponent(wvState.staffFilter);
+
+        document.getElementById('wvBody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:2.5rem;color:var(--text-dim);">Loading…</td></tr>';
+
+        fetch(url, { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) { showToast(d.message || 'Failed to load week view'); return; }
+                wvState.data = d;
+                wvRender(d);
+
+                // Update staff filter options (first load only — keep selection stable)
+                var sel = document.getElementById('wvStaffFilter');
+                if (sel.options.length <= 1) {
+                    (d.staff || []).forEach(function(s) {
+                        var opt = document.createElement('option');
+                        opt.value = s.id; opt.textContent = s.name;
+                        sel.appendChild(opt);
+                    });
+                }
+            })
+            .catch(function() { showToast('Network error loading week view'); });
+    }
+
+    // WHY: Compute daily net pay from shift hours × rate minus PAYG (proportional from weekly totals).
+    // Holiday accrual = 7.69% of gross (4 weeks / 52 weeks), Sick leave accrual = 3.85% (10 days / 260 days).
+    function calcShiftPay(sh, staffRate, staffTotals) {
+        var hrs = 0;
+        if (sh.start_time && sh.end_time) {
+            var sp = String(sh.start_time).split(':').map(Number);
+            var ep = String(sh.end_time).split(':').map(Number);
+            var mins = ep[0] * 60 + (ep[1]||0) - sp[0] * 60 - (sp[1]||0);
+            // WHY: If end < start (e.g. 09:00–05:00), assume 12h offset — common data-entry error
+            if (mins <= 0) mins += 12 * 60;
+            hrs = mins / 60;
+        }
+        var gross = Math.round(hrs * staffRate * 100) / 100;
+        // Proportional PAYG: use staff weekly ratio if available
+        var payg = 0;
+        if (staffTotals && staffTotals.gross > 0) {
+            payg = Math.round(gross * (staffTotals.payg / staffTotals.gross) * 100) / 100;
+        }
+        var superAmt = Math.round(gross * 0.115 * 100) / 100;
+        var holiday = Math.round(gross * 0.0769 * 100) / 100;
+        var sick = Math.round(gross * 0.0385 * 100) / 100;
+        var net = Math.round((gross - payg) * 100) / 100;
+        return { hours: Math.round(hrs * 100) / 100, gross: gross, payg: payg, super: superAmt, holiday: holiday, sick: sick, net: net };
+    }
+
+    function wvRender(d) {
+        var DAYS = ['M','T','W','T','F','S','S'];
+        var today = localDateStr(new Date());
+
+        // WHY: Use T12:00:00 to avoid timezone boundary crossing when adding days
+        var weekDates = DAYS.map(function(_, i) {
+            var dt = new Date(d.week_start + 'T12:00:00');
+            dt.setDate(dt.getDate() + i);
+            return localDateStr(dt);
+        });
+
+        // Week label
+        var ws = new Date(d.week_start + 'T12:00:00');
+        var we = new Date(d.week_end + 'T12:00:00');
+        var opts = { day: 'numeric', month: 'short' };
+        document.getElementById('wvWeekLabel').textContent =
+            ws.toLocaleDateString('en-AU', opts) + ' – ' + we.toLocaleDateString('en-AU', opts) + ' ' + we.getFullYear();
+
+        // Swap badge
+        var badge = document.getElementById('wvSwapBadge');
+        var badgeNav = document.getElementById('wvSwapBadgeNav');
+        if (d.pending_swaps > 0) {
+            badge.textContent = d.pending_swaps + ' swap' + (d.pending_swaps > 1 ? 's' : '') + ' pending';
+            badge.style.display = '';
+            badgeNav.textContent = d.pending_swaps; badgeNav.style.display = '';
+        } else {
+            badge.style.display = 'none';
+            badgeNav.style.display = 'none';
+        }
+
+        // Build thead
+        var headHtml = '<tr>'
+            + '<th class="wv-staff-col">Staff</th>';
+        weekDates.forEach(function(dt, i) {
+            var isToday = dt === today;
+            var dayNum = new Date(dt + 'T12:00:00').getDate();
+            headHtml += '<th class="wv-day-col' + (isToday ? ' wv-today' : '') + '">' + DAYS[i] + ' ' + dayNum + '</th>';
+        });
+        headHtml += '<th class="wv-totals-col">Hrs</th>'
+                  + '</tr>';
+        document.getElementById('wvHead').innerHTML = headHtml;
+
+        // Build tbody
+        if (!d.staff || d.staff.length === 0) {
+            document.getElementById('wvBody').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--text-dim);">No active staff yet — add staff first.</td></tr>';
+            document.getElementById('wvFoot').innerHTML = '';
+            return;
+        }
+
+        var bodyHtml = '';
+        // Build legend for staff with shifts this week
+        var legendStaff = [];
+        d.staff.forEach(function(s) {
+            // Track running gross for weekly tally in expanded view
+            var runningGross = 0;
+            var sc = staffColor(s.id);
+            var hasShifts = s.shifts.some(function(day) { return day.length > 0; });
+            if (hasShifts) legendStaff.push({ name: s.name, color: sc.hex });
+
+            bodyHtml += '<tr>'
+                + '<td class="wv-staff-cell"><div class="wv-staff-name" style="color:' + sc.hex + ';">' + escHtml(s.name) + '</div>'
+                + '<div class="wv-staff-rate">$' + fmtNum(s.hourly_rate) + '/hr</div></td>';
+            s.shifts.forEach(function(dayShifts, di) {
+                var dt = weekDates[di];
+                var isToday = dt === today;
+                bodyHtml += '<td class="wv-day-cell' + (isToday ? ' wv-today-col' : '') + '" '
+                    + 'onclick="wvCellClick(' + s.id + ',\'' + dt + '\',this)">';
+                if (dayShifts.length > 0) {
+                    dayShifts.forEach(function(sh) {
+                        var timeStr = sh.start_time ? String(sh.start_time).slice(0,5) : '';
+                        if (sh.end_time) timeStr += '–' + String(sh.end_time).slice(0,5);
+                        var pay = calcShiftPay(sh, s.hourly_rate, s.totals);
+                        runningGross += pay.gross;
+                        var netLabel = pay.net > 0 ? ' · $' + pay.net.toFixed(0) + ' net' : '';
+                        var chipId = 'chip-' + sh.id;
+                        var detailId = 'detail-' + sh.id;
+                        // Color coding: staff-coloured chip (15% opacity bg + darker border) unless swap-offered
+                        var chipBg = sh.swap_offered ? '' : 'background:' + hexToRgba(sc.hex, 0.15) + ';border-color:' + hexToRgba(sc.hex, 0.4) + ';color:' + sc.hex + ';';
+                        bodyHtml += '<div class="wv-shift-chip' + (sh.swap_offered ? ' swap-offered' : '') + '" id="' + chipId + '" style="' + chipBg + '">'
+                            + '<div style="display:flex;align-items:center;gap:2px;" onclick="event.stopPropagation();toggleShiftDetail(\'' + detailId + '\')">'
+                            + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;">'
+                            + escHtml(timeStr || sh.job_title || 'Shift') + netLabel
+                            + '</span>'
+                            + '<span class="wv-chip-actions" onclick="event.stopPropagation();">'
+                            + (sh.swap_offered ? '' : '<button class="wv-swap-btn" title="Swap" onclick="handleSwapShift(' + sh.id + ',\'' + escHtml(sh.job_title || '') + '\',' + sh.swap_offered + ')">⇄</button>')
+                            + (sh.swap_offered ? '<button class="wv-swap-btn swap-active" title="Cancel swap" onclick="handleSwapShift(' + sh.id + ',\'' + escHtml(sh.job_title || '') + '\',true)">⇄</button>' : '')
+                            + '<button class="wv-del-btn" title="Delete" onclick="wvDeleteShift(' + sh.id + ')">×</button>'
+                            + '</span>'
+                            + '</div>'
+                            + '<div class="wv-shift-detail" id="' + detailId + '" style="display:none;">'
+                            + '<div class="wv-detail-row"><span>Gross</span><span style="color:var(--green);">$' + pay.gross.toFixed(2) + '</span></div>'
+                            + '<div class="wv-detail-row"><span>PAYG Tax</span><span style="color:var(--red);">-$' + pay.payg.toFixed(2) + '</span></div>'
+                            + '<div class="wv-detail-row"><span>Super 11.5%</span><span style="color:var(--purple);">$' + pay.super.toFixed(2) + '</span></div>'
+                            + '<div class="wv-detail-row"><span>Holiday Accrual</span><span>$' + pay.holiday.toFixed(2) + '</span></div>'
+                            + '<div class="wv-detail-row"><span>Sick Leave</span><span>$' + pay.sick.toFixed(2) + '</span></div>'
+                            + '<div class="wv-detail-row wv-detail-net"><span>Net Pay</span><span style="color:var(--pays);">$' + pay.net.toFixed(2) + '</span></div>'
+                            + '<div class="wv-detail-row" style="border-top:1px dashed rgba(255,255,255,0.1);padding-top:3px;margin-top:2px;"><span>Week Tally</span><span style="color:var(--text-bright);">$' + runningGross.toFixed(2) + '</span></div>'
+                            + '</div>'
+                            + '</div>';
+                    });
+                } else {
+                    bodyHtml += '<div class="wv-add-hint">+</div>';
+                }
+                bodyHtml += '</td>';
+            });
+            // Totals — hours only; pay detail lives in the expanded shift boxes
+            var t = s.totals;
+            bodyHtml += '<td class="wv-total-cell"><div class="wv-t-val">' + (t.hours || 0) + 'h</div></td>'
+                + '</tr>';
+        });
+        document.getElementById('wvBody').innerHTML = bodyHtml;
+
+        // Staff legend — color swatches for staff with shifts this week
+        var legendEl = document.getElementById('wvStaffLegend');
+        if (legendEl && legendStaff.length > 0) {
+            legendEl.style.display = 'flex';
+            legendEl.innerHTML = legendStaff.map(function(ls) {
+                return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--text-dim);">'
+                    + '<span style="width:10px;height:10px;border-radius:3px;background:' + ls.color + ';flex-shrink:0;"></span>'
+                    + escHtml(ls.name)
+                    + '</span>';
+            }).join('');
+        } else if (legendEl) {
+            legendEl.style.display = 'none';
+        }
+
+        // Tfoot — team totals (LOCKED at bottom via sticky CSS)
+        var tm = d.team_totals;
+        var footHtml = '<tr class="wv-team-row">'
+            + '<td class="wv-staff-cell">TEAM TOTALS</td>';
+        weekDates.forEach(function() { footHtml += '<td></td>'; });
+        // Team totals: hours + compact gross + net summary (no redundant separate PAYG/Super columns)
+        footHtml += '<td class="wv-total-cell"><div class="wv-t-val">' + (tm.hours || 0) + 'h</div>'
+            + '<div style="font-size:0.58rem;color:var(--text-dim);margin-top:1px;">$' + fmtNum(tm.gross || 0) + ' gross · $' + fmtNum(tm.net || 0) + ' net</div>'
+            + '</td>'
+            + '</tr>';
+        document.getElementById('wvFoot').innerHTML = footHtml;
+
+        // Render pending swaps panel
+        wvRenderSwaps();
+    }
+
+    // Fix 7: Toggle shift detail expand/collapse
+    function toggleShiftDetail(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = el.style.display === 'none' ? '' : 'none';
+    }
+
+    // Fix 4: Delete a shift instantly
+    function wvDeleteShift(shiftId) {
+        if (!confirm('Delete this shift?')) return;
+        fetch('/api/paydeck/roster/' + shiftId, { method: 'DELETE', credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) { wvLoad(); showToast('Shift deleted'); }
+                else { showToast(d.message || 'Failed to delete'); }
+            })
+            .catch(function() { showToast('Network error'); });
+    }
+
+    // Swap shift handler — preserves existing swap logic
+    function handleSwapShift(shiftId, jobTitle, isSwapOffered) {
+        wvShiftClick(shiftId, jobTitle, isSwapOffered);
+    }
+
+    function wvRenderSwaps() {
+        fetch('/api/paydeck/swap-requests?status=pending', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var panel = document.getElementById('wvPendingSwapsPanel');
+                var list = document.getElementById('wvSwapList');
+                if (!d.success || !d.requests || d.requests.length === 0) {
+                    panel.style.display = 'none';
+                    return;
+                }
+                panel.style.display = '';
+                list.innerHTML = d.requests.map(function(sw) {
+                    var dt = sw.scheduled_date ? new Date(sw.scheduled_date + 'T00:00:00').toLocaleDateString('en-AU', {day:'numeric',month:'short'}) : '—';
+                    var timeStr = sw.start_time ? sw.start_time.slice(0,5) : '';
+                    if (sw.end_time) timeStr += '–' + sw.end_time.slice(0,5);
+                    return '<div class="wv-swap-row">'
+                        + '<div class="wv-swap-info">'
+                        + '<strong>' + escHtml(sw.requesting_name) + '</strong> offered swap'
+                        + (sw.target_name ? ' (taking: <strong>' + escHtml(sw.target_name) + '</strong>)' : ' (open)')
+                        + '<br><small>' + escHtml(sw.job_title || 'Shift') + ' · ' + dt + (timeStr ? ' ' + timeStr : '') + '</small>'
+                        + '</div>'
+                        + '<div class="wv-swap-actions">'
+                        + '<button class="btn-primary" style="font-size:0.75rem;padding:0.35rem 0.8rem;" onclick="wvReviewSwap(' + sw.id + ',\'approve\')">✓ Approve</button>'
+                        + '<button class="btn-danger" onclick="wvReviewSwap(' + sw.id + ',\'decline\')">✗ Decline</button>'
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }).catch(function() {});
+    }
+
+    function wvReviewSwap(id, action) {
+        fetch('/api/paydeck/swap-requests/' + id + '/review', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action })
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed'); return; }
+            showToast(action === 'approve' ? 'Swap approved ✓' : 'Swap declined');
+            wvLoad();
+        }).catch(function() { showToast('Network error'); });
+    }
+
+    // Click on a shift chip — offer swap or cancel swap
+    function wvShiftClick(shiftId, jobTitle, isSwapOffered) {
+        if (isSwapOffered) {
+            if (!confirm('Cancel swap offer for "' + (jobTitle || 'this shift') + '"?')) return;
+            // Cancel swap by deleting pending request for this entry
+            fetch('/api/paydeck/swap-requests?status=pending', { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var req = (d.requests || []).find(function(r) { return r.roster_entry_id === shiftId; });
+                    if (!req) { showToast('Swap request not found'); return; }
+                    return fetch('/api/paydeck/swap-requests/' + req.id + '/review', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'decline', note: 'Cancelled by operator' })
+                    }).then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        showToast(d.success ? 'Swap offer cancelled' : 'Could not cancel');
+                        wvLoad();
+                    });
+                }).catch(function() { showToast('Network error'); });
+        } else {
+            if (!confirm('Offer this shift ("' + (jobTitle || 'Shift') + '") for swap?')) return;
+            fetch('/api/paydeck/week-view/offer-swap', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roster_entry_id: shiftId })
+            }).then(function(r) { return r.json(); })
+            .then(function(d) {
+                showToast(d.success ? 'Swap offered — pending approval ⇄' : (d.message || 'Failed'));
+                if (d.success) wvLoad();
+            }).catch(function() { showToast('Network error'); });
+        }
+    }
+
+    // Click on empty cell — quick-add shift
+    var _wvQuickCell = { staffId: null, date: null };
+    function wvCellClick(staffId, date, cell) {
+        // Only trigger if click was on the empty cell itself (not a chip)
+        if (!cell.querySelector('.wv-shift-chip')) {
+            _wvQuickCell = { staffId: staffId, date: date };
+            openAddShiftFromWeek(staffId, date);
+        }
+    }
+
+    function openAddShiftFromWeek(staffId, date) {
+        // Reuse the roster modal, pre-filled if context given
+        var sel = document.getElementById('rosterStaffSelect');
+        sel.innerHTML = '<option value="">Select staff…</option>';
+        (wvState.data && wvState.data.staff || []).forEach(function(s) {
+            sel.innerHTML += '<option value="' + s.id + '"' + (s.id === staffId ? ' selected' : '') + '>' + escHtml(s.name) + '</option>';
+        });
+        if ((!wvState.data || !wvState.data.staff.length) && state.staffList.length) {
+            state.staffList.forEach(function(s) {
+                sel.innerHTML += '<option value="' + s.id + '"' + (s.id === staffId ? ' selected' : '') + '>' + escHtml(s.name) + '</option>';
+            });
+        }
+        var dateEl = document.getElementById('rosterDate');
+        if (dateEl) dateEl.value = date || new Date().toISOString().split('T')[0];
+        openModal('addRosterModal');
+    }
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    // WHY: redirect=/pays ensures user returns here after re-login, not /dashboard
+    function logout() {
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(function(){});
+        window.location.href = '/login?redirect=/pays';
+    }
+
+    // ── Modal helpers ─────────────────────────────────────────────────────────
+    function openModal(id) { var el = document.getElementById(id); if(el) el.classList.add('open'); }
+    function closeModal(id) { var el = document.getElementById(id); if(el) el.classList.remove('open'); }
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-overlay')) { e.target.classList.remove('open'); }
+    });
+
+    // ── Toast ──────────────────────────────────────────────────────────────────
+    var _toastTimer = null;
+    function showToast(msg, duration) {
+        var el = document.getElementById('paysToast');
+        el.textContent = msg; el.style.display = '';
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(function() { el.style.display = 'none'; }, duration || 2800);
+    }
+
+    // ── Util ──────────────────────────────────────────────────────────────────
+    function fmtMoney(v) { var n = parseFloat(v || 0); return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+    function fmtNum(v) { var n = parseFloat(v || 0); return n % 1 === 0 ? n.toString() : n.toFixed(2); }
+    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function setStatVal(id, val) { var el = document.getElementById(id); if(el) el.textContent = val; }
+    // WHY: toISOString() converts to UTC which shifts dates backward in AEST (+10).
+    // This helper formats a Date as YYYY-MM-DD using LOCAL timezone — no UTC shift.
+    function localDateStr(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+    
+    function showErrorInTable(tbodyId, cols) {
+        var tbody = document.getElementById(tbodyId);
+        if(tbody) tbody.innerHTML = '<tr><td colspan="'+cols+'" style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.85rem;">Could not load data — try refreshing.</td></tr>';
+    }
+    </script>
+
+    <!-- Hugo Widget — real widget with Robot Boy avatar, voice, and mic -->
+    <script src="/hugo-widget.js?v=14"></script>
+    <script>
+    // WHY: configure hugo-widget.js for the /pays dashboard context.
+    // setBusinessType('pays') → payroll persona greeting + routes to pays brain.
+    // setOperatorContext() → tells widget this is an authenticated dashboard (not landing page),
+    // which adjusts greeting style and uses cheaper browser TTS instead of server TTS.
+    HugoWidget.setBusinessType('pays');
+    HugoWidget.setOperatorContext(
+        state.businessName || '',
+        '',
+        'pays'
+    );
+    </script>
+</body>
+</html>

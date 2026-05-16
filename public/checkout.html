@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Plan — PropOps.Pro</title>
+    <meta name="description" content="Start your 14-day free trial. PropOps from $69/mo AUD. No charge during trial. Cancel anytime.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --navy: #0f172a;
+            --navy-light: #1e293b;
+            --slate: #334155;
+            --slate-mid: #475569;
+            --slate-light: #64748b;
+            --muted: #94a3b8;
+            --border: #e2e8f0;
+            --bg-off: #f8fafc;
+            --white: #ffffff;
+            --amber: #f59e0b;
+            --amber-dark: #d97706;
+            --amber-light: #fbbf24;
+            --amber-bg: #fef3c7;
+            --green: #059669;
+            --green-bg: #d1fae5;
+            --red: #dc2626;
+            --blue: #2563eb;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--navy);
+            line-height: 1.6;
+            background: var(--bg-off);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* ─── NAV ─── */
+        nav {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+        .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--navy);
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .logo span { color: var(--amber); }
+        .logo img { height: 34px; width: auto; display: block; }
+        .back-link {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--slate-mid);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .back-link:hover { color: var(--navy); }
+
+        /* ─── CHECKOUT LAYOUT ─── */
+        .checkout-wrapper {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem 4rem;
+        }
+        .checkout-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .checkout-header h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.5rem;
+        }
+        .checkout-header p {
+            color: var(--slate-mid);
+            font-size: 1rem;
+        }
+        .checkout-header .email-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--white);
+            border: 1px solid var(--border);
+            padding: 0.4rem 0.85rem;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--slate);
+            margin-top: 0.75rem;
+        }
+        .checkout-header .email-display svg {
+            width: 14px;
+            height: 14px;
+            color: var(--green);
+        }
+
+        /* ─── PLAN CARDS ─── */
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .plan-card {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .plan-card:hover {
+            border-color: var(--slate-mid);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .plan-card.selected {
+            border-color: var(--navy);
+            box-shadow: 0 4px 24px rgba(15,23,42,0.12);
+        }
+        .plan-card.best-value {
+            border-color: var(--green);
+        }
+        .plan-card.best-value.selected {
+            border-color: var(--green);
+            box-shadow: 0 4px 24px rgba(5,150,105,0.15);
+        }
+        .plan-badge {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.3rem 0.65rem;
+            border-radius: 100px;
+            margin-bottom: 1rem;
+            background: var(--bg-off);
+            color: var(--slate-mid);
+            border: 1px solid var(--border);
+        }
+        .plan-badge.popular {
+            background: var(--amber-bg);
+            color: var(--amber-dark);
+            border-color: transparent;
+        }
+        .plan-badge.best-value {
+            background: var(--green-bg);
+            color: var(--green);
+            border-color: transparent;
+        }
+        .plan-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        .plan-price {
+            display: flex;
+            align-items: baseline;
+            gap: 0.2rem;
+            margin-bottom: 0.25rem;
+        }
+        .plan-price .currency {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+        .plan-price .amount {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--navy);
+            line-height: 1;
+        }
+        .plan-price .period {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--slate-mid);
+        }
+        .plan-subtitle {
+            font-size: 0.82rem;
+            color: var(--slate-mid);
+            margin-bottom: 1.25rem;
+        }
+        .plan-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 1.25rem 0;
+        }
+        .plan-features {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        .plan-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--slate);
+            padding: 0.3rem 0;
+        }
+        .plan-features li .check {
+            color: var(--green);
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .plan-cta {
+            display: block;
+            width: 100%;
+            padding: 0.85rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            text-decoration: none;
+            border: none;
+        }
+        .plan-cta.monthly, .plan-cta.office {
+            background: var(--navy);
+            color: var(--white);
+        }
+        .plan-cta.monthly:hover, .plan-cta.office:hover { background: var(--navy-light); }
+        .plan-cta.popular-plan {
+            background: var(--amber);
+            color: var(--navy);
+        }
+        .plan-cta.popular-plan:hover { background: var(--amber-dark); }
+        .plan-cta.annual {
+            background: transparent;
+            color: var(--navy);
+            border: 1.5px solid var(--navy);
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .plan-cta.annual:hover { background: var(--navy); color: var(--white); }
+        .plan-save-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: var(--green-bg);
+            color: var(--green);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.25rem 0.55rem;
+            border-radius: 100px;
+            margin-bottom: 0.75rem;
+        }
+
+        /* ─── TRUST ROW ─── */
+        .trust-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            color: var(--slate-mid);
+        }
+        .trust-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* ─── FOOTER ─── */
+        .checkout-footer {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .checkout-footer p {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+        .checkout-footer a {
+            color: var(--slate-mid);
+            text-decoration: underline;
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .plans-grid { grid-template-columns: 1fr; gap: 1rem; max-width: 400px; }
+            .checkout-header h1 { font-size: 1.35rem; }
+            .plan-price .amount { font-size: 2.25rem; }
+            .plan-card { padding: 1.5rem; }
+        }
+
+        /* Loading state */
+        .plan-cta.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Radio indicator */
+        .plan-radio {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .plan-card.selected .plan-radio {
+            border-color: var(--navy);
+        }
+        .plan-card.best-value.selected .plan-radio {
+            border-color: var(--green);
+        }
+        .plan-radio-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: transparent;
+            transition: all 0.15s;
+        }
+        .plan-card.selected .plan-radio-dot {
+            background: var(--navy);
+        }
+        .plan-card.best-value.selected .plan-radio-dot {
+            background: var(--green);
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo" aria-label="PropOps.Pro — Home">
+            <img src="/logo-horizontal.svg" alt="PropOps.Pro" height="34">
+        </a>
+        <a href="/" class="back-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Back to site
+        </a>
+    </div>
+</nav>
+
+<div class="checkout-wrapper">
+    <div class="checkout-header">
+        <h1>Choose your plan</h1>
+        <p>All plans include a 14-day free trial. No charge until day 15. Cancel anytime.</p>
+    </div>
+
+    <div class="plans-grid">
+        <!-- Early Bird — $69/mo -->
+        <div class="plan-card selected" style="border:2px solid var(--amber);box-shadow:0 4px 24px rgba(245,158,11,0.15);">
+            <div class="plan-badge popular">30% OFF — BEFORE JUNE 30</div>
+            <div class="plan-name">Early Bird</div>
+            <div class="plan-price">
+                <span class="currency">$</span>
+                <span class="amount">69</span>
+                <span class="period">/mo</span>
+            </div>
+            <div class="plan-subtitle">AUD &middot; Locked at $69/mo forever</div>
+            <div class="plan-divider"></div>
+            <ul class="plan-features">
+                <li><span class="check">&#10003;</span> AI response in &lt;3 seconds</li>
+                <li><span class="check">&#10003;</span> All portals (REA, Domain, email)</li>
+                <li><span class="check">&#10003;</span> Unlimited AI lead responses</li>
+                <li><span class="check">&#10003;</span> SMS + email + push alerts</li>
+                <li><span class="check">&#10003;</span> 14-day free trial</li>
+            </ul>
+            <a href="https://buy.stripe.com/dRmbJ1bqw89v4Jj0pKdby0a" class="plan-cta monthly" target="_blank" rel="noopener">
+                Start Free Trial — $69/mo
+            </a>
+        </div>
+
+        <!-- Standard — $99/mo -->
+        <div class="plan-card">
+            <div class="plan-badge" style="background:var(--bg-off);color:var(--slate-mid);">STANDARD</div>
+            <div class="plan-name">Standard</div>
+            <div class="plan-price">
+                <span class="currency">$</span>
+                <span class="amount">99</span>
+                <span class="period">/mo</span>
+            </div>
+            <div class="plan-subtitle">AUD &middot; No lock-in. Cancel anytime.</div>
+            <div class="plan-divider"></div>
+            <ul class="plan-features">
+                <li><span class="check">&#10003;</span> AI response in &lt;3 seconds</li>
+                <li><span class="check">&#10003;</span> All portals (REA, Domain, email)</li>
+                <li><span class="check">&#10003;</span> Unlimited AI lead responses</li>
+                <li><span class="check">&#10003;</span> SMS + email + push alerts</li>
+                <li><span class="check">&#10003;</span> 14-day free trial</li>
+            </ul>
+            <a href="https://buy.stripe.com/dRmbJ1bqw89v4Jj0pKdby0a" class="plan-cta office" target="_blank" rel="noopener">
+                Start Free Trial — $99/mo
+            </a>
+        </div>
+
+        <!-- Annual — $999/yr -->
+        <div class="plan-card" style="border-color:var(--amber);box-shadow:0 4px 24px rgba(245,158,11,0.12);">
+            <div class="plan-save-tag">Save 17%</div>
+            <div class="plan-name">Annual</div>
+            <div class="plan-price">
+                <span class="currency">$</span>
+                <span class="amount">999</span>
+                <span class="period">/yr</span>
+            </div>
+            <div class="plan-subtitle">$83/month &middot; 2 months free</div>
+            <div class="plan-divider"></div>
+            <ul class="plan-features">
+                <li><span class="check">&#10003;</span> Everything in monthly plans</li>
+                <li><span class="check">&#10003;</span> Best value — lock in the rate</li>
+                <li><span class="check">&#10003;</span> 14-day free trial included</li>
+                <li><span class="check">&#10003;</span> Cancel before day 15, no charge</li>
+            </ul>
+            <a href="https://buy.stripe.com/9B63cvams0H37VvfkEdby09" class="plan-cta popular-plan" target="_blank" rel="noopener">
+                Start Free Trial — $999/yr
+            </a>
+        </div>
+    </div>
+
+    <div class="trust-row">
+        <div class="trust-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Stripe payments
+        </div>
+        <div class="trust-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+            256-bit encryption
+        </div>
+        <div class="trust-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            No charge during trial
+        </div>
+        <div class="trust-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            Cancel anytime
+        </div>
+    </div>
+
+    <div class="checkout-footer">
+        <p>Questions? Email <a href="mailto:support@propops.pro">support@propops.pro</a></p>
+    </div>
+</div>
+
+<script>
+// ─── Plan cards — direct Stripe payment links, no backend needed ───────────────
+// All buttons link directly to buy.stripe.com for 14-day trial.
+// No JavaScript required for plan selection.
+</script>
+
+</body>
+</html>
