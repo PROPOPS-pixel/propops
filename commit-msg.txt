@@ -1,0 +1,12 @@
+Landing page: add AI sample response section + update FAQ with 7 Q&As
+
+- Add Sample AI Response section (dark theme, navy bg) before pricing:
+  Email preview card showing Sarah Mitchell (Ray White Emerald) responding
+  to Elizabeth's inquiry about 15/42 Bridge Road, Emerald — $485,000.
+  Includes qualifying questions, inspection offer, cross-sell property,
+  and 'Responded in 6s' amber badge.
+
+- Update FAQ section: replace 5 old Q&As with 7 new ones per spec.
+  Includes Safari mobile tip (no floating banner).
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>

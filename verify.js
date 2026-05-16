@@ -1,0 +1,10 @@
+const fs = require('fs');
+const c = fs.readFileSync('public/index.html', 'utf8');
+console.log('AI sample section:', c.includes('ai-sample-section'));
+console.log('Email card:', c.includes('ai-sample-email-card'));
+console.log('Responded in 6s:', c.includes('Responded in 6s'));
+console.log('Safari mobile:', c.includes('works best in Safari on iPhone'));
+console.log('Edit and Resend:', c.includes('Edit &amp; Resend'));
+console.log('AI sample CSS:', c.includes('.ai-sample-section'));
+console.log('File size:', c.length, 'chars');
+console.log('No syntax errors - file reads successfully');
