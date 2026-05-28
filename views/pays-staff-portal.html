@@ -10,6 +10,7 @@
     body { background: #f8fafc; font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
     .nav-active { color: #f59e0b; border-bottom: 2px solid #f59e0b; }
     .badge-pending   { background:#fef3c7; color:#92400e; }
+    .badge-accepted  { background:#dbeafe; color:#1e40af; }
     .badge-approved  { background:#d1fae5; color:#065f46; }
     .badge-declined  { background:#fee2e2; color:#991b1b; }
     .badge-scheduled { background:#dbeafe; color:#1e40af; }
@@ -84,6 +85,26 @@
           Sign in
         </button>
         <p id="login-error" class="text-xs text-red-500 text-center hidden"></p>
+        <p class="text-center mt-3">
+          <button onclick="showForgotPasswordForm()" class="text-xs text-gray-400 hover:text-amber-500 transition">Forgot your password?</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- Forgot Password form -->
+    <div id="form-forgot" class="card p-6" style="display:none;">
+      <button onclick="backToLogin()" class="text-xs text-gray-400 hover:text-gray-600 mb-3 flex items-center gap-1">← Back to sign in</button>
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">Reset your password</h2>
+      <p id="forgot-intro" class="text-sm text-gray-500 mb-5">Enter your email and we'll send you a login link.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Email</label>
+          <input id="forgot-email" type="email" placeholder="you@example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <button onclick="doForgotPassword()" class="w-full py-2.5 bg-amber-500 text-gray-900 font-semibold rounded-lg text-sm hover:bg-amber-400 transition">
+          Send Login Link
+        </button>
+        <p id="forgot-msg" class="text-xs text-center hidden"></p>
       </div>
     </div>
   </div>
@@ -280,6 +301,14 @@
       <div id="swaps-list" class="space-y-3">
         <div class="text-center py-8 text-gray-400 text-sm">Loading…</div>
       </div>
+
+      <!-- Available swaps from other staff — Staff B can accept here -->
+      <div class="mt-4">
+        <h2 class="font-semibold text-gray-700 text-sm mb-2">Available Swaps from Colleagues</h2>
+        <div id="available-swaps-list" class="space-y-3">
+          <div class="text-center py-6 text-gray-400 text-xs">Loading…</div>
+        </div>
+      </div>
     </div>
 
     <!-- PAY SLIPS ────────────────────────────────────────────────────── -->
@@ -431,6 +460,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Shift reminder preference -->
+      <div class="card p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-xl">⏰</span>
+          <div>
+            <p class="text-sm font-semibold text-gray-900">Shift Reminders</p>
+            <p class="text-xs text-gray-500">Get an email reminder before each shift with a one-tap link to the portal.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-3" id="reminder-option-grid">
+          <button onclick="setReminderPref(null)"  id="rpref-off"       class="rpref-btn text-xs py-2 px-3 rounded-lg border border-gray-200 font-medium text-gray-500 bg-white hover:bg-gray-50 transition-colors">🔕 Off</button>
+          <button onclick="setReminderPref(0)"     id="rpref-morning"   class="rpref-btn text-xs py-2 px-3 rounded-lg border border-gray-200 font-medium text-gray-500 bg-white hover:bg-gray-50 transition-colors">🌅 Morning-of</button>
+          <button onclick="setReminderPref(2)"     id="rpref-2h"        class="rpref-btn text-xs py-2 px-3 rounded-lg border border-gray-200 font-medium text-gray-500 bg-white hover:bg-gray-50 transition-colors">⏱ 2 hrs before</button>
+          <button onclick="setReminderPref(14)"    id="rpref-14h"       class="rpref-btn text-xs py-2 px-3 rounded-lg border border-gray-200 font-medium text-gray-500 bg-white hover:bg-gray-50 transition-colors">🌙 Night before</button>
+        </div>
+        <p id="reminder-status-msg" class="text-xs text-gray-400 text-center"></p>
+      </div>
     </div>
 
   </main>
@@ -538,6 +585,59 @@ let spRosterViewTab = 'week'; // 'week' | 'list'
   const inviteToken = params.get('invite');
   const previewToken = params.get('preview');
   const previewName = params.get('name');
+  const magicToken = params.get('magic');
+  const jwtToken = params.get('token');
+  const errorParam = params.get('error');
+
+  // Error states from magic link redirects
+  if (errorParam === 'expired-token') {
+    showForgotPasswordForm('Your login link has expired. Enter your email to get a fresh one.');
+    return;
+  }
+
+  // JWT magic link from staff notification emails — no password needed, 60-day validity
+  if (jwtToken) {
+    try {
+      const r = await fetch('/api/staff-portal/verify-jwt-token?token=' + encodeURIComponent(jwtToken), {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+      });
+      const d = await r.json();
+      if (d.success) {
+        staffData = d.staff;
+        // Strip token from URL bar so staff can't copy/share the raw link
+        history.replaceState({}, '', '/pays/staff');
+        showApp();
+        return;
+      }
+    } catch (_) {}
+    // Token invalid/expired — redirect with error so user sees friendly message
+    window.location.href = '/pays/staff?error=expired-token';
+    return;
+  }
+
+  // Feature 5: Magic link auth — no password needed, 60-day token (legacy format)
+  if (magicToken) {
+    try {
+      const r = await fetch('/api/paydeck/magic-link/verify?token=' + encodeURIComponent(magicToken), {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+      });
+      const d = await r.json();
+      if (d.success) {
+        staffData = d.staff;
+        history.replaceState({}, '', '/pays/staff');
+        showApp();
+        return;
+      }
+    } catch (_) {}
+    // Magic link failed — show login with message
+    document.getElementById('form-invite').style.display = 'none';
+    document.getElementById('form-login').style.display = 'block';
+    document.getElementById('login-error').textContent = 'Magic link has expired or was already used. Please sign in with your password.';
+    document.getElementById('login-error').classList.remove('hidden');
+    return;
+  }
 
   // Boss preview mode — token passed as URL param, set cookie then show app
   if (previewToken) {
@@ -685,6 +785,44 @@ async function logout() {
   location.reload();
 }
 
+function showForgotPasswordForm(message) {
+  document.getElementById('form-invite').style.display = 'none';
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('form-forgot').style.display = 'block';
+  if (message) {
+    const introEl = document.getElementById('forgot-intro');
+    const msgEl = document.getElementById('forgot-msg');
+    introEl.textContent = message;
+    msgEl.classList.add('hidden');
+  }
+  document.getElementById('forgot-email').value = '';
+  document.getElementById('forgot-msg').classList.add('hidden');
+}
+
+function backToLogin() {
+  document.getElementById('form-forgot').style.display = 'none';
+  document.getElementById('form-invite').style.display = 'none';
+  document.getElementById('form-login').style.display = 'block';
+  document.getElementById('login-error').classList.add('hidden');
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const msgEl = document.getElementById('forgot-msg');
+  if (!email) { msgEl.textContent = 'Please enter your email address.'; msgEl.classList.remove('hidden'); return; }
+
+  const result = await api('/api/staff-portal/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+
+  // Always show the same message to prevent email enumeration
+  msgEl.textContent = "If that email is in our system, you'll receive a login link within a minute.";
+  msgEl.className = 'text-xs text-center text-green-600';
+  msgEl.classList.remove('hidden');
+  document.getElementById('forgot-email').value = '';
+}
+
 // ── App init ─────────────────────────────────────────────────────────────────
 
 function showApp() {
@@ -717,6 +855,7 @@ function showApp() {
   loadColleagues();
   populateClockRosterSelect();
   loadOnboarding(); // check onboarding status to badge Setup tab
+  loadReminderPref(); // load shift reminder preference for Setup tab
 }
 
 // ── GPS ───────────────────────────────────────────────────────────────────────
@@ -770,7 +909,7 @@ async function loadHomeData() {
           <div>
             <p class="font-semibold text-gray-800">${esc(s.job_title || 'Shift')}</p>
             <p class="text-sm text-gray-500 mt-0.5">${formatDate(s.scheduled_date)}</p>
-            ${s.start_time ? `<p class="text-sm text-amber-600 font-medium mt-0.5">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatTime(s.end_time) : ''}</p>` : ''}
+            ${s.start_time ? `<p class="text-sm text-amber-600 font-medium mt-0.5">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatEndTime(s.start_time, s.end_time) : ''}</p>` : ''}
             ${s.job_address ? `<p class="text-xs text-gray-400 mt-1">📍 ${esc(s.job_address)}</p>` : ''}
           </div>
           <span class="badge badge-scheduled text-xs px-2 py-0.5 rounded-full font-medium">${s.status}</span>
@@ -865,20 +1004,42 @@ function spWvCalcPay(sh, hourlyRate) {
     // the shift doesn't cross midnight — treat as PM. Common data-entry error.
     if (mins <= 0) mins += 12 * 60;
     hrs = Math.max(0, mins / 60);
+  } else if (sh.start_time && !sh.end_time) {
+    // WHY: Missing end_time — default to 8h like server does.
+    hrs = 8;
   }
-  const gross = Math.round(hrs * (hourlyRate || 0) * 100) / 100;
-  // Annualise for PAYG — simple 19%/32.5%/37%/45% ATO brackets, no LITO for simplicity
-  const annualGross = gross > 0 && hrs > 0 ? gross / hrs * 2000 : 0; // ~2000 working hrs/year
-  let paygRate = 0;
-  if (annualGross > 180000) paygRate = 0.45;
-  else if (annualGross > 120000) paygRate = 0.37;
-  else if (annualGross > 45000) paygRate = 0.325;
-  else if (annualGross > 18200) paygRate = 0.19;
-  const payg = Math.round(gross * paygRate * 100) / 100;
+  // Prefer server-computed gross_pay (penalty-correct from DB).
+  // Fall back: apply correct AU Fair Work penalty multipliers (Sunday=2.0x).
+  let gross;
+  if (sh.gross_pay != null && sh.gross_pay > 0) {
+    gross = parseFloat(sh.gross_pay);
+  } else if (hrs > 0 && hourlyRate > 0) {
+    const dow = sh.scheduled_date ? ((new Date(sh.scheduled_date)).getDay() + 6) % 7 : 1;
+    const awardType = sh.award_type || 'hospitality';
+    const MULT = { hospitality: { 0: 2.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0, 6: 1.25 }, construction: { 0: 2.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.50, 6: 1.75 } };
+    const mult = (MULT[awardType] || MULT.hospitality)[dow] || 1.0;
+    gross = Math.round(hourlyRate * mult * hrs * 100) / 100;
+  } else {
+    gross = 0;
+  }
+  // WHY: ATO 2025-26 weekly PAYG withholding — use hourly rate × 38h to project
+  // weekly gross, then apply weekly brackets. This avoids the annualisation bug
+  // where part-time workers fell below the $18,200 threshold and got $0 tax.
+  const weeklyGross = (hourlyRate || 0) * Math.min(hrs, 38);
+  let payg = 0;
+  if (weeklyGross <= 150) payg = 0;
+  else if (weeklyGross <= 371) payg = (weeklyGross - 150) * 0.19;
+  else if (weeklyGross <= 896) payg = 42 + (weeklyGross - 371) * 0.325;
+  else if (weeklyGross <= 2307) payg = 212.63 + (weeklyGross - 896) * 0.37;
+  else payg = 734.70 + (weeklyGross - 2307) * 0.45;
+  // Scale PAYG to this shift's proportion of the week
+  if (weeklyGross > 0 && gross > 0) payg = Math.round(payg * (gross / weeklyGross) * 100) / 100;
+  else payg = 0;
   const superAmt = Math.round(gross * 0.115 * 100) / 100;
   const holiday = Math.round(gross * 0.0769 * 100) / 100;
   const sick = Math.round(gross * 0.0385 * 100) / 100;
-  const net = Math.round((gross - payg) * 100) / 100;
+  // WHY: Net = Gross - PAYG - Super. Both deductions reduce take-home pay.
+  const net = Math.round((gross - payg - superAmt) * 100) / 100;
   return { hours: Math.round(hrs * 100) / 100, gross, payg, super: superAmt, holiday, sick, net };
 }
 
@@ -935,7 +1096,9 @@ function spWvRender(d) {
         const pay = spWvCalcPay(sh, hourlyRate);
         runningGross += pay.gross;
         totalHrs += pay.hours;
-        const timeStr = sh.start_time ? String(sh.start_time).slice(0,5) + (sh.end_time ? '–' + String(sh.end_time).slice(0,5) : '') : '';
+        // WHY: Use formatTime/formatEndTime for consistent 24h display with +12h PM correction
+        const dispEnd = sh.end_time ? formatEndTime(sh.start_time, sh.end_time) : '';
+        const timeStr = sh.start_time ? formatTime(sh.start_time) + (sh.end_time ? '–' + dispEnd : '–??') : '';
         const netLabel = pay.net > 0 ? ` · $${pay.net.toFixed(0)} net` : '';
         const detailId = `sp-detail-${sh.id}`;
         const chipId = `sp-chip-${sh.id}`;
@@ -1025,7 +1188,7 @@ function renderRoster() {
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full font-medium badge-${s.status}">${s.status}</span>
       </div>
-      ${s.start_time ? `<p class="text-sm text-amber-600 font-medium mb-1">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatTime(s.end_time) : ''}</p>` : ''}
+      ${s.start_time ? `<p class="text-sm text-amber-600 font-medium mb-1">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatEndTime(s.start_time, s.end_time) : ''}</p>` : ''}
       ${s.job_address ? `<p class="text-xs text-gray-400 mb-2">📍 ${esc(s.job_address)}</p>` : ''}
       ${s.notes ? `<p class="text-xs text-gray-400 mb-2 italic">${esc(s.notes)}</p>` : ''}
       <div class="flex gap-2 mt-2 text-xs text-gray-400">
@@ -1198,22 +1361,69 @@ async function loadSwaps() {
   const el = document.getElementById('swaps-list');
   if (!r?.requests?.length) {
     el.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm">No swap requests yet</div>`;
+  } else {
+    el.innerHTML = r.requests.map(s => {
+      // WHY: show human-readable status label for the 3-step swap workflow
+      const statusLabel = s.status === 'pending' ? 'Awaiting volunteer'
+        : s.status === 'accepted' ? 'Awaiting boss approval'
+        : s.status;
+      const statusColor = s.status === 'pending' ? 'bg-amber-100 text-amber-700'
+        : s.status === 'accepted' ? 'bg-blue-100 text-blue-700'
+        : s.status === 'approved' ? 'bg-green-100 text-green-700'
+        : 'bg-gray-100 text-gray-500';
+      return `<div class="card p-4">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <p class="font-semibold text-gray-800" style="text-transform:capitalize;">${esc(s.job_title || 'Shift')} — ${formatDate(s.scheduled_date)}</p>
+            ${s.start_time ? `<p class="text-sm text-gray-500">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatEndTime(s.start_time, s.end_time) : ''}</p>` : ''}
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}">${statusLabel}</span>
+        </div>
+        ${s.target_staff_name ? `<p class="text-xs text-gray-500" style="text-transform:capitalize;">With: ${esc(s.target_staff_name)}</p>` : '<p class="text-xs text-gray-400">Open — waiting for a colleague to accept</p>'}
+        ${s.reason ? `<p class="text-xs text-gray-400 mt-1 italic">"${esc(s.reason)}"</p>` : ''}
+        ${s.operator_note ? `<p class="text-xs text-blue-600 mt-1">Employer: ${esc(s.operator_note)}</p>` : ''}
+        <p class="text-xs text-gray-400 mt-2">${timeAgo(s.created_at)}</p>
+      </div>`;
+    }).join('');
+  }
+  // Also load available swaps from colleagues
+  loadAvailableSwaps();
+}
+
+// WHY: 3-step swap — Staff B sees open swap offers from colleagues and can accept
+async function loadAvailableSwaps() {
+  const r = await api('/api/staff-portal/available-swaps');
+  const el = document.getElementById('available-swaps-list');
+  if (!r?.swaps?.length) {
+    el.innerHTML = `<div class="text-center py-6 text-gray-400 text-xs">No available swaps from colleagues right now</div>`;
     return;
   }
-  el.innerHTML = r.requests.map(s => `
-    <div class="card p-4">
+  el.innerHTML = r.swaps.map(sw => `
+    <div class="card p-4 border-l-4 border-amber-400">
       <div class="flex items-start justify-between mb-2">
         <div>
-          <p class="font-semibold text-gray-800">${esc(s.job_title || 'Shift')} — ${formatDate(s.scheduled_date)}</p>
-          ${s.start_time ? `<p class="text-sm text-gray-500">${formatTime(s.start_time)}${s.end_time ? ' – ' + formatTime(s.end_time) : ''}</p>` : ''}
+          <p class="text-xs text-amber-600 font-medium mb-1" style="text-transform:capitalize;">${esc(sw.requesting_name)} wants to swap:</p>
+          <p class="font-semibold text-gray-800">${esc(sw.job_title || 'Shift')} — ${formatDate(sw.scheduled_date)}</p>
+          ${sw.start_time ? `<p class="text-sm text-gray-500">${formatTime(sw.start_time)}${sw.end_time ? ' – ' + formatEndTime(sw.start_time, sw.end_time) : ''}</p>` : ''}
+          ${sw.job_address ? `<p class="text-xs text-gray-400 mt-1">📍 ${esc(sw.job_address)}</p>` : ''}
         </div>
-        <span class="text-xs px-2 py-0.5 rounded-full font-medium badge-${s.status}">${s.status}</span>
       </div>
-      ${s.target_name ? `<p class="text-xs text-gray-500">With: ${esc(s.target_name)}</p>` : '<p class="text-xs text-gray-400">Open request</p>'}
-      ${s.reason ? `<p class="text-xs text-gray-400 mt-1 italic">"${esc(s.reason)}"</p>` : ''}
-      ${s.operator_note ? `<p class="text-xs text-blue-600 mt-1">Employer: ${esc(s.operator_note)}</p>` : ''}
-      <p class="text-xs text-gray-400 mt-2">${timeAgo(s.created_at)}</p>
+      ${sw.reason ? `<p class="text-xs text-gray-400 mb-2 italic">"${esc(sw.reason)}"</p>` : ''}
+      <button onclick="acceptSwap(${sw.id})" class="mt-2 w-full py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors">
+        ✓ Accept Swap
+      </button>
     </div>`).join('');
+}
+
+async function acceptSwap(swapId) {
+  if (!confirm('Accept this swap? Your boss will need to approve the final transfer.')) return;
+  const r = await api('/api/staff-portal/swap-requests/' + swapId + '/accept', { method: 'POST' });
+  if (r?.success) {
+    showToast('✅ Swap accepted — waiting for boss approval');
+    loadSwaps();
+  } else {
+    showToast(r?.message || 'Failed to accept swap');
+  }
 }
 
 async function loadColleagues() {
@@ -1301,7 +1511,7 @@ function switchTab(tab) {
   if (tab === 'super' && !window._superLoaded) { loadSuperHistory(); window._superLoaded = true; }
   if (tab === 'tax' && !window._taxLoaded) { loadTaxSummary(); window._taxLoaded = true; }
   if (tab === 'leave' && !window._leaveLoaded) { loadLeave(); window._leaveLoaded = true; }
-  if (tab === 'onboarding' && !window._onboardingLoaded) { loadOnboarding(); window._onboardingLoaded = true; }
+  if (tab === 'onboarding' && !window._onboardingLoaded) { loadOnboarding(); loadReminderPref(); window._onboardingLoaded = true; }
 }
 
 // ── Pay Slips ─────────────────────────────────────────────────────────────────
@@ -1726,17 +1936,32 @@ function formatDate(d) {
   return date.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' });
 }
 
+// WHY: Convert 24h "HH:MM:SS" to "7:00 AM" 12-hour format with AM/PM suffix.
 function formatTime(t) {
   if (!t) return '';
-  // WHY: TIME columns from Postgres come as "HH:MM:SS" strings.
-  // Parse 24h format and convert to 12h with am/pm.
   const str = String(t);
   const [h, m] = str.split(':');
   const hour = parseInt(h, 10);
   if (isNaN(hour)) return str;
-  const ampm = hour >= 12 ? 'pm' : 'am';
-  const mins = (m || '00').slice(0, 2);
-  return `${hour % 12 || 12}:${mins}${ampm}`;
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const displayH = hour % 12;
+  return `${displayH || 12}:${(m || '00').slice(0, 2)} ${suffix}`;
+}
+
+// WHY: DB may store end time as AM (e.g. 05:00) when boss meant PM (17:00).
+// Apply +12h correction when end <= start, then format as "3:30 PM".
+function formatEndTime(startT, endT) {
+  if (!endT || !startT) return endT ? formatTime(endT) : '';
+  const sp = String(startT).split(':').map(Number);
+  const ep = String(endT).split(':').map(Number);
+  let endMins = ep[0] * 60 + (ep[1] || 0);
+  const startMins = sp[0] * 60 + (sp[1] || 0);
+  if (endMins <= startMins) endMins += 12 * 60;
+  const h = Math.floor(endMins / 60) % 24;
+  const m = endMins % 60;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12;
+  return `${displayH || 12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
 function formatDateTime(ts) {
@@ -1777,6 +2002,63 @@ function showToast(msg, duration = 2500, isError = false) {
   t.style.background = isError ? '#ef4444' : '#0f172a';
   t.style.opacity = '1';
   setTimeout(() => { t.style.opacity = '0'; }, duration);
+}
+
+// ── Shift Reminder Preference ─────────────────────────────────────────────────
+
+async function loadReminderPref() {
+  try {
+    const r = await api('/api/staff-portal/reminder-pref');
+    if (r?.success) renderReminderPref(r.reminder_hours_before);
+  } catch (e) {}
+}
+
+function renderReminderPref(value) {
+  // Highlight the active button and show status label
+  const map = { 'null': 'rpref-off', '0': 'rpref-morning', '2': 'rpref-2h', '14': 'rpref-14h' };
+  const key = value === null || value === undefined ? 'null' : String(value);
+  const activeId = map[key] || null;
+
+  document.querySelectorAll('.rpref-btn').forEach(btn => {
+    const isActive = btn.id === activeId;
+    btn.classList.toggle('border-amber-400', isActive);
+    btn.classList.toggle('bg-amber-50', isActive);
+    btn.classList.toggle('text-amber-800', isActive);
+    btn.classList.toggle('font-bold', isActive);
+    btn.classList.toggle('border-gray-200', !isActive);
+    btn.classList.toggle('bg-white', !isActive);
+    btn.classList.toggle('text-gray-500', !isActive);
+    btn.classList.toggle('font-medium', !isActive);
+  });
+
+  const statusEl = document.getElementById('reminder-status-msg');
+  if (!statusEl) return;
+  if (value === null || value === undefined) {
+    statusEl.textContent = 'Reminders are off.';
+  } else if (value === 0) {
+    statusEl.textContent = 'You\'ll get an email at 7am on shift days.';
+  } else {
+    statusEl.textContent = `You'll get an email ${value} hour${value !== 1 ? 's' : ''} before each shift.`;
+  }
+}
+
+async function setReminderPref(value) {
+  const statusEl = document.getElementById('reminder-status-msg');
+  if (statusEl) statusEl.textContent = 'Saving…';
+  try {
+    const r = await api('/api/staff-portal/reminder-pref', {
+      method: 'POST',
+      body: JSON.stringify({ reminder_hours_before: value }),
+    });
+    if (r?.success) {
+      renderReminderPref(r.reminder_hours_before);
+      showToast(value === null ? 'Reminders off' : '⏰ Reminder saved');
+    } else {
+      if (statusEl) statusEl.textContent = 'Save failed — try again.';
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Save failed — try again.';
+  }
 }
 </script>
 </body>

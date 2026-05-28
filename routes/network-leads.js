@@ -13,14 +13,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 const https = require('https');
 const { requireAuth } = require('./auth');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
-});
+const { pool } = require('../db/index');
+const { normalizePhone, findNetworkLeadByPhone } = require('../db/phone');
 
 // ─── Australian suburb → lat/lng lookup (common suburbs, no API needed) ───────
 // Covers Sydney, Melbourne, Brisbane, Perth, Adelaide, Gold Coast, Canberra.
@@ -218,17 +214,69 @@ router.post('/lead', async (req, res) => {
   const cleanJob      = sanitize(job_description, MAX_TEXT);
   const cleanUrgency  = VALID_URGENCY.includes(urgency) ? urgency : null;
   const cleanName     = sanitize(contact_name, 200);
-  const cleanPhone    = sanitize(contact_phone, 50);
+  const rawPhone      = sanitize(contact_phone, 50);
+  const cleanPhone    = normalizePhone(rawPhone) || rawPhone;
   const cleanEmail    = sanitize(contact_email, 200);
   const cleanSession  = sanitize(session_id, 64);
   const cleanDomain   = domain === 'propops.pro' ? 'propops.pro' : 'propops.trade';
 
   try {
+    // Phone dedup — if this phone already exists, update instead of inserting
+    if (cleanPhone) {
+      const existingLead = await findNetworkLeadByPhone(cleanPhone);
+      if (existingLead) {
+        const isNameUpgrade = cleanName && cleanName !== 'Unknown'
+          && (!existingLead.contact_name || existingLead.contact_name === 'Unknown');
+        const isTradeUpgrade = cleanTrade && cleanTrade !== 'UNKNOWN'
+          && (!existingLead.trade || existingLead.trade === 'UNKNOWN');
+
+        await pool.query(
+          `UPDATE network_leads SET
+             contact_name = CASE WHEN $2::text IS NOT NULL THEN $2 ELSE contact_name END,
+             trade = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE trade END,
+             suburb = COALESCE($4, suburb),
+             job_description = COALESCE($5, job_description),
+             urgency = COALESCE($6, urgency),
+             contact_email = COALESCE($7, contact_email),
+             updated_at = NOW()
+           WHERE id = $1`,
+          [
+            existingLead.id,
+            isNameUpgrade ? cleanName : null,
+            isTradeUpgrade ? cleanTrade : null,
+            cleanSuburb,
+            cleanJob,
+            cleanUrgency,
+            cleanEmail,
+          ]
+        );
+        console.log(`[NetworkLeads] Phone dedup: updated lead #${existingLead.id} (phone=${cleanPhone})`);
+        return res.json({
+          success: true,
+          lead_id: existingLead.id,
+          status: existingLead.status,
+          message: cleanSuburb
+            ? `Lead updated. Looking for a ${cleanTrade} in ${cleanSuburb}.`
+            : `Lead updated. Looking for a ${cleanTrade}.`,
+        });
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO network_leads
          (session_id, domain, trade, suburb, job_description, urgency,
           contact_name, contact_phone, contact_email, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'new')
+       ON CONFLICT (contact_phone) WHERE contact_phone IS NOT NULL AND contact_phone != ''
+       DO UPDATE SET
+         contact_name = CASE
+           WHEN EXCLUDED.contact_name IS NOT NULL AND EXCLUDED.contact_name NOT IN ('Unknown', 'unknown')
+             AND (network_leads.contact_name IS NULL OR network_leads.contact_name IN ('Unknown', 'unknown'))
+           THEN EXCLUDED.contact_name ELSE network_leads.contact_name END,
+         trade = COALESCE(EXCLUDED.trade, network_leads.trade),
+         suburb = COALESCE(EXCLUDED.suburb, network_leads.suburb),
+         contact_email = COALESCE(EXCLUDED.contact_email, network_leads.contact_email),
+         updated_at = NOW()
        RETURNING id, status`,
       [cleanSession, cleanDomain, cleanTrade, cleanSuburb, cleanJob,
        cleanUrgency, cleanName, cleanPhone, cleanEmail]
@@ -330,7 +378,7 @@ router.post('/signup', async (req, res) => {
   const cleanArea     = sanitize(service_area, 500);
   const cleanBiz      = sanitize(business_name, 200);
   const cleanName     = sanitize(contact_name, 200);
-  const cleanPhone    = sanitize(contact_phone, 50);
+  const cleanPhone    = normalizePhone(sanitize(contact_phone, 50)) || sanitize(contact_phone, 50);
   const cleanEmail    = sanitize(contact_email, 200);
   const cleanSession  = sanitize(session_id, 64);
   const cleanDomain   = domain === 'propops.pro' ? 'propops.pro' : 'propops.trade';

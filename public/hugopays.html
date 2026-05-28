@@ -1820,20 +1820,11 @@
 </footer>
 
 <!-- Hugo chat widget — pays-specific persona (invoicing, rostering, payroll) -->
-<script src="/hugo-widget.js?v=13" defer></script>
 <script>
-// Set Hugo.pays persona before widget opens — triggers payroll/invoicing greeting + brain mode
-document.addEventListener('DOMContentLoaded', function() {
-    var poll = setInterval(function() {
-        if (window.HugoWidget && window.HugoWidget.setBusinessType) {
-            window.HugoWidget.setBusinessType('pays');
-            clearInterval(poll);
-        }
-    }, 100);
-    // Safety: stop polling after 10s
-    setTimeout(function() { clearInterval(poll); }, 10000);
-});
+  // hugopays.pro → Small Business / Pays → Hugo-Pays persona
+  window.POLSIACONFIG = { businessType: 'pays' };
 </script>
+<script src="/hugo-widget.js?v=13" defer></script>
 
 </body>
 </html>

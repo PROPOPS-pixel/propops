@@ -9,6 +9,7 @@
  *   customer.subscription.deleted     → mark account as cancelled
  *   invoice.payment_failed            → mark account as past_due
  *   invoice.paid                      → mark subscription as active after trial
+ *   customer.subscription.updated    → reactivate cancelled users on re-subscribe
  */
 
 const express = require('express');
@@ -108,19 +109,70 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         break;
       }
 
-      // ── Invoice paid: trial converted to active subscription ────────────────
+      // ── Invoice paid: activate subscription (handles trial→active AND re-subscription) ──
       case 'invoice.paid': {
         const invoice = event.data.object;
         const customerId = invoice.customer;
         if (!customerId) break;
 
-        // First charge after trial ends — upgrade status to active
-        await pool.query(
+        // Activate ANY user with this Stripe customer ID — including cancelled re-subscriptions.
+        // Previous bug: WHERE clause excluded 'cancelled' users, so re-subscriptions stayed cancelled.
+        const activateResult = await pool.query(
           `UPDATE users SET subscription_status = 'active', updated_at = NOW()
-           WHERE stripe_customer_id = $1 AND subscription_status IN ('trial', 'past_due')`,
+           WHERE stripe_customer_id = $1 AND subscription_status != 'active'`,
           [customerId]
         );
-        console.log(`[Stripe Webhook] Subscription activated for customer: ${customerId}`);
+
+        if (activateResult.rowCount > 0) {
+          console.log(`[Stripe Webhook] ✅ Subscription activated for customer: ${customerId} (${activateResult.rowCount} row(s))`);
+        } else {
+          // No user found by stripe_customer_id — try looking up by invoice email
+          // Handles case where new agents pay before user record has stripe_customer_id set
+          const customerEmail = invoice.customer_email;
+          if (customerEmail) {
+            const emailResult = await pool.query(
+              `UPDATE users SET subscription_status = 'active', stripe_customer_id = $1, updated_at = NOW()
+               WHERE LOWER(email) = $2 AND subscription_status != 'active'`,
+              [customerId, customerEmail.toLowerCase()]
+            );
+            if (emailResult.rowCount > 0) {
+              console.log(`[Stripe Webhook] ✅ Subscription activated by email for: ${customerEmail} (customer: ${customerId})`);
+            } else {
+              console.log(`[Stripe Webhook] invoice.paid — no matching user for customer: ${customerId} (email: ${customerEmail || 'none'})`);
+            }
+          } else {
+            console.log(`[Stripe Webhook] invoice.paid — already active or no user for customer: ${customerId}`);
+          }
+        }
+        break;
+      }
+
+      // ── Subscription updated (re-subscribe, plan change, etc.) ────────────
+      // Stripe shows these as "Subscription update" — critical for re-subscriptions
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        const customerId = sub.customer;
+        if (!customerId) break;
+
+        // If subscription is now active/trialing, ensure user status matches
+        const subStatus = sub.status; // 'active', 'trialing', 'canceled', 'past_due', etc.
+        if (subStatus === 'active') {
+          const result = await pool.query(
+            `UPDATE users SET subscription_status = 'active', updated_at = NOW()
+             WHERE stripe_customer_id = $1 AND subscription_status != 'active'`,
+            [customerId]
+          );
+          if (result.rowCount > 0) {
+            console.log(`[Stripe Webhook] ✅ Subscription re-activated via update for customer: ${customerId}`);
+          }
+        } else if (subStatus === 'trialing') {
+          await pool.query(
+            `UPDATE users SET subscription_status = 'trial', updated_at = NOW()
+             WHERE stripe_customer_id = $1 AND subscription_status IN ('cancelled', 'canceled')`,
+            [customerId]
+          );
+          console.log(`[Stripe Webhook] Subscription trialing for customer: ${customerId}`);
+        }
         break;
       }
 

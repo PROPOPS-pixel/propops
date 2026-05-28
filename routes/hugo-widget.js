@@ -17,16 +17,22 @@
 const express = require('express');
 const router = express.Router();
 const OpenAI = require('openai');
-const { Pool } = require('pg');
 const hugo = require('../services/hugo');
 const { extractQuoteMarker, createWidgetQuote, buildContextHeader } = hugo;
 const reAgent = require('../services/re-agent');
 const { RE_AGENT_SYSTEM_PROMPT } = require('../services/re-agent-prompt');
 const { getLandingPageContent } = require('../services/landing-page-sync');
+const { normalizePhone, findNetworkLeadByPhone } = require('../db/phone');
 // File (global in Node 20+) used for STT audio upload
 
 const openai = new OpenAI();
 // Uses OPENAI_BASE_URL + OPENAI_API_KEY from env
+
+// Email-first lead capture: fire promo email the moment Hugo collects an email address
+const { sendHugoPromoEmail } = require('../services/notifications');
+
+// Brand family — single source of truth for PropOps product knowledge
+const { BRAND_FAMILY } = require('../constants/brandFamily');
 
 // ─── Brain service integration ────────────────────────────────────────────────
 // Lazy-require to avoid circular dep at module load time.
@@ -79,10 +85,7 @@ const POLSIA_API_URL = process.env.POLSIA_API_URL || 'https://polsia.com/api/pro
 const POLSIA_OPENAI_URL = process.env.OPENAI_BASE_URL || 'https://polsia.com/ai/openai/v1';
 const POLSIA_API_KEY = process.env.POLSIA_API_KEY;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
-});
+const { pool } = require('../db/index');
 
 // ─── Phase 3C: Mismatch detection ────────────────────────────────────────────
 //
@@ -194,6 +197,7 @@ async function checkAndCorrectMismatches(hugoResponse, domain, conversationId, l
 
 function detectDomain(req) {
   const origin = req.headers['origin'] || req.headers['referer'] || '';
+  if (origin.includes('hugopays.pro')) return 'hugopays.pro';
   if (origin.includes('propops.trade')) return 'propops.trade';
   if (origin.includes('propops.pro')) return 'propops.pro';
   return null; // Unknown — caller defaults to tradie context
@@ -670,6 +674,45 @@ function getTemplateFallback(userMsg, history) {
 }
 
 /**
+ * Look up operator by email — used when a landing page widget is opened from
+ * an operator's branded link (e.g. propops.pro?op=operator@email.com).
+ * Returns { name, trade, business_name } or null.
+ *
+ * Falls silently — operator lookup errors never break the chat response.
+ */
+async function lookupOperatorByEmail(email) {
+  if (!email || typeof email !== 'string' || !email.includes('@')) return null;
+
+  try {
+    // Find operator (user) by email — also fetch tech_notes (zero-credit brain) + subscription_tier (founder detection)
+    const userRow = await pool.query(
+      `SELECT u.name, u.trade, u.subscription_tier, op.business_name, op.trade AS op_trade, op.tech_notes
+       FROM users u
+       LEFT JOIN operator_profiles op ON op.operator_id = u.id
+       WHERE LOWER(u.email) = LOWER($1)
+       LIMIT 1`,
+      [email.trim()]
+    );
+    if (userRow.rows.length > 0) {
+      const row = userRow.rows[0];
+      console.log(`[Hugo Widget] Operator lookup: ${email} → name=${row.name}, trade=${row.op_trade || row.trade}, biz=${row.business_name}, tier=${row.subscription_tier}`);
+      return {
+        name: row.name || null,
+        trade: row.op_trade || row.trade || null,
+        business_name: row.business_name || null,
+        tech_notes: row.tech_notes || null,
+        // subscription_tier = 'founder' marks the company founder (PropOps operator)
+        is_founder: row.subscription_tier === 'founder',
+      };
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Hugo Widget] Operator lookup failed (non-fatal):', err.message);
+    return null;
+  }
+}
+
+/**
  * Speech-to-text via Whisper with Bearer auth.
  * Uses the POLSIA_API_KEY for explicit authentication to bypass utility limits.
  */
@@ -838,7 +881,21 @@ router.post('/chat', async (req, res) => {
     operator_trade: operatorTrade,
     hostname: bodyHostname, // passed by brain-aware widget (v6.4+)
     preferred_language: preferredLanguage, // set by flag buttons on landing pages (first message only)
+    page_url: pageUrl,    // Anchor 1: WHERE — which landing page Hugo is on
+    page_text: pageText,  // Anchor 1: page content text (headings, hero, CTAs)
   } = req.body || {};
+
+  // ── Anchor 2: Operator lookup for landing page (non-dashboard) ─────────────
+  // When operator_email is provided but we're NOT in dashboard mode, look up
+  // the operator's name/trade/business so Hugo knows WHO he represents.
+  // This happens when a visitor lands via an operator's custom link/QR code.
+  let operatorLookup = null;
+  if (operatorEmail && !isDashboardContext) {
+    operatorLookup = await lookupOperatorByEmail(operatorEmail);
+    if (operatorLookup) {
+      console.log(`[Hugo Widget] Landing page operator context: ${operatorLookup.name} (${operatorLookup.trade}), ${operatorLookup.business_name}`);
+    }
+  }
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return res.status(400).json({ success: false, message: 'message is required' });
@@ -848,34 +905,27 @@ router.post('/chat', async (req, res) => {
     return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
   }
 
-  // ── PAYS DASHBOARD BYPASS ─────────────────────────────────────────────────
-  // WHY: When Hugo runs on the /pays dashboard, the generic widget system prompt
-  // treats him like a FAQ help desk bot ("Answer questions about dashboard features").
-  // The V3 employee persona + PAYDECK data injection lives in hugo.processMessage(),
+  // ── DASHBOARD CONTEXT BYPASS ─────────────────────────────────────────────
+  // WHY: When Hugo runs inside the operator dashboard (founder/pays/trade), the generic
+  // widget system prompt treats him like a FAQ help desk bot. The V3 employee persona +
+  // PAYDECK data + operator profile (tech_notes, etc.) live in hugo.processMessage(),
   // which is called by /api/hugo/chat (authenticated route) but NOT by this widget
-  // endpoint. Result: Hugo deflects to "Head to your Rosters section" instead of
-  // querying actual staff, roster, payroll, and invoice data.
+  // endpoint. Result: Hugo deflects or uses wrong persona.
   //
-  // Fix: extract user ID from the session cookie (the /pays dashboard IS authenticated)
-  // and route through processMessage() which has the PAYDECK data pipeline, V3 employee
-  // persona, operator context injection, and anti-deflection rules.
-  if (isDashboardContext && bodyBusinessType === 'pays') {
+  // Fix: when operator_id is provided in request body (set by setOperatorContext), route
+  // through processMessage() which has the operator profile pipeline, V3 employee persona,
+  // PAYDECK data, and anti-deflection rules. businessType from body (POLSIACONFIG) is
+  // used to anchor the persona at session start.
+  const dashboardOperatorId = req.body.operator_id || null;
+  if (isDashboardContext && dashboardOperatorId) {
     try {
-      const cookieToken = req.cookies && (req.cookies['propops_session'] || req.cookies['relio_session']);
-      if (cookieToken) {
-        const auth = require('../services/auth');
-        const payload = auth.verifySessionToken(cookieToken);
-        if (payload && payload.sub) {
-          const userId = payload.sub;
-          console.log(`[Hugo Widget] PAYS DASHBOARD bypass: routing through processMessage() for operator=${userId}`);
-          const result = await hugo.processMessage(userId, message.trim(), 'pays');
-          return res.json({ success: true, ...result });
-        }
-      }
-      // If no valid cookie, fall through to generic widget path (landing page visitor)
-      console.log('[Hugo Widget] PAYS DASHBOARD bypass: no valid auth cookie, falling through to generic path');
-    } catch (paysErr) {
-      console.warn('[Hugo Widget] PAYS DASHBOARD bypass failed (falling through):', paysErr.message);
+      // Use businessType from POLSIACONFIG to anchor persona (founder/pays/painter/plumber/etc.)
+      const dashboardBusinessType = bodyBusinessType || 'founder';
+      console.log(`[Hugo Widget] DASHBOARD BYPASS: operator_id=${dashboardOperatorId}, businessType=${dashboardBusinessType}`);
+      const result = await hugo.processMessage(dashboardOperatorId, message.trim(), dashboardBusinessType);
+      return res.json({ success: true, ...result });
+    } catch (dashErr) {
+      console.warn('[Hugo Widget] Dashboard bypass failed (falling through):', dashErr.message);
       // Non-fatal — fall through to generic widget path
     }
   }
@@ -885,10 +935,69 @@ router.post('/chat', async (req, res) => {
 
   // Detect domain from request headers or body hostname (v6.4+ widget sends hostname)
   const domain = bodyHostname
-    ? (bodyHostname.includes('propops.pro') ? 'propops.pro' : bodyHostname.includes('propops.trade') ? 'propops.trade' : null)
+    ? (bodyHostname.includes('hugopays.pro') ? 'hugopays.pro'
+      : bodyHostname.includes('propops.pro') ? 'propops.pro'
+      : bodyHostname.includes('propops.trade') ? 'propops.trade'
+      : null)
     : detectDomain(req);
+  const isPaysDomain = domain === 'hugopays.pro' || bodyBusinessType === 'pays';
   const contextHeader = buildContextHeader(domain);
   console.log(`[Hugo Widget] Domain: ${domain || 'unknown'} (source: ${bodyHostname ? 'body' : 'header'}) → "${contextHeader.slice(0, 60)}..."`);
+
+  // ── Operator mode: "read my leads" / "I'm a member" on propops.pro ───────────
+  // When a propops.pro visitor says they are already a member and want their lead
+  // pipeline, we look them up by email and inject their inbox context into Hugo's
+  // system prompt (Hugo Eyes for the widget channel).
+  let operatorInboxContext = null;
+  const normalizedMsg = (message || '').toLowerCase();
+  const isMemberIntent = normalizedMsg.includes('member') ||
+    normalizedMsg.includes('operator') ||
+    normalizedMsg.includes('read my leads') ||
+    normalizedMsg.includes('my pipeline') ||
+    normalizedMsg.includes('my inbox') ||
+    normalizedMsg.includes('already signed up');
+  if (isMemberIntent && domain === 'propops.pro') {
+    if (operatorEmail) {
+      // operator_email already provided — look them up
+      const opLookup = await lookupOperatorByEmail(operatorEmail);
+      if (opLookup && opLookup.id) {
+        try {
+          const { getInboxDataInternal } = require('./hugo-brain');
+          const { stats, leads } = await getInboxDataInternal(opLookup.id);
+          operatorLookup = opLookup;
+          // Build the inbox context block from real data
+          const leadsLines = (leads || []).map((lead) =>
+            `ID: ${lead.id} | Client: ${lead.name || 'Unknown'} | Contact: ${lead.phone || 'N/A'} / ${lead.email || 'N/A'}
+Location: ${lead.suburb || 'N/A'} | Category: ${lead.job_type || 'Unspecified'} | Status: ${lead.status}
+Source Origin: ${lead.source} | Message: "${lead.message || ''}"`).join('\n');
+          operatorInboxContext = `
+=== OPERATOR MODE ACTIVE (HUGO EYES — PropOps.Pro Widget) ===
+You are now talking to ${opLookup.name || 'this operator'} (${operatorEmail}) — they have identified as an existing PropOps member.
+You have securely loaded their real lead pipeline.
+
+[METRICS OVERVIEW]
+- Total Enquiries Tracked: ${stats.total_leads}
+- Status Totals: ${JSON.stringify(stats.by_status)}
+- Lead Origin Channels: ${JSON.stringify(stats.by_source)}
+
+[RAW INBOX ENTRIES]
+${leadsLines}
+
+OPERATIONAL DIRECTIVES:
+1. When the member asks about leads, emails, or pipeline — read directly from this data.
+2. Never add test badges or say an entry is a "test" — these are live job leads.
+3. Be specific: quote lead names, suburbs, job types, and source channels from this data.
+`;
+          console.log(`[Hugo Widget] Operator mode activated for ${operatorEmail}: ${stats.total_leads} leads loaded`);
+        } catch (inboxErr) {
+          console.warn('[Hugo Widget] Failed to load operator inbox:', inboxErr.message);
+        }
+      }
+    } else {
+      // Prompt for email to authenticate — no operator_id means we can't load pipeline
+      console.log('[Hugo Widget] Member intent detected but no operator_email — will prompt in response');
+    }
+  }
 
   // Load history from memory (warm) or DB (cold start)
   let history = getHistory(sessionId);
@@ -923,46 +1032,80 @@ router.post('/chat', async (req, res) => {
     });
   }
 
-  // ── Persona selection ────────────────────────────────────────────────────────
-  // Priority 0 (NEW): Visitor tradie signal detection — if the visitor's message
-  //   or recent history contains tradie signals (trade names, "I'm a plumber",
-  //   lead generation intent), ALWAYS use Tradie persona regardless of domain.
-  //   Principle: Visitor persona > operator persona.
-  // Priority 1: business_type from request body (set by authenticated dashboard)
-  //   - 'real_estate' → RE Agent persona
-  //   - any other value → Tradie persona
-  // Priority 2: domain detection (legacy public widget path)
-  //   - propops.pro → RE Agent persona
-  //   - propops.trade / unknown → Tradie persona
-  let isREDomain;
+  // ── Persona selection (Business Type = Single Source of Truth) ─────────────────
+  // Hugo Label mapping with dynamic category support:
+  //   - 'founder' → Hugo-Founder (founder dashboard / is_owner operator)
+  //   - 'real_estate' / 're_agent' → Hugo-Pro
+  //   - 'small_business' / 'pays' → Hugo-Pays
+  //   - Any other string (Painter, Plumber, Electrician, etc.) → Hugo-Painter, Hugo-Plumber, etc.
+  //   - Landing pages use bucket labels (Hugo-Pro/Hugo-Trade/Hugo-Pays) — hardcoded, not dynamic
+  //
+  // Priority 0: Visitor tradie signal detection (visitor persona > operator persona)
+  // Priority 1: business_type from request body (set by POLSIACONFIG or dashboard)
+  // Priority 2: domain detection (legacy fallback for old pages without POLSIACONFIG)
+  //
+  // hugoLabel is passed to assembleSystemPrompt as identity anchor in system prompt.
+  let hugoLabel;
   let tradieOverride = false;
 
-  // Check for tradie visitor signals FIRST (visitor persona > domain persona)
+  // Check for tradie visitor signals FIRST (visitor persona > domain/setting persona)
+  // BUT NOT on hugopays.pro — pays domain always stays in Hugo-Pays persona
   const tradieDetection = detectTradieVisitor(userMsg, history);
 
-  if (tradieDetection.isTradie) {
-    // Visitor is a tradie or asking about trade services → Tradie persona, always
-    isREDomain = false;
+  if (!isPaysDomain && tradieDetection.isTradie) {
+    // Visitor is a tradie or asking about trade services → Hugo-Trade persona, always
+    hugoLabel = 'Hugo-Trade';
     tradieOverride = true;
-    console.log(`[Hugo Widget] TRADIE VISITOR DETECTED on ${domain || 'unknown'} — signal: ${tradieDetection.signal} → switching to Tradie persona`);
+    console.log(`[Hugo Widget] TRADIE VISITOR DETECTED on ${domain || 'unknown'} — signal: ${tradieDetection.signal} → Hugo-Trade`);
+  } else if (isPaysDomain || (bodyBusinessType && (bodyBusinessType === 'small_business' || bodyBusinessType === 'pays'))) {
+    // Hugo.Pays persona: hugopays.pro domain OR small_business/pays business type
+    hugoLabel = 'Hugo-Pays';
+    console.log(`[Hugo Widget] HUGO-PAYS PERSONA on ${domain || 'unknown'} (business_type=${bodyBusinessType || 'unknown'})`);
   } else if (bodyBusinessType && typeof bodyBusinessType === 'string') {
-    isREDomain = bodyBusinessType === 'real_estate';
-    console.log(`[Hugo Widget] Persona from body business_type: ${bodyBusinessType} → ${isREDomain ? 'RE Agent' : 'Tradie'}`);
+    // Business type from request body (POLSIACONFIG or dashboard) — PRIMARY SOURCE
+    if (bodyBusinessType === 'founder') {
+      // Founder dashboard / is_owner operator — special business manager persona
+      hugoLabel = 'Hugo-Founder';
+      console.log(`[Hugo Widget] HUGO-FOUNDER PERSONA (founder dashboard)`);
+    } else if (bodyBusinessType === 'real_estate' || bodyBusinessType === 're_agent') {
+      // RE Agent bucket — landing page level persona
+      hugoLabel = 'Hugo-Pro';
+      console.log(`[Hugo Widget] Hugo label from business_type: ${bodyBusinessType} → ${hugoLabel}`);
+    } else {
+      // Dynamic category from Settings → build persona label from the category name.
+      // "Painter" → "Hugo-Painter", "Plumber" → "Hugo-Plumber", etc.
+      // Landing pages use bucket labels (revisit the else branch), dashboard uses actual category.
+      // isDashboardContext tells us which path to take.
+      if (isDashboardContext && bodyBusinessType) {
+        // Dashboard: use actual category as label — Hugo-Painter, Hugo-Electrician, etc.
+        const catCapitalized = bodyBusinessType.charAt(0).toUpperCase() + bodyBusinessType.slice(1).toLowerCase();
+        hugoLabel = 'Hugo-' + catCapitalized;
+        console.log(`[Hugo Widget] Dynamic label from dashboard: ${bodyBusinessType} → ${hugoLabel}`);
+      } else {
+        // Landing page: use bucket label (TRADE/RE/PAY) — no dynamic category on public pages
+        hugoLabel = 'Hugo-Trade';
+        console.log(`[Hugo Widget] Hugo label from landing page bucket: ${bodyBusinessType} → ${hugoLabel}`);
+      }
+    }
   } else {
-    isREDomain = domain === 'propops.pro';
-    console.log(`[Hugo Widget] Persona from domain detection: ${domain || 'unknown'} → ${isREDomain ? 'RE Agent' : 'Tradie'}`);
+    // Legacy fallback: domain detection for pages without POLSIACONFIG
+    if (domain === 'propops.pro') {
+      hugoLabel = 'Hugo-Pro';
+    } else {
+      hugoLabel = 'Hugo-Trade';
+    }
+    console.log(`[Hugo Widget] Hugo label from domain fallback: ${domain || 'unknown'} → ${hugoLabel}`);
   }
 
-  // Build system prompt — if tradie detected on propops.pro, inject direct-pitch context
-  // Fetch live landing page content from DB so Hugo always quotes current pricing/offers.
-  const effectiveDomain = (isREDomain && !tradieOverride) ? 'propops.pro' : 'propops.trade';
+  // effectiveDomain used for landing page content lookup (pricing/features by domain)
+  const effectiveDomain = hugoLabel === 'Hugo-Pays' ? 'hugopays.pro' : hugoLabel === 'Hugo-Pro' ? 'propops.pro' : 'propops.trade';
   const landingData = await getLandingPageContent(effectiveDomain).catch(() => null);
 
   // ── Phase 3B: Fetch Layer 2 learned context for this trade+region ─────────────
   // Best-effort: extract trade from visitor detection signal or body param.
   // Region extracted from message keywords. Fails silently → empty Layer 2.
   let widgetLearnedRows = [];
-  if (!isREDomain) {
+  if (hugoLabel !== 'Hugo-Pro') {
     try {
       // Trade signal: tradie detection gives us a signal like 'trade_mention:plumber'
       const tradeSig = tradieDetection.isTradie
@@ -998,6 +1141,39 @@ router.post('/chat', async (req, res) => {
   // Best-effort: scan visitor message for suburb name or 4-digit postcode.
   // Falls silently → locationContext is null, Hugo responds without location enrichment.
   const locationContext = await lookupSuburbLocation(userMsg);
+
+  // ── Anchor 1 (WHERE) + Anchor 2 (WHO): Page context + operator context ───────
+  // When page_text or operatorLookup is available, inject it into Hugo's system prompt
+  // so he knows WHERE he is and WHO he represents — even on landing pages.
+  let pageContextSection = '';
+  if (pageUrl || pageText || operatorLookup) {
+    const parts = [];
+    if (operatorLookup) {
+      const firstName = operatorLookup.name ? operatorLookup.name.split(' ')[0] : null;
+      const tradeLabel = operatorLookup.trade || '';
+      const bizLabel = operatorLookup.business_name || '';
+      parts.push(`## OPERATOR IDENTITY (who Hugo represents today)
+You are representing${firstName ? ` ${firstName}` : ''}${tradeLabel ? `, a ${tradeLabel}` : ''}${bizLabel ? ` who runs ${bizLabel}` : ''}.
+This is a LIVE PropOps customer — act accordingly. Never downplay the product.
+You are on ${effectiveDomain} (${hugoLabel === 'Hugo-Pro' ? 'RE Agent landing page' : hugoLabel === 'Hugo-Pays' ? 'Hugo.Pays landing page' : hugoLabel === 'Hugo-Founder' ? 'Founder dashboard' : 'Tradie landing page'}).`);
+
+      // Zero-credit brain: tech_notes written by founder/operator is immediately available to Hugo.
+      // This is the founder's way to program Hugo's knowledge without a training pipeline.
+      if (operatorLookup.tech_notes && operatorLookup.tech_notes.trim().length > 0) {
+        const notes = operatorLookup.tech_notes.trim().slice(0, 3000);
+        parts.push(`## TECH NOTES (founder/operator programming — read and follow this)
+${notes}`);
+      }
+    }
+    if (pageUrl) {
+      parts.push(`## PAGE URL: ${pageUrl}`);
+    }
+    if (pageText) {
+      parts.push(`## PAGE CONTENT (visible text on this page — use for context):\n${pageText.slice(0, 500)}`);
+    }
+    pageContextSection = '\n' + parts.join('\n') + '\n';
+    console.log(`[Hugo Widget] Page context injected (url=${!!pageUrl}, text=${!!pageText}, operator=${!!operatorLookup})`);
+  }
 
   // Build optional location prefix for RE system prompt injection
   let reLocationPrefix = '';
@@ -1037,18 +1213,18 @@ That's it. Two words back and you know the path.
 ### PATH 1: "I need a tradie" → 3-turn capture
 Turn 1 (if not already known): "What trade + suburb?" (combine into ONE question)
 Turn 2: "What's the job?" (10 words max answer expected)
-Turn 3: "What's your email so we can send you details?" — then immediately: "And best number to call you on?"
-→ Output tag, say: "Done. Someone will be in touch shortly. 🤙"
+Turn 3: "What's your email so we can send you a quick rundown?" — then immediately: "And best number to call you on?"
+→ Output tag, say: "Done. I've sent you an email — check your inbox. Someone will be in touch shortly. 🤙"
 → Do NOT add anything after that.
 
 ### PATH 2: "I want to join" → 3-turn capture
 Turn 1: "What's your trade and area?"
 Turn 2: "Business name?"
-Turn 3: "Email and mobile number?"
-→ Output tag, say: "You're in. $69/mo after the free trial. We'll be in touch. 🤙"
+Turn 3: "Email and mobile number? I'll shoot you our rates right now."
+→ Output tag, say: "You're in. I've just emailed you our details — check your inbox. $69/mo after the free trial. 🤙"
 
 ### AFTER GETTING EMAIL (confirmation — one message only)
-"Got it. Hugo's on it." — then STOP. Do not ask follow-up questions.
+"Sweet — just sent that through. Check your inbox." — then STOP. Do not ask follow-up questions.
 
 ### CONTACT REQUEST — BE DIRECT
 Don't say "Would you be able to provide..." or "Could I get your...".
@@ -1095,21 +1271,71 @@ You have TWO modes:
 2. Customer AI Preview: When the operator says "what would you say to a customer about X?" — switch to customer-facing mode, act as their trade receptionist.`;
 
     systemPrompt = hugo.buildSalesSystemPrompt(dashboardContextHeader, landingData, widgetLearnedRows, locationContext);
-  } else if (isREDomain) {
-    systemPrompt = reLocationPrefix + RE_AGENT_SYSTEM_PROMPT;
+  } else if (isPaysDomain && !isDashboardContext) {
+    // Hugo.Pays landing page — Small Business / invoicing+payroll+rostering persona
+    const paysHeader = `## CRITICAL IDENTITY: You are HUGO.PAYS — the AI for small business invoicing, rostering, and payroll.
+
+You are running on hugopays.pro. This IS your website. You ARE Hugo.Pays.
+
+## ABSOLUTE RULES (never break)
+1. You ARE Hugo.Pays. You know EVERYTHING about HugoPays / Hugo.Pays / hugopays.pro.
+2. Your domain is hugopays.pro — if asked "what website is this?" answer "hugopays.pro".
+3. NEVER say "I'm not across HugoPays" or "that's not one of ours" — YOU are HugoPays.
+4. NEVER say you're on propops.trade or propops.pro — you are on hugopays.pro.
+5. NEVER deflect Hugo.Pays questions — you own this product, answer with confidence.
+6. You help small businesses with: invoicing, rostering, payroll, GST, super (11.5% SG), STP Phase 2, PAYG withholding, award rates, leave accruals, staff onboarding.
+
+## WHAT HUGO.PAYS DOES
+- AI-powered invoicing (draft, send, track, GST-compliant)
+- Smart rostering (weekly schedules, shift assignments, GPS clock-in/out)
+- Automated payroll (gross→net calc, super 11.5%, PAYG brackets, STP2 reporting)
+- Staff portal (payslips, leave requests, shift swaps, onboarding)
+- ATO compliance (BAS prep, super deadlines, Fair Work award rates)
+
+## PRICING (Hugo.Pays — NEVER quote other amounts)
+- $69/month (launch price until June 30 2026)
+- $99/month bundle (includes Hugo for leads + Hugo.Pays)
+- $999/year (save 2 months)
+- 14-day free trial — no credit card required
+
+## YOUR SALES APPROACH
+- Ask about their business: how many staff, current payroll process, pain points
+- Position Hugo.Pays as replacing manual spreadsheets / expensive bookkeeper hours
+- Emphasise: AU-compliant, auto-calculates super + PAYG, STP2 ready
+- Close: "Want me to set you up with a free trial?"`;
+    systemPrompt = hugo.buildSalesSystemPrompt(paysHeader, landingData, widgetLearnedRows, locationContext);
+  } else if (hugoLabel === 'Hugo-Pro') {
+    // RE domain: inject page context + operator identity, then location-aware RE system prompt
+    systemPrompt = pageContextSection + reLocationPrefix + RE_AGENT_SYSTEM_PROMPT;
   } else if (tradieOverride && domain === 'propops.pro') {
     // Tradie visitor on propops.pro — use tradie sales prompt with direct-close override
     const tradieOnProHeader = `You are currently speaking to a TRADIE VISITOR on propops.pro. This visitor has identified themselves as a tradie or asked about trade services. SWITCH TO TRADIE PERSONA IMMEDIATELY. Do NOT redirect them to propops.trade. Do NOT mention propops.trade. Do NOT say "check out propops.trade". Pitch PropOps directly right here: $69/mo catches Hipages, ServiceSeeking, and Airtasker leads, Hugo answers 24/7 while they're on the tools. 14-day free trial — no credit card required, cancel anytime. Ask for the close: "Want me to set you up?" CLOSE THEM ON THE SPOT — they can sign up right here on propops.pro.`;
-    systemPrompt = hugo.buildSalesSystemPrompt(tradieOnProHeader + NETWORK_FRONT_DOOR_SECTION, landingData, widgetLearnedRows, locationContext);
+    systemPrompt = hugo.buildSalesSystemPrompt(pageContextSection + tradieOnProHeader + NETWORK_FRONT_DOOR_SECTION, landingData, widgetLearnedRows, locationContext);
   } else {
     // Default tradie landing page path — inject Network Front Door instructions
-    systemPrompt = hugo.buildSalesSystemPrompt(contextHeader + NETWORK_FRONT_DOOR_SECTION, landingData, widgetLearnedRows, locationContext);
+    systemPrompt = hugo.buildSalesSystemPrompt(pageContextSection + contextHeader + NETWORK_FRONT_DOOR_SECTION, landingData, widgetLearnedRows, locationContext);
+  }
+
+  // Inject Hugo identity label as persona anchor — this is the single source of truth.
+  // Driven by Business Type setting (POLSIACONFIG.businessType or dashboard setBusinessType).
+  // The label goes into the system prompt so Hugo knows EXACTLY who he is regardless of
+  // which persona brain branch fires (RE / Trade / Pays).
+  const HUGO_IDENTITY_SECTION = `### HUGO IDENTITY LABEL (MANDATORY)
+Your identity is: ${hugoLabel}. You are ${hugoLabel} — NOT "Hugo", not "AI assistant", not "PropOps bot".
+Use this name when introducing yourself. Do NOT vary it based on channel or context.
+
+${BRAND_FAMILY}`;
+  systemPrompt = HUGO_IDENTITY_SECTION + '\n\n' + systemPrompt;
+
+  // Inject operator inbox context (Hugo Eyes for PropOps.Pro widget member login)
+  if (operatorInboxContext) {
+    systemPrompt = systemPrompt + '\n\n' + operatorInboxContext;
   }
 
   // ── Brain enrichment: training examples + knowledge entries IN PARALLEL ──────
   // Both need an embedding, so we compute it ONCE and run both searches concurrently.
   // Non-blocking — widget works without vector search (pre-backfill or on error).
-  const brainBusinessType = isREDomain ? 'real_estate' : 'trades';
+  const brainBusinessType = hugoLabel === 'Hugo-Pays' ? 'pays' : hugoLabel === 'Hugo-Pro' ? 'real_estate' : 'trades';
   let enrichedSystemPrompt = systemPrompt;
 
   // Skip enrichment entirely for simple greetings — saves 300-500ms
@@ -1153,6 +1379,24 @@ You have TWO modes:
             }).join('\n');
           enrichedSystemPrompt += knowledgeBlock;
           console.log(`[Hugo Widget] Phase 2: ${knowledgeEntries.length} knowledge entries for trade=${widgetTradeSlug || 'any'}`);
+        }
+      }
+
+      // Hugo.Pays product knowledge — inject for pays domain OR when payroll keywords detected
+      if (isPaysDomain || brainBusinessType === 'pays') {
+        try {
+          const { fetchPaysKnowledge } = require('./hugo-brain');
+          const paysKnowledge = await fetchPaysKnowledge(userMsg);
+          if (paysKnowledge && paysKnowledge.length > 0) {
+            const paysLines = paysKnowledge.map(row => {
+              const label = row.knowledge_key ? `[${row.knowledge_key}]` : `[${row.category || 'pays'}]`;
+              return `${label}\nQ: ${row.customer_message}\nA: ${row.ai_response}`;
+            }).join('\n\n');
+            enrichedSystemPrompt += `\n\nHUGO.PAYS PRODUCT KNOWLEDGE (use this when answering payroll, super, ATO, or Hugo.Pays product questions — never contradict these):\n${paysLines}\n\nHUGO.PAYS PRICING REMINDER: $69/month (launch price till June 30 2026), $99/month bundle (includes Hugo for leads), $999/year (2 months free). Never quote other amounts for Hugo.Pays.`;
+            console.log(`[Hugo Widget] Hugo.Pays knowledge: injected ${paysKnowledge.length} rows`);
+          }
+        } catch (paysErr) {
+          console.warn('[Hugo Widget] Hugo.Pays knowledge injection failed (non-fatal):', paysErr.message);
         }
       }
     } catch (enrichErr) {
@@ -1214,15 +1458,15 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
 
     // If AI is unavailable (rate-limited), use domain-appropriate template fallback
     if (!rawReply) {
-      rawReply = isREDomain
+      rawReply = hugoLabel === 'Hugo-Pro'
         ? reAgent.getRETemplateFallback(userMsg, history)
         : getTemplateFallback(userMsg, history);
-      console.log(`[Hugo Widget] Using ${isREDomain ? 'RE' : 'tradie'} template fallback (AI rate-limited)`);
+      console.log(`[Hugo Widget] Using ${hugoLabel === 'Hugo-Pro' ? 'RE' : 'tradie'} template fallback (AI rate-limited)`);
     }
 
     // ── RE Agent: process ACTION tags (inspection booking, lead qual, offers) ──
     let actionResults = [];
-    if (isREDomain) {
+    if (hugoLabel === 'Hugo-Pro') {
       try {
         const processed = await reAgent.processHugoResponse(rawReply, sessionId);
         rawReply = processed.cleanedText;
@@ -1238,9 +1482,9 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
       }
     }
 
-    // ── Tradie domain: Quote marker extraction (existing behaviour) ────────────
+    // ── Tradie / Hugo-Pays domain: Quote marker extraction (existing behaviour) ───
     let quoteResult = null;
-    if (!isREDomain) {
+    if (hugoLabel !== 'Hugo-Pro') {
       try {
         const { cleanReply, quoteData } = extractQuoteMarker(rawReply);
         if (quoteData) {
@@ -1292,26 +1536,57 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
           });
 
           if (actionType === 'NETWORK_LEAD' && fields.trade) {
-            // Save lead to network_leads table (non-blocking)
-            pool.query(
-              `INSERT INTO network_leads
-                 (session_id, domain, trade, suburb, urgency, contact_name, contact_phone, contact_email, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'new')
-               RETURNING id`,
-              [
-                sessionId,
-                domain || 'propops.trade',
-                (fields.trade || '').slice(0, 100),
-                (fields.suburb || null)?.slice(0, 200) || null,
-                (fields.urgency || null)?.slice(0, 50) || null,
-                (fields.name || null)?.slice(0, 200) || null,
-                (fields.phone || null)?.slice(0, 50) || null,
-                (fields.email || null)?.slice(0, 200) || null,
-              ]
-            ).then(r => {
-              const leadId = r.rows[0]?.id;
-              console.log(`[Hugo Widget] NETWORK_LEAD saved: id=${leadId} trade=${fields.trade} suburb=${fields.suburb || 'unknown'}`);
-            }).catch(e => console.warn('[Hugo Widget] NETWORK_LEAD save failed:', e.message));
+            // Save lead to network_leads table with phone normalization + dedup
+            const rawLeadPhone = (fields.phone || null)?.slice(0, 50) || null;
+            const normLeadPhone = normalizePhone(rawLeadPhone) || rawLeadPhone;
+            (async () => {
+              try {
+                // Phone dedup — update existing lead if phone matches
+                if (normLeadPhone) {
+                  const existing = await findNetworkLeadByPhone(normLeadPhone);
+                  if (existing) {
+                    const cleanName = (fields.name || null)?.slice(0, 200) || null;
+                    const isNameUpgrade = cleanName && cleanName !== 'Unknown'
+                      && (!existing.contact_name || existing.contact_name === 'Unknown');
+                    await pool.query(
+                      `UPDATE network_leads SET
+                         contact_name = CASE WHEN $2::text IS NOT NULL THEN $2 ELSE contact_name END,
+                         trade = COALESCE($3, trade),
+                         suburb = COALESCE($4, suburb),
+                         contact_email = COALESCE($5, contact_email),
+                         updated_at = NOW()
+                       WHERE id = $1`,
+                      [existing.id, isNameUpgrade ? cleanName : null,
+                       (fields.trade || '').slice(0, 100), (fields.suburb || null)?.slice(0, 200) || null,
+                       (fields.email || null)?.slice(0, 200) || null]
+                    );
+                    console.log(`[Hugo Widget] NETWORK_LEAD dedup: updated #${existing.id} (phone=${normLeadPhone})`);
+                    return;
+                  }
+                }
+                const r = await pool.query(
+                  `INSERT INTO network_leads
+                     (session_id, domain, trade, suburb, urgency, contact_name, contact_phone, contact_email, status)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'new')
+                   ON CONFLICT (contact_phone) WHERE contact_phone IS NOT NULL AND contact_phone != ''
+                   DO UPDATE SET
+                     contact_name = CASE
+                       WHEN EXCLUDED.contact_name IS NOT NULL AND EXCLUDED.contact_name NOT IN ('Unknown', 'unknown')
+                         AND (network_leads.contact_name IS NULL OR network_leads.contact_name IN ('Unknown', 'unknown'))
+                       THEN EXCLUDED.contact_name ELSE network_leads.contact_name END,
+                     trade = COALESCE(EXCLUDED.trade, network_leads.trade),
+                     suburb = COALESCE(EXCLUDED.suburb, network_leads.suburb),
+                     contact_email = COALESCE(EXCLUDED.contact_email, network_leads.contact_email),
+                     updated_at = NOW()
+                   RETURNING id`,
+                  [sessionId, domain || 'propops.trade',
+                   (fields.trade || '').slice(0, 100), (fields.suburb || null)?.slice(0, 200) || null,
+                   (fields.urgency || null)?.slice(0, 50) || null, (fields.name || null)?.slice(0, 200) || null,
+                   normLeadPhone, (fields.email || null)?.slice(0, 200) || null]
+                );
+                console.log(`[Hugo Widget] NETWORK_LEAD saved: id=${r.rows[0]?.id} trade=${fields.trade} suburb=${fields.suburb || 'unknown'}`);
+              } catch (e) { console.warn('[Hugo Widget] NETWORK_LEAD save failed:', e.message); }
+            })();
 
             networkAction = { type: 'lead_captured', trade: fields.trade, suburb: fields.suburb };
 
@@ -1329,7 +1604,7 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
                 (fields.area || null)?.slice(0, 500) || null,
                 (fields.biz || null)?.slice(0, 200) || null,
                 (fields.name || null)?.slice(0, 200) || null,
-                (fields.phone || null)?.slice(0, 50) || null,
+                normalizePhone((fields.phone || null)?.slice(0, 50)) || (fields.phone || null)?.slice(0, 50) || null,
                 (fields.email || null)?.slice(0, 200) || null,
               ]
             ).then(r => {
@@ -1343,6 +1618,45 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
       } catch (netErr) {
         // Never block the chat response on network action processing
         console.warn('[Hugo Widget] Network action processing error (non-fatal):', netErr.message);
+      }
+    }
+
+    // ── Email-first $BOOM: fire promo email the instant Hugo captures an email ──
+    // Scans current visitor message for an email address. If found and not seen
+    // before in this session's history → fire promo email immediately (non-blocking).
+    // This is the live demo: lead gives email, Gmail notification lands while they watch.
+    if (!isDashboardContext) {
+      try {
+        const emailMatch = userMsg.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+        if (emailMatch) {
+          const capturedEmail = emailMatch[0];
+          // Dedupe: only fire if this email hasn't appeared in prior session history
+          const alreadySeen = history.some(m =>
+            m.role === 'user' && m.content && m.content.includes(capturedEmail)
+          );
+          if (!alreadySeen) {
+            // Extract lead name from session history (look for previous name-like message)
+            let leadNameGuess = null;
+            for (let i = history.length - 1; i >= 0; i--) {
+              const m = history[i];
+              if (m.role === 'user' && m.content && m.content.trim().length < 40 && /^[A-Z][a-z]/.test(m.content.trim()) && !/@/.test(m.content) && !/\d{4}/.test(m.content)) {
+                leadNameGuess = m.content.trim().split(/\s+/).slice(0, 2).join(' ');
+                break;
+              }
+            }
+            sendHugoPromoEmail(capturedEmail, {
+              domain: domain || 'propops.trade',
+              channel: 'widget',
+              leadName: leadNameGuess,
+            }).catch(err => {
+              console.warn('[Hugo Widget] sendHugoPromoEmail error (non-fatal):', err.message);
+            });
+            console.log(`[Hugo Widget] 💥 $BOOM — promo email fired to ${capturedEmail} (domain=${domain || 'unknown'})`);
+          }
+        }
+      } catch (promoErr) {
+        // Never let promo email logic break the chat response
+        console.warn('[Hugo Widget] Promo email detection error (non-fatal):', promoErr.message);
       }
     }
 
@@ -1377,7 +1691,7 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
       responsePayload.network_action = networkAction;
     }
 
-    if (isREDomain && actionResults.length > 0) {
+    if (hugoLabel === 'Hugo-Pro' && actionResults.length > 0) {
       // Only expose safe action metadata (not internal IDs by default)
       const bookingAction = actionResults.find(a => a.type === 'BOOK_INSPECTION' && a.success);
       if (bookingAction) {
@@ -1447,7 +1761,7 @@ You've had ${turnCount} turns and still have NO email or phone from this visitor
   } catch (err) {
     console.error('[Hugo Widget] Chat error (dual-path):', err.message);
     // Even on unexpected error, provide a domain-appropriate template response
-    const fallbackReply = isREDomain
+    const fallbackReply = hugoLabel === 'Hugo-Pro'
       ? reAgent.getRETemplateFallback(userMsg, history)
       : getTemplateFallback(userMsg, history);
     return res.json({

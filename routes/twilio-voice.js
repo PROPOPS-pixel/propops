@@ -53,6 +53,8 @@ const {
   updateCallSession,
   processVoiceTurn,
   finaliseCall,
+  PROMOTER_GREETING,
+  DASHMASTER_GREETING_TEMPLATE,
 } = require('../services/hugo-voice');
 
 const router = express.Router();
@@ -153,11 +155,16 @@ let _callStats = { total: 0, gathers: 0, noSpeech: 0, exitKeywords: 0, aiSuccess
 
 // --- In-flight AI tasks: gather kicks off AI immediately, /think awaits it ---
 const _pendingAI = new Map(); // callSid → Promise<{ reply, done }>
+// Stats mode tracking per callSid (set on first gather, persists for call lifetime)
+const _statsMode = new Map(); // callSid → boolean
 // Cleanup stale entries every 60s (calls that never hit /think)
 setInterval(() => {
   const staleMs = 30_000;
   for (const [sid, entry] of _pendingAI) {
-    if (Date.now() - entry.ts > staleMs) _pendingAI.delete(sid);
+    if (Date.now() - entry.ts > staleMs) {
+      _pendingAI.delete(sid);
+      _statsMode.delete(sid);
+    }
   }
 }, 60_000);
 
@@ -179,11 +186,19 @@ const _handledCallSids = new Set();
 setInterval(() => { _handledCallSids.clear(); }, 5 * 60 * 1000);
 
 // --- Static greeting texts ---------------------------------------------------
-// Default greeting starts in Trade persona — dual-brain switches to RE on first RE signal.
+// PROMOTER greeting: played for all unmatched/trial/cancelled callers.
+// DASHMASTER greeting: played for active subscribers (matched operator calls).
+// FOUNDER greeting: played for founder's own call — stats mode, not lead intake.
+// GREETING_TEXT is the fallback used in dedup/crash scenarios.
 
-const GREETING_TEXT = "G'day! I'm Hugo, powered by PropOps. What's your name and what do you do?";
+const GREETING_TEXT = PROMOTER_GREETING;
+const FOUNDER_GREETING = "Morning Founder. I'm Hugo — what would you like to know? You can ask about leads, subscribers, revenue, or call volume.";
 const NO_SPEECH_TEXT = "Sorry, I didn't quite catch that. What can I help you with?";
 const GOODBYE_TEXT = "Cheers for calling PropOps! Check out propops.pro to get Hugo working for your business. Have a good one!";
+
+// --- Founder caller ID -------------------------------------------------------
+// The founder's phone number — call from this number triggers stats mode.
+const FOUNDER_PHONE_NORMALIZED = '+61411281348';
 
 // --- XML escaping for TwiML content ------------------------------------------
 
@@ -344,7 +359,8 @@ async function findOperatorByPhone(forwardedFromRaw) {
 
   try {
     const result = await pool.query(
-      `SELECT u.*,
+      `SELECT u.id, u.email, u.name, u.business_type, u.agency_name, u.mobile_number,
+              u.subscription_status,
               op.business_name as business_name_from_profile,
               op.operator_name as operator_name_from_profile,
               op.trade_type, op.hourly_rate, op.callout_fee, op.emergency_available
@@ -362,16 +378,82 @@ async function findOperatorByPhone(forwardedFromRaw) {
   }
 }
 
+/**
+ * Get the greeting for a matched operator call.
+ * Dual-persona: active subscribers get DASHMASTER greeting,
+ * trial/cancelled/other get PROMOTER greeting (still needs to complete onboarding).
+ * @param {object} operator - Operator profile (includes subscription_status from users table)
+ * @returns {string} greeting text
+ */
 function getGreeting(operator) {
-  const businessName = operator?.agency_name
-    || operator?.business_name_from_profile
-    || operator?.name
-    || 'the team';
-  return `G'day, this is Hugo from ${businessName}. The team's on a job right now, thanks for calling. How can I help?`;
+  const subStatus = operator?.subscription_status || null;
+  if (subStatus === 'active') {
+    // DASHMASTER — this is an active paying subscriber's inbound call
+    const businessName = operator?.agency_name
+      || operator?.business_name_from_profile
+      || operator?.name
+      || 'the team';
+    return DASHMASTER_GREETING_TEMPLATE(businessName);
+  }
+  // PROMOTER — trial, cancelled, or unknown subscription → sales pitch
+  return PROMOTER_GREETING;
 }
 
 function getUnmatchedGreeting() {
-  return GREETING_TEXT;
+  // No operator mapping — direct call to PropOps number → PROMOTER
+  return PROMOTER_GREETING;
+}
+
+/**
+ * Get founder stats for stats mode response.
+ * Returns key metrics: leads, subscribers, MRR, call volume.
+ */
+async function getFounderStats() {
+  // Each query wrapped individually to survive missing tables/columns
+  const safeQuery = async (sql) => {
+    try { return (await pool.query(sql)).rows[0]; }
+    catch { return null; }
+  };
+
+  try {
+    const [leadsToday, leadsWeek, subscribers, activeUsers, mrrResult, callsToday, hotLeads] = await Promise.all([
+      safeQuery(`SELECT COUNT(*)::int as cnt FROM network_leads WHERE created_at >= CURRENT_DATE`),
+      safeQuery(`SELECT COUNT(*)::int as cnt FROM network_leads WHERE created_at >= NOW() - INTERVAL '7 days'`),
+      safeQuery(`SELECT COUNT(*)::int as cnt FROM users WHERE subscription_status = 'active'`),
+      safeQuery(`SELECT COUNT(*)::int as cnt FROM users WHERE subscription_status IN ('active', 'trial')`),
+      // MRR: use 69 * active count as fallback if plan_price column doesn't exist
+      safeQuery(`SELECT COALESCE(SUM(COALESCE(plan_price, 69)), 0)::float as mrr FROM users WHERE subscription_status = 'active'`),
+      safeQuery(`SELECT COUNT(*)::int as cnt FROM voice_calls WHERE created_at >= CURRENT_DATE`),
+      safeQuery(`SELECT COUNT(*)::int as cnt FROM network_leads WHERE created_at >= NOW() - INTERVAL '24 hours' AND (urgency = 'high' OR urgency = 'medium')`),
+    ]);
+
+    return {
+      leads_today: leadsToday?.cnt || 0,
+      leads_week: leadsWeek?.cnt || 0,
+      subscribers: subscribers?.cnt || 0,
+      active_users: activeUsers?.cnt || 0,
+      mrr: mrrResult?.mrr || 0,
+      calls_today: callsToday?.cnt || 0,
+      hot_leads_24h: hotLeads?.cnt || 0,
+    };
+  } catch (err) {
+    console.error('[TwilioVoice] getFounderStats error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Format founder stats into a conversational response.
+ */
+function formatFounderStatsResponse(stats) {
+  if (!stats) return "I'm having trouble pulling the stats right now. Try again shortly.";
+
+  const { leads_today, leads_week, subscribers, active_users, mrr, calls_today, hot_leads_24h } = stats;
+
+  const mrrText = mrr > 0 ? `$${mrr.toFixed(0)} MRR` : 'MRR data unavailable';
+  const hotLeadsText = hot_leads_24h > 0 ? `${hot_leads_24h} hot lead${hot_leads_24h > 1 ? 's' : ''} in the last 24 hours.` : 'no hot leads in the last 24 hours.';
+
+  return `Here's your snapshot: ${leads_today} new leads today, ${leads_week} this week. ${active_users} total users — ${subscribers} active subscribers. Current ${mrrText}. ${calls_today} calls handled today. ${hotLeadsText} What's next?`;
 }
 
 // --- Legacy TTS endpoint (kept for backward compat, returns 410 Gone) --------
@@ -443,6 +525,14 @@ router.post('/webhooks/twilio/voice', express.urlencoded({ extended: false }), a
     _callStats.total++;
     _callStats.lastCallAt = new Date().toISOString();
 
+    // Normalise caller number for founder comparison
+    const normalizedCaller = normalisePhone(callerNumber);
+    const isFounderCall = normalizedCaller === FOUNDER_PHONE_NORMALIZED;
+
+    if (isFounderCall) {
+      console.log(`[TwilioVoice] Founder call detected — stats mode activated for CallSid=${callSid}`);
+    }
+
     // Operator lookup: race against 300ms timeout so we never delay the call.
     // When ForwardedFrom is present (call was forwarded from tradie's own number),
     // look up which operator it belongs to and personalise the greeting.
@@ -463,24 +553,45 @@ router.post('/webhooks/twilio/voice', express.urlencoded({ extended: false }), a
       }
     }
 
-    // Choose greeting: personalised for matched operator, generic PropOps for direct/unmatched calls
-    const greetingText = resolvedOperator ? getGreeting(resolvedOperator) : getUnmatchedGreeting();
+    // Choose greeting: founder gets stats mode, otherwise normal flow
+    let greetingText;
+    if (isFounderCall) {
+      greetingText = FOUNDER_GREETING;
+    } else if (resolvedOperator) {
+      greetingText = getGreeting(resolvedOperator);
+    } else {
+      greetingText = getUnmatchedGreeting();
+    }
+
     const greetingTwiml = twimlSayGather(greetingText, callSid);
-    console.log(`[TwilioVoice] Returning greeting (operator=${resolvedOperator?.id || 'none'}, ${greetingTwiml.length} bytes) for CallSid=${callSid}`);
+    console.log(`[TwilioVoice] Returning greeting (isFounder=${isFounderCall}, operator=${resolvedOperator?.id || 'none'}, ${greetingTwiml.length} bytes) for CallSid=${callSid}`);
     res.type('text/xml');
     res.send(greetingTwiml);
 
-    // Background: session creation (fire-and-forget — operator already resolved above)
+    // Background: session creation + stats mode flag
     setImmediate(async () => {
       try {
+        // Set in-memory stats mode flag for gather/think handlers
+        if (isFounderCall) {
+          _statsMode.set(callSid, true);
+          console.log(`[TwilioVoice] Stats mode flag set for CallSid=${callSid}`);
+        }
+
         await pool.query(
           `INSERT INTO voice_calls
              (call_sid, caller_number, operator_id, forwarded_from, status, transcript, lead_data)
-           VALUES ($1, $2, $3, $4, 'active', '[]', '{}')
+           VALUES ($1, $2, $3, $4, 'active', '[]', $5::jsonb)
            ON CONFLICT (call_sid) DO UPDATE SET
              operator_id = COALESCE(EXCLUDED.operator_id, voice_calls.operator_id),
+             lead_data = COALESCE(EXCLUDED.lead_data, voice_calls.lead_data),
              updated_at = NOW()`,
-          [callSid, normalisePhone(callerNumber), resolvedOperator?.id || null, forwardedFrom || null]
+          [
+            callSid,
+            normalizedCaller,
+            resolvedOperator?.id || null,
+            forwardedFrom || null,
+            JSON.stringify({ stats_mode: isFounderCall ? true : undefined }),
+          ]
         );
       } catch (err) {
         console.error('[TwilioVoice] createCallSession error:', err.message);
@@ -531,8 +642,26 @@ router.post('/webhooks/twilio/voice/gather', express.urlencoded({ extended: fals
       return res.send(twimlNoSpeech(callSid, voiceConfig));
     }
 
-    // Check for exit keywords — fast path, no AI needed
+    // --- Stats mode detection (founder calls) ---
+    // Check if this is a founder stats-mode call via the _statsMode map (set on call start)
+    const isStatsMode = !!_statsMode.get(callSid);
     const lowerSpeech = speechResult.toLowerCase();
+
+    // Founder stats mode: ALL speech stays in stats context (never falls through to PROMOTER/DASHMASTER)
+    if (isStatsMode) {
+      // Goodbye — exit cleanly
+      if (/^(bye|goodbye|thanks|cheers|that'?s? all|no thanks|see ya|later)/.test(lowerSpeech)) {
+        finaliseCall(callSid).catch(err => console.error('[TwilioVoice] finaliseCall error:', err.message));
+        return res.send(twimlSayHangup("Have a great one, Founder! Hugo's here whenever you need him.", voiceConfig));
+      }
+      // All other founder queries — fetch stats and respond
+      console.log(`[TwilioVoice] Founder stats mode query for CallSid=${callSid}: "${speechResult.slice(0, 50)}"`);
+      const stats = await getFounderStats();
+      const statsResponse = formatFounderStatsResponse(stats);
+      return res.send(twimlSayGather(statsResponse + " Anything else?", callSid, voiceConfig));
+    }
+
+    // Check for exit keywords — fast path, no AI needed
     if (/^(bye|goodbye|thanks bye|cheers|that'?s? all|no thanks)/.test(lowerSpeech)) {
       _callStats.exitKeywords++;
       finaliseCall(callSid).catch(err => {

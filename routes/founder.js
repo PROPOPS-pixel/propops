@@ -96,11 +96,14 @@ router.get('/overview', async (req, res) => {
         GROUP BY subscription_status
       `),
 
-      // Leads created today across all operators (widget_leads + phone leads)
+      // Leads created today across ALL sources
       pool.query(`
-        SELECT COUNT(*) AS count
-        FROM operator_widget_leads
-        WHERE created_at >= CURRENT_DATE
+        SELECT
+          (SELECT COUNT(*) FROM leads WHERE created_at >= CURRENT_DATE) +
+          (SELECT COUNT(*) FROM phone_leads WHERE created_at >= CURRENT_DATE) +
+          (SELECT COUNT(*) FROM network_leads WHERE created_at >= CURRENT_DATE) +
+          (SELECT COUNT(*) FROM operator_widget_leads WHERE created_at >= CURRENT_DATE)
+        AS count
       `),
 
       // Conversations today (widget sessions + dashboard chat messages grouped by session)
@@ -230,65 +233,116 @@ router.get('/operators/:id', async (req, res) => {
 });
 
 // ─── Section 4: All Leads Panel ───────────────────────────────────────────────
-// Cross-operator, cross-channel, filterable
+// UNION across all lead sources: leads (RE portal), phone_leads (Twilio),
+// network_leads (widget), operator_widget_leads (per-operator).
+// Previous bug: only queried operator_widget_leads (0 rows), missing 90+ leads.
 router.get('/leads', async (req, res) => {
   const pool = getPool();
-  const { trade, channel, status, date_from, date_to, intent_min, limit = 100, offset = 0 } = req.query;
+  const { date_from, date_to, status, trade, channel, intent_min, limit: rawLimit = 100, offset: rawOffset = 0 } = req.query;
 
-  const conditions = [];
+  // Shared date params — reused across all sub-queries
   const params = [];
+  const dateFromIdx = date_from ? (params.push(date_from), params.length) : null;
+  const dateToIdx = date_to ? (params.push(date_to + 'T23:59:59.999Z'), params.length) : null;
 
-  if (trade) {
-    params.push(trade);
-    conditions.push(`op.trade_type = $${params.length}`);
-  }
-  if (channel) {
-    params.push(channel);
-    conditions.push(`l.channel = $${params.length}`);
-  }
+  // Status filter on the outer UNION result (applied after UNION, before LIMIT)
+  let statusFilter = '';
+  let statusIdx = null;
   if (status) {
     params.push(status);
-    conditions.push(`l.status = $${params.length}`);
-  }
-  if (date_from) {
-    params.push(date_from);
-    conditions.push(`l.created_at >= $${params.length}`);
-  }
-  if (date_to) {
-    params.push(date_to);
-    conditions.push(`l.created_at <= $${params.length}`);
-  }
-  if (intent_min) {
-    params.push(parseInt(intent_min, 10));
-    conditions.push(`l.intent_score >= $${params.length}`);
+    statusIdx = params.length;
+    statusFilter = `WHERE status = $${statusIdx}`;
   }
 
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  params.push(parseInt(limit, 10), parseInt(offset, 10));
-  const limitIdx = params.length - 1;
+  // Generic date WHERE builder (prefix is the table alias)
+  function dateConds(alias) {
+    const c = [];
+    if (dateFromIdx) c.push(`${alias}.created_at >= $${dateFromIdx}`);
+    if (dateToIdx) c.push(`${alias}.created_at <= $${dateToIdx}`);
+    return c.length ? `WHERE ${c.join(' AND ')}` : '';
+  }
+
+  params.push(parseInt(rawLimit, 10));
+  const limitIdx = params.length;
+  params.push(parseInt(rawOffset, 10));
   const offsetIdx = params.length;
+
+  // Outer-query filters applied to the UNION result (status, trade, channel, intent_min)
+  const outerConds = [];
+  if (status) { params.push(status); outerConds.push(`status = $${params.length}`); }
+  if (trade) { params.push(trade); outerConds.push(`trade = $${params.length}`); }
+  if (channel) { params.push(channel); outerConds.push(`channel = $${params.length}`); }
+  if (intent_min) { params.push(parseInt(intent_min, 10)); outerConds.push(`intent_score >= $${params.length}`); }
+  const outerWhere = outerConds.length ? `WHERE ${outerConds.join(' AND ')}` : '';
 
   try {
     const result = await pool.query(`
-      SELECT
-        l.*,
-        u.name AS operator_name,
-        u.email AS operator_email,
-        COALESCE(op.trade_type, u.business_type) AS trade
-      FROM operator_widget_leads l
-      JOIN users u ON u.id = l.operator_id
-      LEFT JOIN operator_profiles op ON op.operator_id = l.operator_id
-      ${where}
-      ORDER BY l.created_at DESC
+      SELECT * FROM (
+        -- 1. RE leads (main leads table — portal/email/Facebook sources)
+        SELECT ld.id, ld.name AS lead_name, ld.phone AS lead_phone, ld.email AS lead_email,
+               ld.status, ld.source AS channel, NULL::integer AS intent_score,
+               ld.property_interest AS rough_quote, ld.created_at,
+               u.name AS operator_name, u.email AS operator_email,
+               'real_estate' AS trade, 'leads' AS source
+        FROM leads ld
+        LEFT JOIN users u ON u.id = ld.user_id
+        ${dateConds('ld')}
+
+        UNION ALL
+
+        -- 2. Phone leads (Twilio AI calls)
+        SELECT pl.id, pl.caller_name AS lead_name, pl.caller_phone AS lead_phone,
+               pl.caller_email AS lead_email, pl.stage AS status, 'phone' AS channel,
+               NULL::integer AS intent_score, pl.intent AS rough_quote, pl.created_at,
+               NULL AS operator_name, NULL AS operator_email,
+               COALESCE(pl.trade_type, 'unknown') AS trade, 'phone' AS source
+        FROM phone_leads pl
+        ${dateConds('pl')}
+
+        UNION ALL
+
+        -- 3. Network leads (public widget)
+        SELECT n.id, n.contact_name AS lead_name, n.contact_phone AS lead_phone,
+               n.contact_email AS lead_email, n.status, 'widget' AS channel,
+               NULL::integer AS intent_score, NULL AS rough_quote, n.created_at,
+               ou.name AS operator_name, ou.email AS operator_email,
+               n.trade, 'network' AS source
+        FROM network_leads n
+        LEFT JOIN users ou ON ou.id = n.assigned_operator_id
+        ${dateConds('n')}
+
+        UNION ALL
+
+        -- 4. Operator widget leads (per-operator)
+        SELECT l.id, l.lead_name, l.lead_phone, l.lead_email, l.status, l.channel,
+               l.intent_score, l.rough_quote, l.created_at,
+               u2.name AS operator_name, u2.email AS operator_email,
+               COALESCE(op.trade_type, u2.business_type) AS trade, 'operator' AS source
+        FROM operator_widget_leads l
+        JOIN users u2 ON u2.id = l.operator_id
+        LEFT JOIN operator_profiles op ON op.operator_id = l.operator_id
+        ${dateConds('l')}
+      ) AS all_leads
+      ${outerWhere}
+      ORDER BY created_at DESC
       LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `, params);
 
+    // Count with same filters
     const countResult = await pool.query(`
-      SELECT COUNT(*) AS total
-      FROM operator_widget_leads l
-      JOIN users u ON u.id = l.operator_id
-      LEFT JOIN operator_profiles op ON op.operator_id = l.operator_id
-      ${where}
+      SELECT COUNT(*) AS total FROM (
+        SELECT ld.status, ld.source AS channel, NULL::integer AS intent_score, ld.created_at, 'real_estate' AS trade
+        FROM leads ld ${dateConds('ld')}
+        UNION ALL
+        SELECT pl.stage AS status, 'phone' AS channel, NULL::integer AS intent_score, pl.created_at, COALESCE(pl.trade_type, 'unknown') AS trade
+        FROM phone_leads pl ${dateConds('pl')}
+        UNION ALL
+        SELECT n.status, 'widget' AS channel, NULL::integer AS intent_score, n.created_at, n.trade
+        FROM network_leads n ${dateConds('n')}
+        UNION ALL
+        SELECT l.status, l.channel, l.intent_score, l.created_at, COALESCE(op.trade_type, u2.business_type) AS trade
+        FROM operator_widget_leads l JOIN users u2 ON u2.id = l.operator_id LEFT JOIN operator_profiles op ON op.operator_id = l.operator_id ${dateConds('l')}
+      ) AS all_leads ${outerWhere}
     `, params.slice(0, -2));
 
     res.json({
@@ -472,7 +526,60 @@ router.post('/alerts/:id/read', async (req, res) => {
 // Public-ish: returns is_founder boolean without leaking data
 router.get('/me', async (req, res) => {
   // requireFounder already ran — if we got here, they're admin
-  res.json({ success: true, is_founder: true, email: req.founderEmail });
+  try {
+    // First try propops_operators (new table) for role + intake_email
+    const opsResult = await getPool().query(
+      `SELECT po.name, po.email, po.phone, po.role, po.intake_email, u.mobile_number
+       FROM propops_operators po
+       JOIN users u ON u.id = po.user_id
+       WHERE po.role = 'founder'
+       LIMIT 1`
+    );
+    if (opsResult.rows[0]) {
+      const row = opsResult.rows[0];
+      return res.json({
+        success: true,
+        is_founder: true,
+        name: row.name,
+        email: row.email || req.founderEmail,
+        phone: row.phone || row.mobile_number || '',
+        role: row.role,
+        intake_email: 'propopspro@polsia.app', // Platform constant — overrides stale DB value
+      });
+    }
+  } catch (err) {
+    // propops_operators may not exist yet — fall through
+    console.warn('[founder] /me propops_operators lookup failed:', err.message);
+  }
+  // Fallback: just return from users table
+  res.json({ success: true, is_founder: true, email: req.founderEmail, name: 'Founder', role: 'founder', phone: '', intake_email: 'propopspro@polsia.app' });
+});
+
+// ─── Update founder profile ───────────────────────────────────────────────────
+router.put('/me', async (req, res) => {
+  try {
+    const { name, email, phone } = req.body || {};
+    const userId = req.userId || (await getPool().query('SELECT id FROM users WHERE is_admin = true LIMIT 1')).rows[0]?.id;
+
+    if (!userId) return res.status(400).json({ success: false, message: 'Cannot identify founder user' });
+
+    // Update users table
+    await getPool().query(
+      `UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email), mobile_number = COALESCE($3, mobile_number), updated_at = NOW() WHERE id = $4`,
+      [name || null, email || null, phone || null, userId]
+    );
+
+    // Update propops_operators table if it exists
+    await getPool().query(
+      `UPDATE propops_operators SET name = COALESCE($1, name), email = COALESCE($2, email), phone = COALESCE($3, phone), updated_at = NOW() WHERE role = 'founder'`,
+      [name || null, email || null, phone || null]
+    );
+
+    res.json({ success: true, message: 'Profile updated' });
+  } catch (err) {
+    console.error('[founder] /me PUT error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // ─── Section 2: Landing Page Analytics ────────────────────────────────────────
@@ -841,7 +948,7 @@ router.get('/training-data', async (req, res) => {
       pool.query(`
         SELECT
           id, knowledge_text AS question, '' AS answer, trade_slug AS trade,
-          source_type AS source, confidence, confidence AS confidence_level,
+          source, confidence, confidence AS confidence_level,
           validated, created_at
         FROM hugo_knowledge_entries
         ${where}
@@ -1079,7 +1186,7 @@ router.get('/brain-export', async (req, res) => {
 
       // Sample recent knowledge entries (max 50)
       pool.query(`
-        SELECT id, knowledge_text, trade_slug, source_type, confidence,
+        SELECT id, knowledge_text, trade_slug, source, confidence,
                validated, created_at
         FROM hugo_knowledge_entries
         ORDER BY
@@ -1333,10 +1440,10 @@ router.get('/brain-export', async (req, res) => {
             },
             {
               id: 6,
-              severity: 'MEDIUM',
-              title: 'hugo-brain.js defaults to decommissioned Groq model if env var not set',
-              detail: "HUGO_GROQ_MODEL env var in hugo-brain.js defaults to 'llama3-8b-8192' (decommissioned). If env var is not set, brain endpoint hits a dead model.",
-              file: 'routes/hugo-brain.js ~line 73',
+              severity: 'LOW',
+              title: 'RESOLVED: hugo-brain.js Groq model — now llama-3.3-70b-versatile',
+              detail: "HUGO_GROQ_MODEL env var defaults to 'llama-3.3-70b-versatile' (Groq free tier). No action required.",
+              file: 'routes/hugo-brain.js',
             },
             {
               id: 7,
@@ -1696,8 +1803,15 @@ async function getStripeStats() {
 // Fetch Groq usage (estimate from hugo_widget_sessions + hugo_chat_messages counts)
 // Groq does not expose a public usage API — we estimate from our own DB
 async function getGroqStats(pool) {
-  const today = new Date().toISOString().slice(0, 10);
-  const key = process.env.GROQ_API_KEY;
+  // Check DB credential first, fall back to env var
+  let key = null;
+  try {
+    const credRow = await pool.query(
+      `SELECT api_key FROM credentials WHERE service_name = 'groq' LIMIT 1`
+    );
+    if (credRow.rows[0]?.api_key) key = credRow.rows[0].api_key;
+  } catch (_) {}
+  if (!key) key = process.env.GROQ_API_KEY;
   if (!key || key.length < 20) return null;
 
   const [widgetRes, dashRes, simRes] = await Promise.all([
@@ -1711,9 +1825,9 @@ async function getGroqStats(pool) {
 
   // Estimate tokens: ~200 avg tokens per call (8b model)
   const tokensEst = apiCallsToday * 200;
-  // Cost: llama-3.1-8b-instant ~$0.05/1M tokens (Groq pricing)
+  // Cost: llama-3.3-70b-versatile ~$0.05/1M tokens (Groq pricing)
   const costEst = (tokensEst * 0.00000005).toFixed(4);
-  return { apiCallsToday, tokensEst, costEstUSD: costEst, model: process.env.HUGO_GROQ_MODEL || 'llama-3.1-8b-instant' };
+  return { apiCallsToday, tokensEst, costEstUSD: costEst, model: process.env.HUGO_GROQ_MODEL || 'llama-3.3-70b-versatile' };
 }
 
 // Fetch analytics stats from DB
@@ -1808,7 +1922,7 @@ router.get('/integrations-status', async (req, res) => {
       name: 'Groq',
       description: "Hugo's AI brain (Llama 3.1 8B)",
       category: 'AI',
-      status: gr ? 'connected' : (hasKey('GROQ_API_KEY') ? 'connected' : 'not_connected'),
+      status: gr ? 'connected' : (gr !== null || hasKey('GROQ_API_KEY') ? 'connected' : 'not_connected'),
       stats: gr ? [
         { label: 'API calls today', value: gr.apiCallsToday },
         { label: 'Tokens est.', value: gr.tokensEst.toLocaleString() },
@@ -2149,6 +2263,167 @@ router.get('/payroll-summary/operator/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('[Founder] Operator payroll detail error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─── Cancel operator subscription ────────────────────────────────────────────
+// POST /api/founder/operators/:id/cancel
+// Cancels the Stripe subscription immediately (if one exists) and marks the
+// operator as cancelled in the local DB. Founder-only. Irreversible via this
+// endpoint — Stripe can create a new subscription if needed.
+router.post('/operators/:id/cancel', async (req, res) => {
+  const pool = getPool();
+  const userId = parseInt(req.params.id, 10);
+  if (!userId) return res.status(400).json({ success: false, message: 'Invalid operator id' });
+
+  try {
+    // Fetch user — need stripe_customer_id and current status
+    const r = await pool.query(
+      'SELECT id, email, subscription_status, stripe_customer_id FROM users WHERE id = $1',
+      [userId]
+    );
+    const user = r.rows[0];
+    if (!user) return res.status(404).json({ success: false, message: 'Operator not found' });
+
+    // Only cancel TRIAL or ACTIVE — guard against double-cancel
+    const cancellable = ['trial', 'active', 'paid', 'past_due'];
+    if (!cancellable.includes(user.subscription_status)) {
+      return res.json({ success: true, message: 'Already cancelled', already_done: true });
+    }
+
+    // Cancel Stripe subscription if we have a customer ID
+    let stripeNote = 'no_stripe_customer';
+    if (user.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
+      try {
+        const Stripe = require('stripe');
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+        // List active subscriptions for this customer
+        const subs = await stripe.subscriptions.list({
+          customer: user.stripe_customer_id,
+          status: 'all',
+          limit: 5,
+        });
+
+        const activeSubs = subs.data.filter(s =>
+          ['active', 'trialing', 'past_due'].includes(s.status)
+        );
+
+        if (activeSubs.length > 0) {
+          // Cancel all active/trialing subscriptions immediately
+          for (const sub of activeSubs) {
+            await stripe.subscriptions.cancel(sub.id);
+            console.log(`[Founder] ✅ Stripe sub ${sub.id} cancelled for user ${userId} (${user.email})`);
+          }
+          stripeNote = `cancelled_${activeSubs.length}_subscription(s)`;
+        } else {
+          stripeNote = 'no_active_stripe_subscriptions';
+        }
+      } catch (stripeErr) {
+        // Log but don't fail — still mark DB cancelled
+        console.error(`[Founder] Stripe cancel error for user ${userId}:`, stripeErr.message);
+        stripeNote = `stripe_error: ${stripeErr.message}`;
+      }
+    }
+
+    // Always update local DB status to cancelled
+    await pool.query(
+      `UPDATE users SET subscription_status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      [userId]
+    );
+
+    console.log(`[Founder] ✅ Cancelled user ${userId} (${user.email}) — stripe: ${stripeNote}`);
+
+    return res.json({
+      success: true,
+      message: `Cancelled. Stripe: ${stripeNote}`,
+      operator_id: userId,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error('[Founder] Cancel error:', err.message);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─── Stripe Sync — pull real subscription data from Stripe into DB ───────────
+// POST /api/founder/stripe-sync
+// Queries Stripe API for all customers with active/trialing subscriptions,
+// then upserts users table to match. Fixes data drift from missed webhooks.
+router.post('/stripe-sync', async (req, res) => {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(500).json({ success: false, message: 'STRIPE_SECRET_KEY not configured' });
+  }
+
+  const pool = getPool();
+  const Stripe = require('stripe');
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  try {
+    // Fetch all subscriptions (active + trialing + past_due)
+    const results = { synced: [], created: [], errors: [] };
+    let hasMore = true;
+    let startingAfter = undefined;
+
+    while (hasMore) {
+      const params = { limit: 100, status: 'all', expand: ['data.customer'] };
+      if (startingAfter) params.starting_after = startingAfter;
+      const subs = await stripe.subscriptions.list(params);
+
+      for (const sub of subs.data) {
+        const customer = typeof sub.customer === 'string'
+          ? await stripe.customers.retrieve(sub.customer)
+          : sub.customer;
+
+        const email = customer.email;
+        if (!email) continue;
+
+        const stripeStatus = sub.status; // active, trialing, canceled, past_due, etc.
+        const dbStatus = stripeStatus === 'active' ? 'active'
+          : stripeStatus === 'trialing' ? 'trial'
+          : stripeStatus === 'canceled' ? 'cancelled'
+          : stripeStatus === 'past_due' ? 'past_due'
+          : stripeStatus;
+
+        // Skip fully canceled — don't overwrite local data
+        if (dbStatus === 'cancelled') continue;
+
+        try {
+          // Try update existing user
+          const existing = await pool.query(
+            `UPDATE users SET subscription_status = $1, stripe_customer_id = $2, updated_at = NOW()
+             WHERE LOWER(email) = $3
+             RETURNING id, email, subscription_status`,
+            [dbStatus, customer.id, email.toLowerCase()]
+          );
+
+          if (existing.rowCount > 0) {
+            results.synced.push({ email, status: dbStatus, action: 'updated' });
+          } else {
+            // Create new user from Stripe data
+            const name = customer.name || null;
+            await pool.query(
+              `INSERT INTO users (email, name, stripe_customer_id, subscription_status, business_type, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, 'real_estate', NOW(), NOW())
+               ON CONFLICT DO NOTHING`,
+              [email.toLowerCase(), name, customer.id, dbStatus]
+            );
+            results.created.push({ email, name, status: dbStatus });
+          }
+        } catch (err) {
+          results.errors.push({ email, error: err.message });
+        }
+      }
+
+      hasMore = subs.has_more;
+      if (subs.data.length > 0) startingAfter = subs.data[subs.data.length - 1].id;
+    }
+
+    console.log(`[Founder] ✅ Stripe sync: ${results.synced.length} updated, ${results.created.length} created, ${results.errors.length} errors`);
+    res.json({ success: true, ...results });
+  } catch (err) {
+    console.error('[Founder] Stripe sync error:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });

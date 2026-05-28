@@ -89,6 +89,21 @@
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }
+    .founder-identity-banner {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: var(--amber-glow);
+      border: 1px solid rgba(240,165,0,0.4);
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--amber);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.4;
+    }
+    .founder-identity-banner strong { font-size: 0.72rem; }
     .sidebar-nav { padding: 0.75rem 0; flex: 1; }
     .nav-label {
       padding: 0.5rem 1.25rem 0.25rem;
@@ -127,6 +142,26 @@
       color: var(--text-dim);
     }
     .founder-tag strong { color: var(--text); }
+    .founder-login-display { }
+    .founder-login-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 2px;
+    }
+    .founder-login-role {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--amber);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .founder-login-email {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      word-break: break-all;
+    }
     .logout-btn {
       margin-top: 0.5rem;
       display: block;
@@ -299,6 +334,21 @@
     .data-table tr:last-child td { border-bottom: none; }
     .data-table tr:hover td { background: rgba(255,255,255,0.02); }
     .data-table tr.clickable { cursor: pointer; }
+    .cancel-sub-btn {
+      padding: 3px 10px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 6px;
+      color: var(--red);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .cancel-sub-btn:hover { background: rgba(239,68,68,0.2); border-color: var(--red); }
+    .cancel-sub-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Badges ── */
     .badge {
@@ -616,6 +666,7 @@
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="wordmark">Prop<span>Ops</span></div>
+    <div class="founder-identity-banner">PROPOPS FOUNDER<br><strong>OBEID ALAMEDDINE</strong></div>
     <div class="badge">⚡ Founder Mode</div>
   </div>
   <nav class="sidebar-nav">
@@ -664,11 +715,17 @@
       <span class="icon">🦅</span> Eagle's Eye
     </div>
     <div class="nav-label" style="margin-top:1rem">System</div>
+    <div class="nav-item" data-section="settings">
+      <span class="icon">⚙️</span> Settings
+    </div>
     <div class="nav-item" data-section="integrations">
       <span class="icon">🔌</span> Integrations
     </div>
     <div class="nav-item" data-section="health">
       <span class="icon">🔧</span> Health
+    </div>
+    <div class="nav-item" data-section="website-links">
+      <span class="icon">🔗</span> Website Links
     </div>
     <div class="nav-label" style="margin-top:1rem">Operator</div>
     <div class="nav-item" id="goOperatorDash" onclick="window.location='/dashboard'" style="cursor:pointer">
@@ -676,7 +733,11 @@
     </div>
   </nav>
   <div class="sidebar-footer">
-    <div class="founder-tag">Logged in as<br><strong id="founderEmail">—</strong></div>
+    <div class="founder-login-display" id="founderLoginDisplay">
+      <div class="founder-login-name" id="founderName">—</div>
+      <div class="founder-login-role" id="founderRole">Founder</div>
+      <div class="founder-login-email" id="founderEmail">—</div>
+    </div>
     <button class="logout-btn" onclick="doLogout()">Sign Out</button>
   </div>
 </aside>
@@ -825,6 +886,58 @@
           <div id="payrollDrillBody" style="padding:1.5rem">
             <div class="loading"><div class="spinner"></div><br>Loading…</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Settings ─── -->
+    <div class="section" id="section-settings">
+      <div class="section-title">⚙️ Settings</div>
+      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.5rem;max-width:720px">Manage your founder profile and view your Hugo intake email address.</p>
+
+      <!-- Hugo Intake Email -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">📧 Hugo Intake Email</div>
+        </div>
+        <div class="card-body" style="padding:1.25rem">
+          <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.75rem">Forward emails to this address and Hugo will process them automatically.</p>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem">
+            <code id="settingsIntakeEmail" style="flex:1;background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;font-size:0.9rem;color:var(--amber);font-family:monospace;word-break:break-all;">Loading…</code>
+            <button onclick="copyIntakeEmail()" id="copyIntakeBtn" style="background:var(--amber);color:#000;border:none;border-radius:8px;padding:0.5rem 1rem;font-size:0.8rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">📋 Copy</button>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-dim);padding:0.5rem;background:rgba(255,255,255,0.02);border-radius:6px;border:1px solid var(--border)">
+            <strong style="color:var(--text)">✅ Auto-configured:</strong> Email forwarding is already set up via your domain registrar (Porkbun). All emails to your domains (propops.pro, propops.trade, hugopays.pro) automatically forward to your intake email. Hugo reads your inbox every 5 minutes. No manual Gmail filter setup required.
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Form -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <div class="card-title">👤 Profile Information</div>
+        </div>
+        <div class="card-body" style="padding:1.25rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+            <div>
+              <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">Full Name</label>
+              <input type="text" id="settingsName" style="width:100%;background:var(--midnight);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.9rem;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box" placeholder="Obeid Alameddine">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">Email</label>
+              <input type="email" id="settingsEmail" style="width:100%;background:var(--midnight);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.9rem;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box" placeholder="your@email.com">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">Phone</label>
+              <input type="tel" id="settingsPhone" style="width:100%;background:var(--midnight);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.9rem;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box" placeholder="0412345678">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">Role</label>
+              <input type="text" id="settingsRole" style="width:100%;background:var(--midnight);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);padding:0.6rem 0.9rem;font-size:0.9rem;font-family:inherit;outline:none;box-sizing:border-box" value="Founder" readonly>
+            </div>
+          </div>
+          <button onclick="saveSettings()" id="settingsSaveBtn" style="background:var(--amber);color:#000;border:none;border-radius:8px;padding:0.65rem 1.5rem;font-size:0.875rem;font-weight:700;cursor:pointer;font-family:inherit;">Save Changes</button>
+          <span id="settingsSaveStatus" style="margin-left:1rem;font-size:0.8rem;color:var(--text-dim)"></span>
         </div>
       </div>
     </div>
@@ -980,6 +1093,131 @@
     <div class="section" id="section-integrations">
       <div id="integrationsBody">
         <div class="loading"><div class="spinner"></div><br>Loading integrations…</div>
+      </div>
+    </div>
+
+    <!-- ─── Section: Website Links ─── -->
+    <div class="section" id="section-website-links">
+      <div class="section-title">🔗 Website Links</div>
+      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.5rem;max-width:720px">All PropOps web properties in one place. Click any link to open in a new tab.</p>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">All Properties</div>
+          <div style="font-size:0.78rem;color:var(--text-dim)">17 links</div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <!-- Group: Web Properties -->
+          <div style="padding:0.6rem 1.25rem 0.35rem;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border)">🌐 Web Properties</div>
+          <table class="integ-table">
+            <thead>
+              <tr>
+                <th style="width:40%">Label</th>
+                <th>URL</th>
+                <th style="width:120px">Open</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="integ-name">propops.pro (RE Agents)</div><div class="integ-desc">Real estate agents landing page</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propops.pro</code></td>
+                <td><a href="https://propops.pro" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">propops.pro Pricing</div><div class="integ-desc">RE agents pricing section</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propops.pro/#pricing</code></td>
+                <td><a href="https://propops.pro/#pricing" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">propops.trade (Tradies)</div><div class="integ-desc">Australian tradies landing page</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propops.trade</code></td>
+                <td><a href="https://propops.trade" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">propops.trade Multilingual</div><div class="integ-desc">Multilingual section for tradies</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propops.trade/#multilingual</code></td>
+                <td><a href="https://propops.trade/#multilingual" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">hugopays.pro Landing</div><div class="integ-desc">Hugo.pays main landing page</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://hugopays.pro</code></td>
+                <td><a href="https://hugopays.pro" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">hugopays.pro Pricing</div><div class="integ-desc">Hugo.pays pricing section</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://hugopays.pro/#pricing</code></td>
+                <td><a href="https://hugopays.pro/#pricing" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">Operator Dashboard</div><div class="integ-desc">Hugo.RE operator control panel</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propopspro.polsia.app/dashboard</code></td>
+                <td><a href="https://propopspro.polsia.app/dashboard" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">Hugo.Pays Portal</div><div class="integ-desc">PAYDECK staff &amp; invoicing portal</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propopspro.polsia.app/pays</code></td>
+                <td><a href="https://propopspro.polsia.app/pays" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">Trades Landing (Polsia)</div><div class="integ-desc">Hugo.trades via app subdomain</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propopspro.polsia.app/trades</code></td>
+                <td><a href="https://propopspro.polsia.app/trades" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- Group: Tools & Accounts -->
+          <div style="padding:0.6rem 1.25rem 0.35rem;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-top:0.25rem">🛠️ Tools &amp; Accounts</div>
+          <table class="integ-table">
+            <thead>
+              <tr>
+                <th style="width:40%">Label</th>
+                <th>URL</th>
+                <th style="width:120px">Open</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="integ-name">Founder Dashboard</div><div class="integ-desc">PropOps founder control panel</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://propopspro.polsia.app</code></td>
+                <td><a href="https://propopspro.polsia.app" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">@PropOpsPro (Twitter)</div><div class="integ-desc">PropOps Twitter / X account</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://x.com/PropOpsPro</code></td>
+                <td><a href="https://x.com/PropOpsPro" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">PROPOPS.PRO Repository</div><div class="integ-desc">Main Polsia-hosted GitHub repo</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://github.com/Polsia-Inc/relio-2</code></td>
+                <td><a href="https://github.com/Polsia-Inc/relio-2" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">GitHub PROPOPS-pixel</div><div class="integ-desc">PROPOPS-pixel GitHub organisation</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://github.com/PROPOPS-pixel</code></td>
+                <td><a href="https://github.com/PROPOPS-pixel" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">PROPOPS-pixel Repository</div><div class="integ-desc">PROPOPS-pixel/propops GitHub repo</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://github.com/PROPOPS-pixel/propops</code></td>
+                <td><a href="https://github.com/PROPOPS-pixel/propops" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">Stripe Payment Link</div><div class="integ-desc">PropOps Stripe checkout link</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://buy.stripe.com/7sY4gzeCI75rb7H1tOdby0b</code></td>
+                <td><a href="https://buy.stripe.com/7sY4gzeCI75rb7H1tOdby0b" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">Subscription Management</div><div class="integ-desc">Polsia subscription dashboard</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://polsia.com/dashboard?open=subscription</code></td>
+                <td><a href="https://polsia.com/dashboard?open=subscription" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+              <tr>
+                <td><div class="integ-name">Referral Link</div><div class="integ-desc">Share to earn referral rewards</div></td>
+                <td><code style="font-size:0.8rem;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">https://polsia.com/?ref=MYSN9UQJ</code></td>
+                <td><a href="https://polsia.com/?ref=MYSN9UQJ" target="_blank" rel="noopener" class="integ-open-btn">Open →</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1336,9 +1574,10 @@
           <div class="card-body" style="padding:1.25rem">
             <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1rem">Select which Hugo persona you want to test. The widget below will respond as that persona. Your conversations here are tagged as <code style="background:var(--surface);padding:1px 5px;border-radius:3px;font-size:0.8rem">founder_test</code> and won't pollute operator analytics.</p>
             <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
-              <button id="hugoTestPersonaRE" onclick="setFounderTestPersona('real_estate')" style="padding:8px 20px;background:var(--amber);border:none;border-radius:8px;color:var(--midnight);font-weight:700;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🏘️ RE Agent (propops.pro)</button>
-              <button id="hugoTestPersonaTrade" onclick="setFounderTestPersona('trade')" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-weight:600;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🔧 Tradie (propops.trade)</button>
-              <span id="hugoTestPersonaLabel" style="font-size:0.82rem;color:var(--text-dim);margin-left:0.25rem">Active: <strong style="color:var(--amber)">RE Agent</strong></span>
+              <button id="hugoTestPersonaFounder" onclick="setFounderTestPersona('founder')" style="padding:8px 20px;background:var(--amber);border:none;border-radius:8px;color:var(--midnight);font-weight:700;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🤖 Hugo-Founder</button>
+              <button id="hugoTestPersonaRE" onclick="setFounderTestPersona('real_estate')" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-weight:600;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🏘️ RE Agent</button>
+              <button id="hugoTestPersonaTrade" onclick="setFounderTestPersona('trade')" style="padding:8px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-weight:600;font-size:0.9rem;cursor:pointer;transition:opacity 0.15s">🔧 Tradie</button>
+              <span id="hugoTestPersonaLabel" style="font-size:0.82rem;color:var(--text-dim);margin-left:0.25rem">Active: <strong style="color:var(--amber)">Hugo-Founder</strong></span>
             </div>
           </div>
         </div>
@@ -1414,6 +1653,24 @@
   </div>
 </div>
 
+<!-- ── Cancel Subscription Confirmation Modal ── -->
+<div class="modal-overlay" id="cancelSubModal" style="display:none;z-index:1100" onclick="if(event.target===this)closeCancelModal()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header" style="border-bottom:1px solid var(--red);background:rgba(239,68,68,0.06)">
+      <div class="modal-title" style="color:var(--red)">⚠ Cancel Subscription</div>
+      <button class="modal-close" onclick="closeCancelModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:1.5rem">
+      <p style="margin-bottom:1rem;line-height:1.6">Cancel subscription for<br><strong id="cancelModalEmail" style="color:var(--text-bright)">—</strong>?</p>
+      <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1.5rem">This will cancel immediately in Stripe and mark the account as <strong>CANCELLED</strong>.</p>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+        <button onclick="closeCancelModal()" style="padding:0.5rem 1.25rem;background:var(--surface-hover);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.85rem;cursor:pointer;font-family:inherit">Never mind</button>
+        <button id="cancelSubConfirmBtn" onclick="executeCancelSub()" style="padding:0.5rem 1.25rem;background:var(--red);border:none;border-radius:8px;color:#fff;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit">Cancel subscription</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Operator Detail Modal ── -->
 <div class="modal-overlay" id="operatorModal">
   <div class="modal">
@@ -1450,8 +1707,17 @@
     apiFetch('/api/founder/me')
       .then(function(d) {
         if (!d.is_founder) { window.location = '/dashboard'; return; }
-        var el = document.getElementById('founderEmail');
-        if (el) el.textContent = d.email || 'Founder';
+        var nameEl = document.getElementById('founderName');
+        if (nameEl) nameEl.textContent = d.name || 'Founder';
+        var roleEl = document.getElementById('founderRole');
+        if (roleEl) roleEl.textContent = d.role ? d.role.charAt(0).toUpperCase() + d.role.slice(1) : 'Founder';
+        var emailEl = document.getElementById('founderEmail');
+        if (emailEl) emailEl.textContent = d.email || '';
+        // Also populate Settings page if it gets loaded
+        var intakeEl = document.getElementById('settingsIntakeEmail');
+        if (intakeEl) intakeEl.textContent = d.intake_email || 'propopspro@polsia.app';
+        var hintEl = document.getElementById('settingsIntakeEmailHint');
+        if (hintEl) hintEl.textContent = d.intake_email || 'propopspro@polsia.app';
         // Load initial section
         loadSection('overview');
         // Load alert banner
@@ -1480,7 +1746,7 @@
     var sec = document.getElementById('section-' + name);
     if (sec) sec.classList.add('active');
     // Update topbar
-    var titles = { overview: 'Overview', operators: 'Operators', leads: 'All Leads', revenue: 'Revenue', payroll: 'Payroll & Invoicing', health: 'System Health', analytics: 'Landing Page Analytics', 'hugo-performance': 'Hugo Performance', 'api-costs': 'API Costs', 'training-data': 'Training Data', 'hugo-training-feed': 'Hugo Training Feed', 'self-learning-log': 'Self-Learning Log', 'god-layer': '🔒 God-Layer Controls', 'hugo-test': 'Test Hugo Live', integrations: '🔌 Integrations Status', 'network-map': "🦅 Eagle's Eye — Live Map" };
+    var titles = { overview: 'Overview', operators: 'Operators', leads: 'All Leads', revenue: 'Revenue', payroll: 'Payroll & Invoicing', health: 'System Health', analytics: 'Landing Page Analytics', 'hugo-performance': 'Hugo Performance', 'api-costs': 'API Costs', 'training-data': 'Training Data', 'hugo-training-feed': 'Hugo Training Feed', 'self-learning-log': 'Self-Learning Log', 'god-layer': '🔒 God-Layer Controls', 'hugo-test': 'Test Hugo Live', settings: '⚙️ Settings', integrations: '🔌 Integrations Status', 'network-map': "🦅 Eagle's Eye — Live Map", 'website-links': '🔗 Website Links' };
     var titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = titles[name] || name;
     // Load if not cached
@@ -1501,6 +1767,7 @@
     else if (name === 'training-data') loadTrainingData();
     else if (name === 'hugo-training-feed') loadHugoTrainingFeed();
     else if (name === 'self-learning-log') loadSelfLearningLog();
+    else if (name === 'settings') loadSettings();
     else if (name === 'god-layer') loadGodLayerConfig();
     else if (name === 'hugo-test') initHugoTestSection();
     else if (name === 'integrations') loadIntegrations();
@@ -1557,8 +1824,25 @@
             });
             statsHtml += '</div>';
 
-            // Links
+            // Links — with Groq key management button
             var linksHtml = '<div class="integ-links">';
+
+            // Groq: Add Key / Update Key button
+            if (s.id === 'groq') {
+              var groqBtn = s.status === 'connected'
+                ? '<button class="groq-key-btn" onclick="showGroqKeyInput(this, true)" style="background:#1a2a3a;color:#4af;border:1px solid #2a4a6a;padding:4px 10px;border-radius:6px;font-size:0.72rem;cursor:pointer;margin-bottom:4px">Update Key</button>'
+                : '<button class="groq-key-btn" onclick="showGroqKeyInput(this, false)" style="background:#2563eb;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:0.72rem;cursor:pointer;margin-bottom:4px">Add Key</button>';
+              linksHtml += groqBtn;
+              // Inline key input (hidden by default, toggled by button)
+              linksHtml += '<div class="groq-key-form" style="display:none;margin-top:6px">';
+              linksHtml += '<input type="password" class="groq-key-input" placeholder="gsk_..." style="width:100%;padding:4px 8px;border-radius:6px;border:1px solid #2a4a6a;background:#0f1a26;color:#e0e0e0;font-size:0.72rem;box-sizing:border-box;outline:none" />';
+              linksHtml += '<div class="groq-key-error" style="color:#ff6b6b;font-size:0.68rem;margin-top:4px;display:none"></div>';
+              linksHtml += '<div style="margin-top:6px">';
+              linksHtml += '<button class="groq-key-save" onclick="submitGroqKey(this)" style="background:#2563eb;color:#fff;border:none;padding:3px 10px;border-radius:5px;font-size:0.68rem;cursor:pointer">Save</button>';
+              linksHtml += '<button onclick="hideGroqKeyInput(this)" style="background:transparent;color:#888;border:1px solid #333;padding:3px 8px;border-radius:5px;font-size:0.68rem;cursor:pointer;margin-left:5px">Cancel</button>';
+              linksHtml += '</div></div>';
+            }
+
             if (s.link) {
               linksHtml += '<a href="' + esc(s.link) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(s.link_label || 'Open →') + '</a>';
             }
@@ -1580,11 +1864,139 @@
           html += '</tbody></table></div></div>';
         });
 
+        // ── Email Forwarding Section (read-only) ─────────────────────────────────
+        html += '<div class="card" style="margin-top:1.5rem">';
+        html += '<div class="card-header">';
+        html += '<div class="card-title">📧 Email Forwarding (Read-Only)</div>';
+        html += '<div style="font-size:0.75rem;color:var(--text-dim)">To edit, manage forwards in Porkbun → Email → Routing</div>';
+        html += '</div>';
+        html += '<div class="card-body" style="padding:1rem">';
+
+        // propops.pro
+        html += '<div style="margin-bottom:1.5rem">';
+        html += '<div style="font-size:0.78rem;font-weight:700;color:var(--text-bright);margin-bottom:0.6rem;letter-spacing:0.05em;text-transform:uppercase;font-family:\u0027Outfit\u0027,sans-serif">🔵 propops.pro — Real Estate Agents</div>';
+        html += '<table class="data-table" style="font-size:0.8rem"><thead><tr><th>Forward</th><th>To</th><th>Purpose</th></tr></thead><tbody>';
+        html += '<tr><td><code style="color:var(--amber)">jason@propops.pro</code></td><td>propopsp@gmail.com</td><td>Agent alias (RE outreach)</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">propops@propops.pro</code></td><td>propopsp@gmail.com</td><td>General inbox</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">support@propops.pro</code></td><td>propopsp@gmail.com</td><td>Customer support</td></tr>';
+        html += '</tbody></table></div>';
+
+        // propops.trade
+        html += '<div style="margin-bottom:1.5rem">';
+        html += '<div style="font-size:0.78rem;font-weight:700;color:var(--text-bright);margin-bottom:0.6rem;letter-spacing:0.05em;text-transform:uppercase;font-family:\u0027Outfit\u0027,sans-serif">🟢 propops.trade — Australian Tradies</div>';
+        html += '<table class="data-table" style="font-size:0.8rem"><thead><tr><th>Forward</th><th>To</th><th>Purpose</th></tr></thead><tbody>';
+        html += '<tr><td><code style="color:var(--amber)">jason@propops.trade</code></td><td>propopsp@gmail.com</td><td>Agent alias (Trades outreach)</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">propops@propops.trade</code></td><td>propopsp@gmail.com</td><td>General inbox</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">support@propops.trade</code></td><td>propopsp@gmail.com</td><td>Customer support</td></tr>';
+        html += '</tbody></table></div>';
+
+        // hugopays.pro
+        html += '<div style="margin-bottom:1.5rem">';
+        html += '<div style="font-size:0.78rem;font-weight:700;color:var(--text-bright);margin-bottom:0.6rem;letter-spacing:0.05em;text-transform:uppercase;font-family:\u0027Outfit\u0027,sans-serif">🟠 hugopays.pro — Hugo.pays</div>';
+        html += '<table class="data-table" style="font-size:0.8rem"><thead><tr><th>Forward</th><th>To</th><th>Purpose</th></tr></thead><tbody>';
+        html += '<tr><td><code style="color:var(--amber)">hugo@hugopays.pro</code></td><td>propopsp@gmail.com</td><td>Hugo.pays inbox</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">support@hugopays.pro</code></td><td>propopsp@gmail.com</td><td>Hugo.pays support</td></tr>';
+        html += '</tbody></table></div>';
+
+        // Master summary card
+        html += '<div style="background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:10px;padding:1rem 1.25rem;margin-top:0.5rem">';
+        html += '<div style="font-size:0.78rem;font-weight:700;color:var(--amber);margin-bottom:0.75rem;letter-spacing:0.05em;text-transform:uppercase;font-family:\u0027Outfit\u0027,sans-serif">🏛️ Master Email Architecture</div>';
+        html += '<table class="data-table" style="font-size:0.8rem"><thead><tr><th>Gmail Inbox</th><th>Role</th><th>Domains</th></tr></thead><tbody>';
+        html += '<tr><td><code style="color:var(--amber)">propopsp@gmail.com</code></td><td>Catches everything</td><td style="color:var(--text-dim)">9 forwards across 3 domains</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">obeidalameddine@gmail.com</code></td><td>Founder Stripe payments</td><td style="color:var(--text-dim)">—</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">gassin123@gmail.com</code></td><td>Founder master control</td><td style="color:var(--text-dim)">—</td></tr>';
+        html += '<tr><td><code style="color:var(--amber)">gassin123@hotmail.com</code></td><td>Backup auth</td><td style="color:var(--text-dim)">—</td></tr>';
+        html += '</tbody></table></div>';
+
+        html += '</div></div>'; // close card-body and card
+
         body.innerHTML = html || '<div class="empty">No integrations data</div>';
       })
       .catch(function(err) {
         body.innerHTML = '<div class="empty">Failed to load integrations: ' + esc(err.message || String(err)) + '</div>';
       });
+  }
+
+  // ── Groq Key Management ─────────────────────────────────────────────────────
+  function showGroqKeyInput(btn, isConnected) {
+    var form = btn.parentElement.querySelector('.groq-key-form');
+    var input = form.querySelector('.groq-key-input');
+    var errorDiv = form.querySelector('.groq-key-error');
+    var saveBtn = form.querySelector('.groq-key-save');
+    form.style.display = 'block';
+    input.value = '';
+    errorDiv.style.display = 'none';
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+    saveBtn.style.opacity = '1';
+    input.focus();
+  }
+
+  function hideGroqKeyInput(btn) {
+    var form = btn.closest('.groq-key-form');
+    if (form) form.style.display = 'none';
+  }
+
+  async function submitGroqKey(btn) {
+    var form = btn.closest('.groq-key-form');
+    var input = form.querySelector('.groq-key-input');
+    var errorDiv = form.querySelector('.groq-key-error');
+    var raw = input.value.trim();
+
+    // Safety validation
+    if (!raw) {
+      errorDiv.textContent = 'API key cannot be blank.';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    if (!/^gsk_/.test(raw)) {
+      errorDiv.textContent = 'Groq keys start with gsk_. Check your key and try again.';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    if (/^\/|\/$/.test(raw)) {
+      errorDiv.textContent = 'Invalid characters detected. Paste the raw key.';
+      errorDiv.style.display = 'block';
+      return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    btn.textContent = 'Verifying…';
+    btn.style.opacity = '0.6';
+
+    try {
+      var res = await fetch('/api/integrations/groq/key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: raw }),
+      });
+      var data = await res.json();
+
+      if (res.ok && data.success) {
+        // Success — reload the integrations section
+        form.style.display = 'none';
+        var btnEl = form.parentElement.querySelector('.groq-key-btn');
+        btnEl.textContent = 'Update Key';
+        btnEl.style.background = '#1a2a3a';
+        btnEl.style.color = '#4af';
+        btnEl.style.border = '1px solid #2a4a6a';
+        // Refresh current section to show ✅
+        refreshCurrent();
+      } else {
+        errorDiv.textContent = data.error || 'Groq rejected this key.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Save';
+        btn.style.opacity = '1';
+      }
+    } catch (err) {
+      errorDiv.textContent = 'Network error — please try again.';
+      errorDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Save';
+      btn.style.opacity = '1';
+    }
   }
 
   // reloadIntegrations — kept for backwards compat; delegates to the global refresh
@@ -1596,6 +2008,92 @@
       loadIntegrations();
       loadedSections['integrations'] = true;
     }
+  };
+
+  // ── Section 15: Settings ────────────────────────────────────────────────────
+  function loadSettings() {
+    apiFetch('/api/founder/me')
+      .then(function(d) {
+        if (!d.is_founder) { window.location = '/dashboard'; return; }
+        var nameEl = document.getElementById('settingsName');
+        if (nameEl) nameEl.value = d.name || '';
+        var emailEl = document.getElementById('settingsEmail');
+        if (emailEl) emailEl.value = d.email || '';
+        var phoneEl = document.getElementById('settingsPhone');
+        if (phoneEl) phoneEl.value = d.phone || '';
+        var roleEl = document.getElementById('settingsRole');
+        if (roleEl) roleEl.value = d.role ? d.role.charAt(0).toUpperCase() + d.role.slice(1) : 'Founder';
+        var intakeEl = document.getElementById('settingsIntakeEmail');
+        if (intakeEl) intakeEl.textContent = d.intake_email || 'propopspro@polsia.app';
+        var hintEl = document.getElementById('settingsIntakeEmailHint');
+        if (hintEl) hintEl.textContent = d.intake_email || 'propopspro@polsia.app';
+        setLastUpdated();
+      })
+      .catch(function(err) { showError('settingsForm', err); });
+  }
+
+  window.saveSettings = function() {
+    var btn = document.getElementById('settingsSaveBtn');
+    var statusEl = document.getElementById('settingsSaveStatus');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    statusEl.textContent = '';
+
+    var payload = {
+      name: document.getElementById('settingsName').value.trim(),
+      email: document.getElementById('settingsEmail').value.trim(),
+      phone: document.getElementById('settingsPhone').value.trim()
+    };
+
+    apiFetch('/api/founder/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(d) {
+        btn.textContent = 'Saved!';
+        btn.disabled = false;
+        statusEl.textContent = '';
+        // Update login display
+        var nameEl = document.getElementById('founderName');
+        if (nameEl) nameEl.textContent = payload.name || 'Founder';
+        // Reload to get fresh data
+        setTimeout(function() {
+          btn.textContent = 'Save Changes';
+          loadSettings();
+        }, 1500);
+      })
+      .catch(function(err) {
+        btn.textContent = 'Save Failed';
+        btn.disabled = false;
+        statusEl.textContent = err.message || 'Failed to save';
+        setTimeout(function() {
+          btn.textContent = 'Save Changes';
+          statusEl.textContent = '';
+        }, 3000);
+      });
+  };
+
+  window.copyIntakeEmail = function() {
+    var el = document.getElementById('settingsIntakeEmail');
+    var email = el ? el.textContent.trim() : '';
+    if (!email) return;
+    navigator.clipboard.writeText(email).then(function() {
+      var btn = document.getElementById('copyIntakeBtn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(function() { btn.textContent = '📋 Copy'; }, 2000);
+    }).catch(function() {
+      // Fallback for browsers without clipboard API
+      var textarea = document.createElement('textarea');
+      textarea.value = email;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      var btn = document.getElementById('copyIntakeBtn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(function() { btn.textContent = '📋 Copy'; }, 2000);
+    });
   };
 
   // ── Alert banner ───────────────────────────────────────────────────────────
@@ -1666,17 +2164,22 @@
         var container = document.getElementById('operatorsTable');
         if (!allOperators.length) { container.innerHTML = '<div class="empty">No operators yet</div>'; return; }
         container.innerHTML = '<table class="data-table"><thead><tr>' +
-          '<th>Name</th><th>Trade</th><th>Status</th><th>Leads</th><th>Chats</th><th>Last Login</th><th>Joined</th>' +
+          '<th>Name</th><th>Trade</th><th>Status</th><th>Leads</th><th>Chats</th><th>Last Login</th><th>Joined</th><th>Actions</th>' +
           '</tr></thead><tbody>' +
           allOperators.map(function(o) {
-            return '<tr class="clickable" onclick="openOperatorModal(' + o.id + ')">' +
+            var cancellable = ['trial', 'active', 'paid', 'past_due'].indexOf(o.subscription_status) !== -1;
+            var cancelBtn = cancellable
+              ? '<button class="cancel-sub-btn" data-id="' + o.id + '" data-email="' + esc(o.email) + '" onclick="event.stopPropagation();confirmCancelSub(this)" title="Cancel subscription">✕ Cancel</button>'
+              : '<span style="color:var(--text-dim);font-size:0.75rem">—</span>';
+            return '<tr class="clickable" id="op-row-' + o.id + '" onclick="openOperatorModal(' + o.id + ')">' +
               '<td><strong>' + esc(o.name || '—') + '</strong><br><span style="color:var(--text-dim);font-size:0.75rem">' + esc(o.email) + '</span></td>' +
               '<td>' + tradeBadge(o.trade || o.business_type) + '</td>' +
-              '<td>' + statusBadge(o.subscription_status) + '</td>' +
+              '<td id="op-status-' + o.id + '">' + statusBadge(o.subscription_status) + '</td>' +
               '<td>' + (o.lead_count || 0) + '</td>' +
               '<td>' + (o.chat_count || 0) + '</td>' +
               '<td>' + fmtDate(o.last_login) + '</td>' +
               '<td>' + fmtDate(o.created_at) + '</td>' +
+              '<td id="op-action-' + o.id + '" onclick="event.stopPropagation()">' + cancelBtn + '</td>' +
               '</tr>';
           }).join('') +
           '</tbody></table>';
@@ -1684,6 +2187,44 @@
       })
       .catch(function(err) { showError('operatorsTable', err); });
   }
+
+  // ── Cancel subscription flow ───────────────────────────────────────────────
+  var _cancelTargetId = null;
+
+  window.confirmCancelSub = function(btn) {
+    _cancelTargetId = btn.getAttribute('data-id');
+    var email = btn.getAttribute('data-email');
+    document.getElementById('cancelModalEmail').textContent = email;
+    document.getElementById('cancelSubModal').style.display = 'flex';
+  };
+
+  window.closeCancelModal = function() {
+    document.getElementById('cancelSubModal').style.display = 'none';
+    _cancelTargetId = null;
+  };
+
+  window.executeCancelSub = function() {
+    if (!_cancelTargetId) return;
+    var id = _cancelTargetId;
+    var btn = document.getElementById('cancelSubConfirmBtn');
+    btn.textContent = 'Cancelling…';
+    btn.disabled = true;
+
+    apiFetch('/api/founder/operators/' + id + '/cancel', { method: 'POST' })
+      .then(function(d) {
+        closeCancelModal();
+        // Update status badge inline — no page reload
+        var statusCell = document.getElementById('op-status-' + id);
+        if (statusCell) statusCell.innerHTML = statusBadge('cancelled');
+        // Replace cancel button with dash
+        var actionCell = document.getElementById('op-action-' + id);
+        if (actionCell) actionCell.innerHTML = '<span style="color:var(--text-dim);font-size:0.75rem">—</span>';
+      })
+      .catch(function(err) {
+        closeCancelModal();
+        alert('Cancel failed: ' + (err.message || 'Unknown error'));
+      });
+  };
 
   // ── Section 4: Leads ──────────────────────────────────────────────────────
   window.loadLeads = function() {
@@ -2575,6 +3116,15 @@
 
   // ── Hugo Training Feed ─────────────────────────────────────────────────────
   var _correctionSimId = null;
+  var _trainingFeedResponses = {}; // stash response text by sim id for correction modal
+
+  // Event delegation for Training Feed "Correct" buttons (avoids inline onclick escaping)
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-correct-id]');
+    if (!btn) return;
+    var simId = parseInt(btn.getAttribute('data-correct-id'), 10);
+    openCorrectionModal(simId, _trainingFeedResponses[simId] || '');
+  });
 
   window.loadHugoTrainingFeed = function() {
     var container = document.getElementById('trainingFeedItems');
@@ -2624,8 +3174,10 @@
             actions = '<div style="display:flex;gap:0.4rem;margin-top:0.5rem;">' +
               '<button onclick="feedAction(' + item.id + ',\'approve\')" style="padding:4px 10px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:5px;color:#10b981;font-size:0.78rem;cursor:pointer;">✅ Approve</button>' +
               '<button onclick="feedAction(' + item.id + ',\'reject\')" style="padding:4px 10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:5px;color:#ef4444;font-size:0.78rem;cursor:pointer;">❌ Reject</button>' +
-              '<button onclick="openCorrectionModal(' + item.id + ',' + JSON.stringify(esc(item.hugo_response_text || '')).replace(/"/g, '&quot;') + ')" style="padding:4px 10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:5px;color:#818cf8;font-size:0.78rem;cursor:pointer;">✏️ Correct</button>' +
+              '<button data-correct-id="' + item.id + '" style="padding:4px 10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:5px;color:#818cf8;font-size:0.78rem;cursor:pointer;">✏️ Correct</button>' +
               '</div>';
+            // Stash response text for correction modal (avoids inline onclick escaping issues)
+            _trainingFeedResponses[item.id] = item.hugo_response_text || '';
           }
 
           var founderNote = '';
@@ -2895,14 +3447,17 @@
       });
   }
 
+  var _pricingLockRules = []; // stash for click handler
+
   function renderPricingLocks(rows) {
     var grid = document.getElementById('pricingLocksGrid');
     if (!grid) return;
+    _pricingLockRules = rows;
     if (!rows.length) {
       grid.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;">No pricing locks found. The migration may need to run.</div>';
       return;
     }
-    grid.innerHTML = rows.map(function(r) {
+    grid.innerHTML = rows.map(function(r, idx) {
       var label = r.config_key.replace('pricing_lock.', '').replace(/\./g, ' › ');
       var isNumeric = !isNaN(parseFloat(r.config_value));
       var displayVal = isNumeric ? '$' + r.config_value + '/mo' : r.config_value;
@@ -2913,20 +3468,33 @@
         '</div>' +
         '<div style="font-family:\'Outfit\',sans-serif;font-size:1.8rem;font-weight:700;color:var(--text-bright);margin-bottom:0.4rem">' + esc(displayVal) + '</div>' +
         '<div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:0.75rem">' + esc(r.description || r.config_key) + '</div>' +
-        '<button onclick="editPricingLock(' + JSON.stringify(r.config_key) + ',' + JSON.stringify(r.config_value) + ')" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:0.75rem;padding:4px 12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor=\'var(--amber)\';this.style.color=\'var(--amber)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">✏️ Edit</button>' +
+        '<button data-pl-idx="' + idx + '" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:0.75rem;padding:4px 12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor=\'var(--amber)\';this.style.color=\'var(--amber)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">✏️ Edit</button>' +
         '</div>';
     }).join('');
   }
 
+  // Event delegation for pricing lock edit buttons
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-pl-idx]');
+    if (!btn) return;
+    var idx = parseInt(btn.getAttribute('data-pl-idx'), 10);
+    var r = _pricingLockRules[idx];
+    if (r) editPricingLock(r.config_key, r.config_value);
+  });
+
+  // Store rendered rules per container so event delegation can reference them by index
+  var _godLayerRules = {};
+
   function renderRuleList(rows, containerId, prefix) {
     var el = document.getElementById(containerId);
     if (!el) return;
+    _godLayerRules[containerId] = rows; // stash for click handler
     if (!rows.length) {
       el.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;padding:0.5rem 0">No ' + prefix.replace('_', ' ') + ' entries yet.</div>';
       return;
     }
     el.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.6rem">' +
-      rows.map(function(r) {
+      rows.map(function(r, idx) {
         var slug = r.config_key.replace(prefix + '.', '');
         var canDelete = !r.config_key.startsWith('pricing_lock.');
         return '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px">' +
@@ -2935,15 +3503,32 @@
           '<div style="font-size:0.8rem;color:var(--text-dim);word-break:break-word">' + esc(r.config_value) + '</div>' +
           (r.description ? '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;font-style:italic">' + esc(r.description) + '</div>' : '') +
           '</div>' +
-          '<div style="display:flex;gap:0.4rem;align-items:center;flex-shrink:0">' +
-          (r.is_locked ? '<span style="font-size:0.65rem;background:var(--amber-glow);color:var(--amber);padding:2px 6px;border-radius:4px;border:1px solid rgba(240,165,0,0.2)">🔒</span>' : '') +
-          '<button onclick="editGodLayerEntry(' + JSON.stringify(r.config_key) + ',' + JSON.stringify(r.config_value) + ',' + JSON.stringify(r.description||'') + ',' + (r.is_locked ? 'true' : 'false') + ')" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:0.72rem;padding:3px 9px;cursor:pointer">✏️</button>' +
-          (canDelete ? '<button onclick="deleteGodLayerEntry(' + JSON.stringify(r.config_key) + ')" style="background:transparent;border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;font-size:0.72rem;padding:3px 9px;cursor:pointer">🗑️</button>' : '') +
+          '<div style="display:flex;gap:0.4rem;align-items:center;flex-shrink:0;position:relative;z-index:10">' +
+          (r.is_locked ? '<span style="font-size:0.65rem;background:var(--amber-glow);color:var(--amber);padding:2px 6px;border-radius:4px;border:1px solid rgba(240,165,0,0.2);pointer-events:none;user-select:none">🔒</span>' : '') +
+          '<button data-gl-action="edit" data-gl-container="' + containerId + '" data-gl-idx="' + idx + '" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);font-size:0.72rem;padding:3px 9px;cursor:pointer">✏️</button>' +
+          (canDelete ? '<button data-gl-action="delete" data-gl-container="' + containerId + '" data-gl-idx="' + idx + '" style="background:transparent;border:1px solid rgba(239,68,68,0.25);border-radius:5px;color:#ef4444;font-size:0.72rem;padding:3px 9px;cursor:pointer">🗑️</button>' : '') +
           '</div>' +
           '</div>';
       }).join('') +
       '</div>';
   }
+
+  // Event delegation for God-Layer rule edit/delete buttons (avoids fragile inline onclick)
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-gl-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-gl-action');
+    var containerId = btn.getAttribute('data-gl-container');
+    var idx = parseInt(btn.getAttribute('data-gl-idx'), 10);
+    var rules = _godLayerRules[containerId];
+    if (!rules || !rules[idx]) return;
+    var r = rules[idx];
+    if (action === 'edit') {
+      editGodLayerEntry(r.config_key, r.config_value, r.description || '', !!r.is_locked);
+    } else if (action === 'delete') {
+      deleteGodLayerEntry(r.config_key);
+    }
+  });
 
   // Open pricing lock edit modal
   window.editPricingLock = function(key, currentValue) {
@@ -3074,8 +3659,11 @@
   window.loadGodLayerConfig = loadGodLayerConfig;
 
   // ── Hugo Test Section ───────────────────────────────────────────────────────
-  // Current test persona: 'real_estate' (default) or 'trade'
-  var _founderTestPersona = 'real_estate';
+  // Current test persona: 'founder' (default), 'real_estate', or 'trade'
+  // 'founder' → Hugo-Founder (founder/owner operations manager)
+  // 'real_estate' → Hugo-Pro (RE Agent landing page persona)
+  // 'trade' → Hugo-Trade (tradie landing page persona)
+  var _founderTestPersona = 'founder';
 
   // ─── Eagle's Eye: Live Network Map ───────────────────────────────────────────
   // Shows network_leads (blue dots) + network_signups (green pins) + operator areas.
@@ -3397,33 +3985,55 @@
 
   function applyFounderTestPersona(persona) {
     // Update button styles
+    var founderBtn = document.getElementById('hugoTestPersonaFounder');
     var reBtn = document.getElementById('hugoTestPersonaRE');
     var tradeBtn = document.getElementById('hugoTestPersonaTrade');
     var label = document.getElementById('hugoTestPersonaLabel');
-    if (reBtn) {
-      reBtn.style.background = (persona === 'real_estate') ? 'var(--amber)' : 'var(--surface)';
-      reBtn.style.color = (persona === 'real_estate') ? 'var(--midnight)' : 'var(--text)';
-      reBtn.style.border = (persona === 'real_estate') ? 'none' : '1px solid var(--border)';
-      reBtn.style.fontWeight = (persona === 'real_estate') ? '700' : '600';
+
+    function styleButton(btn, isActive) {
+      if (!btn) return;
+      btn.style.background = isActive ? 'var(--amber)' : 'var(--surface)';
+      btn.style.color = isActive ? 'var(--midnight)' : 'var(--text)';
+      btn.style.border = isActive ? 'none' : '1px solid var(--border)';
+      btn.style.fontWeight = isActive ? '700' : '600';
     }
-    if (tradeBtn) {
-      tradeBtn.style.background = (persona !== 'real_estate') ? 'var(--amber)' : 'var(--surface)';
-      tradeBtn.style.color = (persona !== 'real_estate') ? 'var(--midnight)' : 'var(--text)';
-      tradeBtn.style.border = (persona !== 'real_estate') ? 'none' : '1px solid var(--border)';
-      tradeBtn.style.fontWeight = (persona !== 'real_estate') ? '700' : '600';
-    }
+
+    styleButton(founderBtn, persona === 'founder');
+    styleButton(reBtn, persona === 'real_estate');
+    styleButton(tradeBtn, persona === 'trade');
+
+    var personaNames = {
+      founder: 'Hugo-Founder',
+      real_estate: 'RE Agent',
+      trade: 'Tradie',
+    };
     if (label) {
-      var name = (persona === 'real_estate') ? 'RE Agent (propops.pro)' : 'Tradie (propops.trade)';
-      label.innerHTML = 'Active: <strong style="color:var(--amber)">' + name + '</strong>';
+      label.innerHTML = 'Active: <strong style="color:var(--amber)">' + (personaNames[persona] || persona) + '</strong>';
     }
+
     // Configure widget persona — wait for widget script to load if needed
     (function syncWidget(retries) {
       if (window.HugoWidget && typeof window.HugoWidget.setBusinessType === 'function') {
         window.HugoWidget.setBusinessType(persona);
-        // Mark as founder test mode so Brain can tag convs with source_platform: founder_test
-        if (typeof window.HugoWidget.setOperatorContext === 'function') {
-          window.HugoWidget.setOperatorContext('Founder', 'founder@propops.pro', persona === 'real_estate' ? 'real_estate' : 'trade');
-        }
+        window.POLSIACONFIG = window.POLSIACONFIG || {};
+        window.POLSIACONFIG.businessType = persona;
+        // Pass operator context so Hugo knows who he's talking to.
+        // For founder persona: pass 'Founder' as name, 'founder@propops.pro' as email,
+        // 'founder' as tradeLabel (so getHugoLabel returns 'Hugo-Founder').
+        // operator_id passed so backend can fetch operator profile (tech_notes, etc.).
+        var tradeLabelMap = { founder: 'founder', real_estate: 'real_estate', trade: 'trade' };
+        var tradeLabel = tradeLabelMap[persona] || 'trade';
+        // Fetch current user to get operator_id
+        fetch('/api/auth/me', { credentials: 'include' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.success && data.user && data.user.id) {
+              if (typeof window.HugoWidget.setOperatorContext === 'function') {
+                window.HugoWidget.setOperatorContext('Founder', 'founder@propops.pro', tradeLabel, data.user.id);
+              }
+            }
+          })
+          .catch(function() { /* non-fatal — widget still works without operator_id */ });
       } else if (retries > 0) {
         setTimeout(function() { syncWidget(retries - 1); }, 200);
       }
@@ -3434,7 +4044,12 @@
 </script>
 
 <!-- Hugo chat widget — same brain as landing pages, test mode active -->
-<script src="/hugo-widget.js?v=10" defer></script>
+<script>
+  // Default to founder persona; founder can toggle between Hugo-Founder / RE Agent / Tradie
+  // via setFounderTestPersona() buttons in the test panel above.
+  window.POLSIACONFIG = { businessType: 'founder' };
+</script>
+<script src="/hugo-widget.js?v=14" defer></script>
 
 <!-- Leaflet JS — CSS is in <head>; no SRI to avoid silent CDN hash-drift failures -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>

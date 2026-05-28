@@ -11,6 +11,7 @@
  * GET  /api/hugo/learned-context       — return active learned knowledge for a trade+region
  * GET  /api/hugo/business-config       — load business_customization JSON for current operator
  * POST /api/hugo/business-config       — save business_customization JSON for current operator
+ * POST /api/hugo/email/reply           — compose and send a Hugo-generated reply to a lead
  */
 
 const express = require('express');
@@ -66,9 +67,11 @@ router.post('/start', requireAuth, async (req, res) => {
 
 // ─── POST /api/hugo/chat ──────────────────────────────────────────────────────
 // Send operator message → get Hugo's reply.
+// Accepts businessType from request body (from POLSIACONFIG) or tradeSlug (legacy).
+// operator_id from req.userId (auth) or request body (widget passthrough).
 
 router.post('/chat', requireAuth, async (req, res) => {
-  const { message, tradeSlug } = req.body || {};
+  const { message, tradeSlug, businessType: bodyBusinessType, operator_id: bodyOperatorId } = req.body || {};
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required' });
@@ -83,11 +86,16 @@ router.post('/chat', requireAuth, async (req, res) => {
   }
 
   try {
-    // Prefer the trade slug sent by the dashboard (reflects the active pool the
-    // operator is currently viewing) over the static business_type stored on the
-    // users row — this is the fix for Hugo defaulting to RE Agent on trade dashboards.
+    // Operator ID: from request body (widget passthrough) or auth (req.userId)
+    const operatorId = bodyOperatorId || req.userId;
+
+    // Determine business type: bodyBusinessType (POLSIACONFIG) > tradeSlug > DB fallback
     let businessType;
-    if (tradeSlug && typeof tradeSlug === 'string' && tradeSlug.trim().length > 0) {
+    if (bodyBusinessType && typeof bodyBusinessType === 'string' && bodyBusinessType.trim().length > 0) {
+      // businessType from POLSIACONFIG — highest priority (anchored at session start)
+      businessType = bodyBusinessType.trim();
+    } else if (tradeSlug && typeof tradeSlug === 'string' && tradeSlug.trim().length > 0) {
+      // tradeSlug from dashboard — reflects active pool viewing
       businessType = tradeSlug.trim();
     } else {
       // Fallback: look up the user's stored business_type from the DB
@@ -101,7 +109,7 @@ router.post('/chat', requireAuth, async (req, res) => {
       pool.end().catch(() => {});
     }
 
-    const result = await hugo.processMessage(req.userId, message.trim(), businessType);
+    const result = await hugo.processMessage(operatorId, message.trim(), businessType);
     res.json({ success: true, ...result });
   } catch (err) {
     console.error('[Hugo] POST /chat error:', err.message);
@@ -631,6 +639,10 @@ router.post('/operator-profile', requireAuth, async (req, res) => {
   }
 });
 
+// ─── POST /api/hugo/email/reply — see full implementation below (line ~803) ───
+// (Removed duplicate first-pass route from prior cycle — superseded by
+//  the hardened version below that uses db/leads.js + inboundEmailId support.)
+
 // ─── GET /api/hugo/business-config ───────────────────────────────────────────
 // Returns the business_customization JSONB blob for the authenticated operator.
 // Returns {} if no profile exists yet (no 404 — caller renders empty form).
@@ -697,6 +709,150 @@ router.post('/business-config', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[Hugo] POST /business-config error:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to save business config' });
+  }
+});
+
+// ─── POST /api/hugo/email/reply ───────────────────────────────────────────────
+// Compose and send a professional reply email to a lead via Hugo.
+//
+// Body params:
+//   leadId          (required) — integer or UUID string identifying the lead
+//   inboundEmailId  (optional) — integer ID of the inbound email being replied to
+//                                (passed to Polsia proxy as reply_to_email_id to bypass rate limit)
+//   replyType       (optional) — 'acknowledgment'|'quote_followup'|'document_send'|'booking_confirm'|'custom'
+//   tone            (optional) — 'professional'|'warm'|'urgent'|'friendly'
+//   customBody      (optional) — if provided AND replyType is omitted, skip AI composition
+//
+// Guards applied (in order):
+//   1. leadId presence + non-empty check — 400
+//   2. replyType enum validation — 400
+//   3. 5-minute idempotency check (hugo_email_outbox) — 409
+//   4. Lead existence check — 404
+//
+// NOTE: lead lookup uses leads.id (SERIAL) cast to TEXT for the idempotency table.
+// The route uses db/hugo-email-outbox.js and services/emailComposer.js + emailSender.js
+// (architecture rule: no inline db queries; all queries go through db/ modules).
+
+const { VALID_EMAIL_TYPES, composeReply: _composeReply } = require('../services/emailComposer');
+const { sendEmail: _sendEmailViaProxy }                   = require('../services/emailSender');
+const { checkRecentSend, logSentEmail }                   = require('../db/hugo-email-outbox');
+const { findLeadForReply }                                = require('../db/leads');
+const { getOperatorEmailBody }                            = require('../db/emails');
+
+router.post('/email/reply', requireAuth, async (req, res) => {
+  const { leadId, inboundEmailId, replyType, tone, customBody } = req.body || {};
+
+  // VALIDATION 1: leadId required
+  if (!leadId && leadId !== 0) {
+    return res.status(400).json({ success: false, error: 'leadId is required.' });
+  }
+  const leadIdStr = String(leadId).trim();
+  if (!leadIdStr) {
+    return res.status(400).json({ success: false, error: 'leadId must not be empty.' });
+  }
+
+  // VALIDATION 2: replyType enum guard
+  const emailType = replyType || 'custom';
+  if (!VALID_EMAIL_TYPES.includes(emailType)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid replyType. Must be one of: ${VALID_EMAIL_TYPES.join(', ')}`,
+    });
+  }
+
+  try {
+    // VALIDATION 3: Idempotency — 5-minute duplicate send suppression
+    const recentSend = await checkRecentSend(leadIdStr, emailType);
+    if (recentSend) {
+      return res.status(409).json({
+        success: false,
+        error: 'Duplicate request suppressed — a matching email was sent within the last 5 minutes.',
+        outbox_id: recentSend.outbox_id,
+      });
+    }
+
+    // VALIDATION 4: Lead existence — db/leads.js handles the two-table fallback
+    // (leads by integer id, then operator_widget_leads by text/uuid).
+    const lead = await findLeadForReply(leadIdStr, req.userId);
+
+    if (!lead) {
+      return res.status(404).json({ success: false, error: 'Lead not found.' });
+    }
+
+    if (!lead.email) {
+      return res.status(422).json({ success: false, error: 'Lead has no email address — cannot send reply.' });
+    }
+
+    // Fetch inbound email body if an inboundEmailId was provided (non-fatal)
+    let inboundEmail = { body: customBody || '' };
+    if (inboundEmailId) {
+      const inboundBody = await getOperatorEmailBody(inboundEmailId, req.userId);
+      if (inboundBody) inboundEmail = { body: inboundBody };
+    }
+
+    // Compose email body
+    let emailBody;
+    if (customBody && emailType === 'custom') {
+      // Caller supplied the full body — skip AI generation
+      emailBody = customBody;
+    } else {
+      emailBody = await _composeReply({
+        leadData: lead,
+        inboundEmail,
+        replyType: emailType,
+        tone: tone || 'professional',
+        operatorId: req.userId,
+      });
+    }
+
+    const subject = `Re: ${lead.service || 'Your inquiry'}`;
+
+    // Send via Polsia email proxy
+    await _sendEmailViaProxy({
+      to:              lead.email,
+      subject,
+      body:            emailBody,
+      replyToEmailId:  inboundEmailId || undefined,
+    });
+
+    // Log to outbox (audit trail + idempotency source)
+    const outboxId = await logSentEmail({
+      leadId:    leadIdStr,
+      emailType,
+      subject,
+      body:      emailBody,
+    });
+
+    console.log(`[Hugo Email Reply] Sent ${emailType} to lead ${leadIdStr} (outbox: ${outboxId})`);
+
+    return res.json({
+      success:   true,
+      message:   'Email sent',
+      leadId:    leadIdStr,
+      outbox_id: outboxId,
+    });
+  } catch (err) {
+    console.error('[Hugo Email Reply]', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── GET /api/hugo/email/outbox/:leadId ───────────────────────────────────────
+// Returns sent email history for a lead (dashboard audit view).
+
+const { getEmailsForLead: _getEmailsForLead } = require('../db/hugo-email-outbox');
+
+router.get('/email/outbox/:leadId', requireAuth, async (req, res) => {
+  const { leadId } = req.params;
+  if (!leadId || !leadId.trim()) {
+    return res.status(400).json({ success: false, error: 'leadId required.' });
+  }
+  try {
+    const emails = await _getEmailsForLead(leadId.trim(), 20);
+    return res.json({ success: true, emails, leadId: leadId.trim() });
+  } catch (err) {
+    console.error('[Hugo Email Outbox]', err.message);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

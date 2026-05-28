@@ -499,4 +499,348 @@ router.get('/simulation-digest', async (req, res) => {
   }
 });
 
+// ─── POST /api/admin/sync-to-render — Sync Polsia live DB → user's Render Neon ─
+// Copies all tables from Polsia DB to a destination Neon DB via pg client.
+// Uses parameterized batch INSERT + dynamic CREATE TABLE (no pg_dump needed).
+// Requires x-admin-token or ADMIN_TOKEN env var.
+router.post('/sync-to-render', async (req, res) => {
+  const token = req.headers['x-admin-token'] || req.body?.token;
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (adminToken && token !== adminToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  const destUrl = req.body.dest_url;
+  if (!destUrl) {
+    return res.status(400).json({ success: false, message: 'dest_url required in body' });
+  }
+
+  const BATCH = 500;
+
+  // Map PostgreSQL type keywords to PG type strings for CREATE TABLE
+  function pgType(dataType, udtName) {
+    if (['bytea'].includes(dataType))              return 'bytea';
+    if (['json', 'jsonb'].includes(dataType))     return dataType;
+    if (['text'].includes(dataType))               return 'text';
+    if (['boolean'].includes(dataType))            return 'boolean';
+    if (['smallint'].includes(dataType))            return 'smallint';
+    if (['integer'].includes(dataType))            return 'integer';
+    if (['bigint'].includes(dataType))             return 'bigint';
+    if (['real'].includes(dataType))               return 'real';
+    if (['double precision'].includes(dataType))   return 'double precision';
+    if (['numeric'].includes(dataType))             return 'numeric';
+    if (['timestamp', 'timestamp without time zone'].includes(dataType)) return 'timestamp';
+    if (['timestamptz', 'timestamp with time zone'].includes(dataType))    return 'timestamptz';
+    if (['date'].includes(dataType))               return 'date';
+    if (['time'].includes(dataType))                return 'time';
+    if (['timetz', 'time with time zone'].includes(dataType))              return 'timetz';
+    if (['interval'].includes(dataType))            return 'interval';
+    if (['uuid'].includes(dataType))                return 'uuid';
+    if (['inet'].includes(dataType))               return 'inet';
+    if (['cidr'].includes(dataType))               return 'cidr';
+    if (['macaddr'].includes(dataType))            return 'macaddr';
+    if (['bit'].includes(dataType))                 return 'bit';
+    if (['varbit', 'bit varying'].includes(dataType)) return 'varbit';
+    if (['point'].includes(dataType))               return 'point';
+    if (['line'].includes(dataType))                return 'line';
+    if (['lseg'].includes(dataType))                return 'lseg';
+    if (['box'].includes(dataType))                 return 'box';
+    if (['path'].includes(dataType))                return 'path';
+    if (['polygon'].includes(dataType))             return 'polygon';
+    if (['circle'].includes(dataType))              return 'circle';
+    if (['serial'].includes(dataType))             return 'serial';
+    if (['bigserial'].includes(dataType))          return 'bigserial';
+    if (['money'].includes(dataType))               return 'money';
+    if (dataType === 'ARRAY')                      return udtName.replace(/[\"]/g, '') + '[]';
+    return 'text'; // safe fallback for unknown types
+  }
+
+  async function createTableIfMissing(src, dst, tableName) {
+    const colRes = await src.query(`
+      SELECT column_name, data_type, udt_name, character_maximum_length,
+             numeric_precision, numeric_scale, is_nullable, column_default
+      FROM   information_schema.columns
+      WHERE  table_schema = 'public' AND table_name = $1
+      ORDER  BY ordinal_position
+    `, [tableName]);
+
+    if (!colRes.rows.length) return false;
+
+    // Check if table already exists in dest
+    const destCheck = await dst.query(`
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = $1
+    `, [tableName]);
+    if (destCheck.rows.length) return true; // already exists
+
+    // Build CREATE TABLE DDL
+    const colDefs = colRes.rows.map(col => {
+      let type = pgType(col.data_type, col.udt_name);
+      if (col.character_maximum_length) type += `(${col.character_maximum_length})`;
+      else if (col.numeric_precision !== null && col.numeric_scale !== null) {
+        type += `(${col.numeric_precision},${col.numeric_scale})`;
+      } else if (col.numeric_precision !== null) {
+        type += `(${col.numeric_precision})`;
+      }
+      const nullable = col.is_nullable === 'NO' ? 'NOT NULL' : '';
+      const def = col.column_default ? ` DEFAULT ${col.column_default}` : '';
+      return `  "${col.column_name}" ${type}${def} ${nullable}`;
+    }).filter(x => x.trim());
+
+    const ddl = `CREATE TABLE "${tableName}" (\n${colDefs.join(',\n')}\n)`;
+    await dst.query(ddl);
+    return true;
+  }
+
+  async function syncOneTable(src, dst, tableName) {
+    const colsResult = await src.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_name = $1 AND table_schema = 'public'
+       ORDER BY ordinal_position`, [tableName]
+    );
+    if (!colsResult.rows.length) return { table: tableName, status: 'skipped', reason: 'not found in source' };
+
+    const cols = colsResult.rows.map(r => r.column_name);
+    const colList = cols.map(c => `"${c}"`).join(', ');
+    const srcCount = (await src.query(`SELECT COUNT(*)::int as c FROM "${tableName}" LIMIT 1`)).rows[0]?.c ?? 0;
+
+    // CREATE TABLE if not in dest (fresh DB case)
+    await createTableIfMissing(src, dst, tableName);
+
+    // Truncate dest
+    try { await dst.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE`); }
+    catch (e) { /* already empty */ }
+
+    if (srcCount === 0) return { table: tableName, status: 'ok', src_rows: 0, dest_rows: 0 };
+
+    // Batched INSERT via parameterized query
+    let dstCount = 0;
+    for (let offset = 0; offset < srcCount; offset += BATCH) {
+      const rows = (await src.query({
+        text: `SELECT * FROM "${tableName}" OFFSET $1 LIMIT ${BATCH}`,
+        values: [offset],
+        rowMode: 'array'
+      })).rows;
+
+      if (!rows.length) break;
+
+      const placeholders = rows.map((_, ri) =>
+        '(' + cols.map((_, ci) => `$${ri * cols.length + ci + 1}`).join(',') + ')'
+      ).join(',');
+
+      // Flatten with BYTEA hex encoding
+      const flat = [];
+      for (const row of rows) {
+        for (let ci = 0; ci < cols.length; ci++) {
+          const v = row[ci];
+          flat.push(Buffer.isBuffer(v) ? '\\x' + v.toString('hex') : v);
+        }
+      }
+
+      await dst.query(`INSERT INTO "${tableName}" (${colList}) VALUES ${placeholders}`, flat);
+      dstCount += rows.length;
+    }
+
+    return { table: tableName, status: 'ok', src_rows: srcCount, dest_rows: dstCount };
+  }
+
+  const destSsl = destUrl.includes('localhost') ? false : { rejectUnauthorized: false };
+  const destPool = new Pool({ connectionString: destUrl, ssl: destSsl });
+
+  // Pull ALL tables from source dynamically (excluding pg_internal tables)
+  const allTables = (await pool.query(`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public' AND tablename NOT LIKE 'pg_%'
+    ORDER BY tablename
+  `)).rows.map(r => r.tablename);
+
+  const results = [];
+  try {
+    for (const table of allTables) {
+      try {
+        const r = await syncOneTable(pool, destPool, table);
+        results.push(r);
+      } catch (err) {
+        results.push({ table, status: 'error', message: err.message });
+      }
+    }
+    const errors = results.filter(r => r.status === 'error');
+    res.json({
+      success: errors.length === 0,
+      synced: results.filter(r => r.status === 'ok').length,
+      errors: errors.length,
+      details: results,
+    });
+  } catch (err) {
+    console.error('[Admin] sync-to-render fatal:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    await destPool.end();
+  }
+});
+
+// ─── GET /api/admin/db-counts — Compare row counts between source and dest ──────
+router.get('/db-counts', async (req, res) => {
+  const token = req.headers['x-admin-token'] || req.query?.token;
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (adminToken && token !== adminToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  const destUrl = req.query.dest_url;
+  if (!destUrl) {
+    return res.status(400).json({ success: false, message: 'dest_url query param required' });
+  }
+
+  const destSsl = destUrl.includes('localhost') ? false : { rejectUnauthorized: false };
+  const destPool = new Pool({ connectionString: destUrl, ssl: destSsl });
+
+  const TABLES = [
+    'users', 'operator_profiles', 'network_leads', 'network_signups',
+    'operator_widget_leads', 'operator_actions_log', 'hugo_chat_messages',
+    'hugo_widget_sessions', 'hugo_knowledge', 'hugo_training_data',
+    'hugo_knowledge_entries', 'hugo_learned_knowledge',
+    'content_mismatches', 'landing_page_content', 'dashboard_alerts',
+    'site_settings', 'email_queue',
+  ];
+
+  const counts = [];
+  try {
+    for (const table of TABLES) {
+      try {
+        const src = await pool.query(`SELECT COUNT(*) FROM "${table}"`);
+        const dst = await destPool.query(`SELECT COUNT(*) FROM "${table}"`);
+        counts.push({
+          table,
+          source: parseInt(src.rows[0].count, 10),
+          dest: parseInt(dst.rows[0].count, 10),
+          match: src.rows[0].count === dst.rows[0].count,
+        });
+      } catch {
+        counts.push({ table, source: -1, dest: -1, match: false, error: 'table not found' });
+      }
+    }
+    res.json({ success: true, counts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    await destPool.end();
+  }
+});
+
+// ─── Background DB sync to Neon ────────────────────────────────────────────────
+// Fires full table sync to SYNC_TO_RENDER_DEST_URL (or ?dest_url=) in background.
+// Returns immediately with job_id — poll /api/admin/sync-status/:jobId for result.
+const _syncJobs = new Map();
+
+router.post('/run-db-sync', async (req, res) => {
+  const admin = await isAdminRequest(req);
+  if (!admin) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+  const destUrl = req.query.dest_url || process.env.SYNC_TO_RENDER_DEST_URL || process.env.NEON_DATABASE_URL;
+  if (!destUrl) return res.status(500).json({ success: false, message: 'dest_url not provided and SYNC_TO_RENDER_DEST_URL / NEON_DATABASE_URL not set' });
+
+  const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  _syncJobs.set(jobId, { status: 'running', started_at: new Date().toISOString() });
+
+  (async () => {
+    try {
+      const destPool = new Pool({ connectionString: destUrl, ssl: { rejectUnauthorized: false }, max: 3 });
+      const tablesRes = await pool.query(`
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+      `);
+      const tables = tablesRes.rows.map(r => r.table_name);
+
+      // Helper: build multi-row INSERT
+      function buildInsert(table, cols, rows) {
+        if (!rows.length) return null;
+        const colList = cols.map(c => `"${c}"`).join(', ');
+        const placeholders = rows.map((_, ri) =>
+          '(' + cols.map((_, ci) => `$${ri * cols.length + ci + 1}`).join(', ') + ')'
+        ).join(', ');
+        return `INSERT INTO "${table}" (${colList}) VALUES ${placeholders}`;
+      }
+
+      function flatten(rows, cols) {
+        const flat = [];
+        for (const row of rows) {
+          for (const c of cols) {
+            const v = row[c];
+            flat.push(Buffer.isBuffer(v) ? '\\x' + v.toString('hex') : v);
+          }
+        }
+        return flat;
+      }
+
+      let totalSrc = 0, totalDst = 0;
+      const details = [];
+
+      for (const table of tables) {
+        process.stdout.write(`[sync] ${table}...`);
+        try {
+          const colsRes = await pool.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position`, [table]
+          );
+          if (!colsRes.rows.length) { details.push({ table, status: 'skipped' }); continue; }
+          const cols = colsRes.rows.map(r => r.column_name);
+
+          const { rows: srcRows } = await pool.query(`SELECT * FROM "${table}"`);
+          const srcCount = srcRows.length;
+          totalSrc += srcCount;
+
+          await destPool.query(`TRUNCATE "${table}" RESTART IDENTITY CASCADE`).catch(() => {});
+
+          if (srcCount > 0) {
+            const sql = buildInsert(table, cols, srcRows);
+            if (sql) {
+              try {
+                await destPool.query(sql, flatten(srcRows, cols));
+              } catch (e) {
+                for (const row of srcRows) {
+                  try {
+                    const rowSql = buildInsert(table, cols, [row]);
+                    if (rowSql) await destPool.query(rowSql, flatten([row], cols));
+                  } catch (_) {}
+                }
+              }
+            }
+          }
+
+          const { rows: dstRows } = await destPool.query(`SELECT COUNT(*) FROM "${table}"`);
+          const dstCount = parseInt(dstRows[0].count, 10);
+          totalDst += dstCount;
+          const match = srcCount === dstCount;
+          console.log(` ${dstCount}/${srcCount} ${match ? '✓' : '⚠'}`);
+          details.push({ table, status: 'ok', src: srcCount, dst: dstCount, match });
+        } catch (err) {
+          console.log(` ERROR: ${err.message.slice(0, 80)}`);
+          details.push({ table, status: 'error', error: err.message.slice(0, 200) });
+        }
+      }
+
+      await destPool.end();
+      const errors = details.filter(d => d.status === 'error');
+      _syncJobs.set(jobId, {
+        status: 'done', success: errors.length === 0,
+        tables: details.filter(d => d.status === 'ok').length,
+        errors: errors.length,
+        total_src: totalSrc, total_dst: totalDst,
+        details, completed_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      _syncJobs.set(jobId, { status: 'done', success: false, error: err.message, completed_at: new Date().toISOString() });
+    }
+  })().catch(console.error);
+
+  res.json({ success: true, job_id: jobId, poll_url: `/api/admin/sync-status/${jobId}` });
+});
+
+router.get('/sync-status/:jobId', (req, res) => {
+  const job = _syncJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ success: false, message: 'Job not found or expired' });
+  res.json({ success: true, job });
+});
+
 module.exports = { router, isAdminRequest, _downloadToBuffer, _SS_CACHE };

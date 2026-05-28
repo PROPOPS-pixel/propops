@@ -17,6 +17,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('./auth');
+const { pool } = require('../db/index');
 const {
   getScoresByOperator,
   getAveragesByOperator,
@@ -29,7 +30,7 @@ const {
 router.get('/scores/summary', requireAuth, async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days, 10) || 30, 365);
-    const averages = await getAveragesByOperator(req.user.id, days);
+    const averages = await getAveragesByOperator(req.userId, days);
     res.json({ success: true, days, averages });
   } catch (err) {
     console.error('[Hugo Scores] summary error:', err.message);
@@ -43,7 +44,7 @@ router.get('/scores/recent', requireAuth, async (req, res) => {
   try {
     const limit  = Math.min(parseInt(req.query.limit, 10)  || 20, 100);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-    const scores = await getScoresByOperator(req.user.id, { limit, offset });
+    const scores = await getScoresByOperator(req.userId, { limit, offset });
     res.json({ success: true, scores, limit, offset });
   } catch (err) {
     console.error('[Hugo Scores] recent error:', err.message);
@@ -56,7 +57,7 @@ router.get('/scores/recent', requireAuth, async (req, res) => {
 router.get('/scores/flags', requireAuth, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
-    const flags = await getRecentFlags(req.user.id, limit);
+    const flags = await getRecentFlags(req.userId, limit);
     res.json({ success: true, flags });
   } catch (err) {
     console.error('[Hugo Scores] flags error:', err.message);
@@ -68,7 +69,11 @@ router.get('/scores/flags', requireAuth, async (req, res) => {
 // Founder-only: system-wide aggregate stats.
 router.get('/scores/system', requireAuth, async (req, res) => {
   try {
-    if (!req.user.is_admin) {
+    const userRow = await pool.query(
+      `SELECT is_admin FROM users WHERE id = $1 LIMIT 1`,
+      [req.userId]
+    );
+    if (!userRow.rows[0]?.is_admin) {
       return res.status(403).json({ success: false, message: 'Founder access required' });
     }
     const days = Math.min(parseInt(req.query.days, 10) || 7, 90);

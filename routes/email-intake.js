@@ -302,6 +302,48 @@ async function updateTokenStats(token, { leadCreated }) {
  * @param {number|null} userId  — user_id who owns this token (for multi-tenancy scoping)
  */
 async function processInboundEmail(token, email, rawPayload, res, userId = null) {
+  // ── Anti-loop filter (CRITICAL — fail-closed) ─────────────────────────────────
+  // Loop path: Hugo sends from hugo@propops.pro → Porkbun forwards → Gmail →
+  //            propopspro@polsia.app → Hugo reads his own email → replies → ∞
+  //
+  // Rules (all must pass to process — any match = skip):
+  //   1. Sender address is a known Hugo outbound address
+  //   2. Sender is on any Hugo-owned domain (*@propops.pro, *@propops.trade, etc.)
+  //   3. Email has Resend X-Resend-* headers (sent by our Resend account)
+  //
+  // On any unexpected error in this block: skip the email (fail-closed, not fail-open).
+  try {
+    const rawSender = (email.from_address || '').toLowerCase().trim();
+    // Strip display name → bare address: "Hugo <hugo@propops.pro>" → "hugo@propops.pro"
+    const senderAddr = rawSender.replace(/^.*<([^>]+)>.*$/, '$1').trim();
+
+    const HUGO_OUTBOUND_ADDRS = new Set([
+      'hugo@propops.pro', 'noreply@propops.pro', 'no-reply@propops.pro',
+      'hugo@propops.trade', 'noreply@propops.trade', 'no-reply@propops.trade',
+      'hugo@hugopays.pro', 'noreply@hugopays.pro', 'no-reply@hugopays.pro',
+      'hugo@re.propops.pro', 'noreply@re.propops.pro',
+    ]);
+    const HUGO_OWNED_DOMAINS = ['@propops.pro', '@propops.trade', '@hugopays.pro', '@re.propops.pro'];
+
+    const isLoop = (
+      HUGO_OUTBOUND_ADDRS.has(senderAddr) ||
+      HUGO_OWNED_DOMAINS.some(d => senderAddr.endsWith(d)) ||
+      // Resend X-Resend-* headers present in raw payload headers
+      (rawPayload && rawPayload.headers && typeof rawPayload.headers === 'object' &&
+        Object.keys(rawPayload.headers).some(k => k.toLowerCase().startsWith('x-resend-')))
+    );
+
+    if (isLoop) {
+      console.log(`[Email Intake] ⛔ Anti-loop: skipping email from ${email.from_address} (Hugo outbound or Resend header)`);
+      return res.status(200).json({ success: true, message: 'Skipped — Hugo outbound address' });
+    }
+  } catch (antiLoopErr) {
+    // Fail-closed: unexpected error → skip to prevent runaway loops
+    console.error('[Email Intake] Anti-loop check error — skipping email as precaution:', antiLoopErr.message);
+    return res.status(200).json({ success: true, message: 'Skipped — anti-loop check error (fail-closed)' });
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const startTime = Date.now();
 
   // Per-request notification email cache — lazy-fetched on first lead, reused for subsequent leads
@@ -509,10 +551,16 @@ async function processInboundEmail(token, email, rawPayload, res, userId = null)
       }
     );
     console.log(`[Email Intake] AI response generated for lead #${lead.id} in ${Date.now() - startTime}ms (email_sent: ${emailSent})`);
+  } catch (aiErr) {
+    console.error('[Email Intake] AI response failed:', aiErr.message);
+    await leadsService.logActivity(lead.id, 'ai_response_failed', `AI response failed: ${aiErr.message}`);
+  }
 
-    // Fire SMS + email notifications to the agent — non-blocking, never throws into main flow
-    // For simulated leads: only notify the agent who triggered the simulation (not all users)
-    // For real leads: notify all subscribed users as normal
+  // Fire SMS + email notifications to the agent — non-blocking, always runs after lead creation.
+  // Intentionally outside the AI try/catch so notifications fire even when AI response fails.
+  // For simulated leads: only notify the triggering agent (not all users).
+  // For real leads: notify all subscribed users.
+  {
     const isSimulated = rawPayload && rawPayload.simulated;
     const responseTimeSec = (Date.now() - startTime) / 1000;
     if (isSimulated) {
@@ -526,12 +574,10 @@ async function processInboundEmail(token, email, rawPayload, res, userId = null)
       });
     }
 
-    // Fire notification email to agent's dedicated Gmail address — non-blocking
-    // Only fires if the agent has set a notification_email in their Settings
-    // AND it differs from their account email (to avoid duplicate notifications —
-    // notifyNewLead already sends to the account email).
+    // Fire notification email to agent's dedicated Gmail address — non-blocking.
+    // Only fires if the agent set a notification_email different from their account email
+    // (avoids duplicates — notifyNewLead already sends to the account email).
     if (userId && notification_email === undefined) {
-      // Lazy fetch: look up notification_email + account email on first lead only
       try {
         const notifRow = await pool.query(
           `SELECT notification_email, email, name FROM users WHERE id = $1`,
@@ -540,11 +586,10 @@ async function processInboundEmail(token, email, rawPayload, res, userId = null)
         if (notifRow.rows[0]) {
           const rawNotifEmail = (notifRow.rows[0].notification_email || '').trim().toLowerCase();
           const accountEmail = (notifRow.rows[0].email || '').trim().toLowerCase();
-          // Only set notification_email if it's a DIFFERENT address from the account email
           notification_email = (rawNotifEmail && rawNotifEmail !== accountEmail) ? notifRow.rows[0].notification_email : null;
           notification_agent_name = notifRow.rows[0].name || null;
           if (rawNotifEmail && rawNotifEmail === accountEmail) {
-            console.log(`[Email Intake] notification_email matches account email — skipping dedicated notification to avoid duplicate`);
+            console.log(`[Email Intake] notification_email matches account email — skipping to avoid duplicate`);
           }
         }
       } catch (lookupErr) {
@@ -556,9 +601,6 @@ async function processInboundEmail(token, email, rawPayload, res, userId = null)
         console.error('[Email Intake] Notification email error:', err.message);
       });
     }
-  } catch (aiErr) {
-    console.error('[Email Intake] AI response failed:', aiErr.message);
-    await leadsService.logActivity(lead.id, 'ai_response_failed', `AI response failed: ${aiErr.message}`);
   }
 
   await updateTokenStats(token, { leadCreated: true });
@@ -1849,5 +1891,104 @@ router.post('/:token', async (req, res) => {
   const email = normaliseWebhookPayload(req.body);
   return processInboundEmail(token, email, req.body, res, tokenRow.rows[0].user_id || null);
 });
+
+/**
+ * POST /api/email-intake/polsia-inbound
+ *
+ * Polsia company inbox webhook — called when an email arrives at propopspro@polsia.app.
+ * Also used by the auto-read cron (hugo-inbox-reader.js) to inject polled emails
+ * into the same pipeline.
+ *
+ * Anti-loop runs inside processInboundEmail() — all Hugo outbound addresses are blocked.
+ * Domain routing tag from rawPayload.domain_tag determines product (propops.pro / .trade / hugopays.pro).
+ *
+ * Security: optional POLSIA_INBOUND_SECRET env var (set in Render) validates webhook calls.
+ */
+router.post('/polsia-inbound', async (req, res) => {
+  // Optional shared secret for webhook auth
+  const secret = process.env.POLSIA_INBOUND_SECRET;
+  if (secret) {
+    const provided = req.headers['x-polsia-secret'] || req.query.secret;
+    if (provided !== secret) {
+      console.warn('[Email Intake] polsia-inbound: invalid secret');
+      return res.status(200).json({ success: false, message: 'Invalid secret' });
+    }
+  }
+
+  const email = normaliseWebhookPayload(req.body);
+  const domainTag = req.body.domain_tag || 'unknown';
+
+  console.log(`[Email Intake] polsia-inbound received: "${email.subject}" from=${email.from_address} tag=${domainTag}`);
+
+  // Get or create the Company Inbox system token
+  let systemToken = null;
+  try {
+    const crypto = require('crypto');
+    const tokenRow = await pool.query(
+      `SELECT token FROM intake_tokens WHERE label = 'Company Inbox' AND is_active = true LIMIT 1`
+    );
+    if (tokenRow.rows.length > 0) {
+      systemToken = tokenRow.rows[0].token;
+    } else {
+      systemToken = crypto.randomBytes(16).toString('hex');
+      await pool.query(
+        `INSERT INTO intake_tokens (token, label, forwarding_email, is_active)
+         VALUES ($1, 'Company Inbox', 'propopspro@polsia.app', true)
+         ON CONFLICT DO NOTHING`,
+        [systemToken]
+      );
+      console.log('[Email Intake] Auto-provisioned Company Inbox intake token:', systemToken);
+    }
+  } catch (err) {
+    console.error('[Email Intake] polsia-inbound: could not get/create system token:', err.message);
+    return res.status(200).json({ success: false, message: 'Token provisioning error' });
+  }
+
+  return processInboundEmail(systemToken, email, req.body, res, null);
+});
+
+/**
+ * POST /api/admin/poll-company-inbox
+ *
+ * Manual trigger for the Polsia inbox poll (admin only).
+ * Useful for testing without waiting for the 5-minute cron.
+ */
+router.post('/poll-company-inbox', async (req, res) => {
+  const adminToken = process.env.ADMIN_TOKEN;
+  const provided = req.headers['x-admin-token'] || req.body?.token;
+  if (adminToken && provided !== adminToken) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    const systemToken = await router.getSystemToken();
+    const { pollAndProcessInbox } = require('../services/hugo-inbox-reader');
+    const stats = await pollAndProcessInbox(processInboundEmail, systemToken);
+    res.json({ success: true, stats });
+  } catch (err) {
+    console.error('[Email Intake] Manual poll error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Export processInboundEmail so the cron can call it directly (avoids HTTP round-trips)
+router.processInboundEmail = processInboundEmail;
+
+// Get or create the Company Inbox system intake token
+router.getSystemToken = async function getSystemToken() {
+  const crypto = require('crypto');
+  const tokenRow = await pool.query(
+    `SELECT token FROM intake_tokens WHERE label = 'Company Inbox' AND is_active = true LIMIT 1`
+  );
+  if (tokenRow.rows.length > 0) return tokenRow.rows[0].token;
+  const systemToken = crypto.randomBytes(16).toString('hex');
+  await pool.query(
+    `INSERT INTO intake_tokens (token, label, forwarding_email, is_active)
+     VALUES ($1, 'Company Inbox', 'propopspro@polsia.app', true)
+     ON CONFLICT DO NOTHING`,
+    [systemToken]
+  );
+  return systemToken;
+};
 
 module.exports = router;

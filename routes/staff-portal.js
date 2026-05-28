@@ -12,6 +12,7 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const staffNotify = require('../services/staff-notifications');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -210,6 +211,153 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// ─── POST /api/staff-portal/forgot-password ──────────────────────────────────
+// Staff forgot password — look up by email, send magic link via Resend.
+// rate-limit: 1 per email per 24h via notification_log.
+// Token version increment revokes all previously issued magic links immediately.
+
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ success: false, message: 'Valid email required' });
+  }
+
+  try {
+    // Find active staff by email — include token_version for revocation
+    const staffResult = await pool.query(
+      `SELECT sm.id, sm.name, sm.email, sm.operator_id, sm.portal_password_hash, sm.token_version
+       FROM staff_members sm
+       WHERE LOWER(sm.email) = LOWER($1) AND sm.is_active = true`,
+      [email.trim()]
+    );
+    const staff = staffResult.rows[0];
+
+    // Always return success to prevent email enumeration — even if not found
+    if (!staff || !staff.portal_password_hash) {
+      return res.json({ success: true, message: 'If that email is in our system, a login link has been sent.' });
+    }
+
+    // Check: already sent magic link in last 24h?
+    const recentCheck = await pool.query(
+      `SELECT id FROM notification_log
+       WHERE operator_id=$1 AND recipient_type='staff' AND recipient_id=$2
+         AND notification_type='magic_link' AND sent_at > NOW() - INTERVAL '24 hours'
+       LIMIT 1`,
+      [staff.operator_id, staff.id]
+    );
+    if (recentCheck.rows.length > 0 && !req.body.force) {
+      return res.json({ success: true, message: 'A login link was already sent in the last 24 hours. Check your inbox or wait before requesting another.' });
+    }
+
+    // WHY: Increment token_version to revoke ALL previously issued magic links.
+    // This prevents access via old forwarded/forwards emails.
+    const currentVersion = staff.token_version || 1;
+    const newVersion = currentVersion + 1;
+    await pool.query(
+      `UPDATE staff_members SET token_version = $1 WHERE id = $2`,
+      [newVersion, staff.id]
+    );
+
+    // WHY: Keep the legacy staff_magic_links DB row for backward compatibility
+    // with any code still using the ?magic= format.
+    const legacyToken = crypto.randomBytes(48).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+    await pool.query(
+      `INSERT INTO staff_magic_links (staff_id, operator_id, token, expires_at)
+       VALUES ($1, $2, $3, $4)`,
+      [staff.id, staff.operator_id, legacyToken, expiresAt]
+    );
+
+    // Log notification
+    await pool.query(
+      `INSERT INTO notification_log (operator_id, recipient_type, recipient_id, notification_type, metadata)
+       VALUES ($1, 'staff', $2, 'magic_link', $3)`,
+      [staff.operator_id, staff.id, JSON.stringify({ token_version: newVersion, reason: 'forgot_password' })]
+    );
+
+    // Use JWT-based magic link (the primary format going forward)
+    const { generateStaffMagicLink } = require('../db/staff-magic-link');
+    const magicUrl = generateStaffMagicLink(staff.id, '/pays/staff', newVersion);
+
+    // Get operator name for email subject
+    const opResult = await pool.query(`SELECT name FROM users WHERE id=$1`, [staff.operator_id]);
+    const opName = opResult.rows[0]?.name || 'Your employer';
+
+    const { sendEmail } = require('../services/email');
+    await sendEmail({
+      to: staff.email,
+      subject: `${staff.name} — your Hugo.pays login link`,
+      text: `Hi ${staff.name},\n\n${opName} has sent you a login link for the Hugo.pays staff portal.\n\nClick here to access your portal: ${magicUrl}\n\nThis link works for 60 days. No password needed.\n\nHugo.pays`,
+      html: `<p style="margin:0 0 16px;">Hi ${staff.name},</p>
+<p style="margin:0 0 20px;">${opName} has sent you a login link for the Hugo.pays staff portal.</p>
+<table cellpadding="0" cellspacing="0"><tr><td style="background:#f59e0b;border-radius:8px;">
+  <a href="${magicUrl}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:700;color:#0f172a;text-decoration:none;">Open Staff Portal →</a>
+</td></tr></table>
+<p style="margin:20px 0 0;font-size:13px;color:#94a3b8;">This link works for 60 days. No password needed.</p>`,
+      tag: 'staff_forgot_password',
+    });
+
+    res.json({ success: true, message: 'If that email is in our system, a login link has been sent.' });
+  } catch (err) {
+    console.error('[StaffPortal] forgot-password error:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─── GET /api/staff-portal/verify-jwt-token?token=xxx ──────────────────────────
+// Verifies a JWT magic link token (from staff-notifications emails).
+// Sets the session cookie and returns staff data.
+// Used by the staff portal HTML page on load.
+
+router.get('/verify-jwt-token', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+
+  const { verifyStaffMagicLink } = require('../db/staff-magic-link');
+  const decoded = verifyStaffMagicLink(token);
+  if (!decoded) return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+
+  try {
+    // WHY: Include token_version in the SELECT so we can compare it against the JWT payload.
+    // If token_version has been incremented since this link was issued, reject the link.
+    const staffResult = await pool.query(
+      `SELECT id, operator_id, name, email, is_active, token_version FROM staff_members WHERE id = $1`,
+      [decoded.staffId]
+    );
+    const staff = staffResult.rows[0];
+    if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
+    if (!staff.is_active) return res.status(403).json({ success: false, message: 'Account deactivated' });
+
+    // Token version revocation: if staff's token_version changed, the link is dead
+    const dbVersion = staff.token_version || 1;
+    if (decoded.tokenVersion !== dbVersion) {
+      return res.status(401).json({ success: false, message: 'This link has been invalidated. Please request a new one.' });
+    }
+
+    // Create session JWT (same format as login)
+    const sessionToken = createStaffJWT({
+      staff_id: staff.id,
+      operator_id: staff.operator_id,
+      name: staff.name,
+      exp: Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60,
+    });
+
+    const IS_PROD = process.env.NODE_ENV === 'production' || !!(process.env.APP_URL && !process.env.APP_URL.includes('localhost'));
+    const cookieBase = `staff_portal_token=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 24 * 60 * 60}`;
+    res.setHeader('Set-Cookie', IS_PROD ? `${cookieBase}; Secure` : cookieBase);
+
+    const accept = req.headers['accept'] || '';
+    if (accept.includes('application/json')) {
+      res.json({ success: true, staff: { id: staff.id, name: staff.name, email: staff.email }, token: sessionToken });
+    } else {
+      res.redirect(decoded.dest || '/pays/staff');
+    }
+  } catch (err) {
+    console.error('[StaffPortal] verify-jwt-token error:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // ─── POST /api/staff-portal/logout ────────────────────────────────────────────
 
 router.post('/logout', (req, res) => {
@@ -280,6 +428,56 @@ router.get('/me', requireStaffAuth, async (req, res) => {
     res.json({ success: true, staff });
   } catch (err) {
     console.error('[StaffPortal] /me error:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─── GET /api/staff-portal/reminder-pref ─────────────────────────────────────
+// Returns this staff member's current reminder preference
+
+router.get('/reminder-pref', requireStaffAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT reminder_hours_before FROM staff_members WHERE id = $1`,
+      [req.staffId]
+    );
+    res.json({ success: true, reminder_hours_before: result.rows[0]?.reminder_hours_before ?? null });
+  } catch (err) {
+    console.error('[StaffPortal] reminder-pref GET error:', err.message);
+    res.status(500).json({ success: false });
+  }
+});
+
+// ─── POST /api/staff-portal/reminder-pref ────────────────────────────────────
+// Staff sets their shift reminder window.
+// Body: { reminder_hours_before: 2|14|24|0|null }
+//   null  = disable reminders
+//   0     = morning-of (7am AEST on shift day)
+//   2–72  = N hours before shift start
+
+router.post('/reminder-pref', requireStaffAuth, async (req, res) => {
+  const { reminder_hours_before } = req.body;
+
+  // Accept null (disable) or a non-negative integer ≤ 72
+  if (reminder_hours_before !== null && reminder_hours_before !== undefined) {
+    const v = parseInt(reminder_hours_before, 10);
+    if (isNaN(v) || v < 0 || v > 72) {
+      return res.status(400).json({ success: false, message: 'reminder_hours_before must be null or an integer 0–72' });
+    }
+  }
+
+  const value = (reminder_hours_before === null || reminder_hours_before === undefined)
+    ? null
+    : parseInt(reminder_hours_before, 10);
+
+  try {
+    await pool.query(
+      `UPDATE staff_members SET reminder_hours_before = $1 WHERE id = $2`,
+      [value, req.staffId]
+    );
+    res.json({ success: true, reminder_hours_before: value });
+  } catch (err) {
+    console.error('[StaffPortal] reminder-pref POST error:', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -531,6 +729,95 @@ router.post('/swap-requests', requireStaffAuth, async (req, res) => {
   } catch (err) {
     console.error('[StaffPortal] create swap error:', err.message);
     res.status(500).json({ success: false, message: 'Failed to create swap request' });
+  }
+});
+
+// ─── GET /api/staff-portal/available-swaps ────────────────────────────────────
+// Shows open swap offers from OTHER staff that this staff member can accept
+router.get('/available-swaps', requireStaffAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sw.id, sw.roster_entry_id, sw.requesting_staff_id, sw.reason, sw.created_at,
+              rs.name AS requesting_name,
+              re.job_title, re.scheduled_date, re.start_time, re.end_time, re.job_address
+       FROM staff_shift_swap_requests sw
+       JOIN staff_members rs ON sw.requesting_staff_id = rs.id
+       JOIN roster_entries re ON sw.roster_entry_id = re.id
+       WHERE sw.operator_id = $1
+         AND sw.status = 'pending'
+         AND sw.target_staff_id IS NULL
+         AND sw.requesting_staff_id != $2
+         AND re.scheduled_date >= CURRENT_DATE
+       ORDER BY re.scheduled_date ASC, re.start_time ASC`,
+      [req.staffOperatorId, req.staffId]
+    );
+    res.json({ success: true, swaps: result.rows });
+  } catch (err) {
+    console.error('[StaffPortal] available-swaps error:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─── POST /api/staff-portal/swap-requests/:id/accept ─────────────────────────
+// Staff B volunteers to take a swap — sets target_staff_id, status → accepted_pending_approval
+router.post('/swap-requests/:id/accept', requireStaffAuth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Find the swap — must be pending with no target, from a different staff member
+    const swapResult = await pool.query(
+      `SELECT sw.*, re.scheduled_date
+       FROM staff_shift_swap_requests sw
+       JOIN roster_entries re ON sw.roster_entry_id = re.id
+       WHERE sw.id = $1 AND sw.operator_id = $2 AND sw.status = 'pending'
+         AND sw.target_staff_id IS NULL AND sw.requesting_staff_id != $3`,
+      [id, req.staffOperatorId, req.staffId]
+    );
+    const swap = swapResult.rows[0];
+    if (!swap) {
+      return res.status(404).json({ success: false, message: 'Swap not found or already accepted' });
+    }
+    if (swap.scheduled_date < new Date().toISOString().slice(0, 10)) {
+      return res.status(400).json({ success: false, message: 'Cannot accept a swap for a past shift' });
+    }
+
+    await pool.query(
+      `UPDATE staff_shift_swap_requests
+       SET target_staff_id = $1, status = 'accepted', updated_at = NOW()
+       WHERE id = $2`,
+      [req.staffId, id]
+    );
+
+    // Fire-and-forget: notify the requesting staff that someone volunteered to take their shift
+    pool.query(
+      `SELECT s.id, s.name, s.email, op.business_name
+       FROM staff_members s
+       LEFT JOIN operator_profiles op ON op.operator_id = s.operator_id
+       WHERE s.id = $1 AND s.operator_id = $2`,
+      [swap.requesting_staff_id, req.staffOperatorId]
+    ).then(async reqRes => {
+      const reqStaff = reqRes.rows[0];
+      if (!reqStaff || !reqStaff.email) return;
+      // Target staff (me) for the notification
+      const tgtRes = await pool.query(`SELECT id, name, email FROM staff_members WHERE id=$1`, [req.staffId]);
+      const tgtStaff = tgtRes.rows[0];
+      if (!tgtStaff) return;
+      // Roster entry
+      const entryRes = await pool.query(`SELECT * FROM roster_entries WHERE id=$1`, [swap.roster_entry_id]);
+      const entry = entryRes.rows[0];
+      if (!entry) return;
+      staffNotify.notifySwapVolunteerAccepted({
+        operatorId: req.staffOperatorId,
+        requestingStaff: reqStaff,
+        targetStaff: tgtStaff,
+        bizName: reqStaff.business_name || '',
+        entry,
+      }).catch(() => {});
+    }).catch(() => {});
+
+    res.json({ success: true, message: 'Swap accepted — waiting for boss approval' });
+  } catch (err) {
+    console.error('[StaffPortal] accept-swap error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to accept swap' });
   }
 });
 
@@ -1198,5 +1485,79 @@ function haversineMeters(lat1, lon1, lat2, lon2) {
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+// ─── FEATURE 3 (staff side): Submit Leave Request ─────────────────────────────
+
+router.post('/leave-request', requireStaffAuth, async (req, res) => {
+  const { leave_type, start_date, end_date, days_requested, reason } = req.body;
+  const validTypes = ['annual', 'sick', 'carers', 'personal'];
+  if (!validTypes.includes(leave_type)) {
+    return res.status(400).json({ success: false, message: 'leave_type must be annual, sick, carers, or personal' });
+  }
+  if (!start_date || !end_date) {
+    return res.status(400).json({ success: false, message: 'start_date and end_date required' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO staff_leave_requests (operator_id, staff_id, leave_type, start_date, end_date, days_requested, reason, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING *`,
+      [req.staffOperatorId, req.staffId, leave_type, start_date, end_date, days_requested || null, reason || null]
+    );
+    res.json({ success: true, request: result.rows[0] });
+  } catch (err) {
+    console.error('[StaffPortal] leave-request error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to submit leave request' });
+  }
+});
+
+// GET /api/staff-portal/my-leave — staff's own leave requests
+router.get('/my-leave', requireStaffAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM staff_leave_requests WHERE staff_id=$1 ORDER BY created_at DESC`,
+      [req.staffId]
+    );
+    res.json({ success: true, requests: result.rows });
+  } catch (err) {
+    console.error('[StaffPortal] my-leave error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to load leave requests' });
+  }
+});
+
+// ─── FEATURE 4 (staff side): Propose Shift Swap ──────────────────────────────
+// Staff proposes a swap for one of their own shifts (by roster_entry_id)
+
+router.post('/propose-swap', requireStaffAuth, async (req, res) => {
+  const { roster_entry_id, target_staff_id } = req.body;
+  if (!roster_entry_id) return res.status(400).json({ success: false, message: 'roster_entry_id required' });
+  try {
+    // Confirm the shift belongs to this staff member
+    const entryResult = await pool.query(
+      `SELECT * FROM roster_entries WHERE id=$1 AND staff_id=$2 AND operator_id=$3 AND status != 'cancelled'`,
+      [roster_entry_id, req.staffId, req.staffOperatorId]
+    );
+    const entry = entryResult.rows[0];
+    if (!entry) return res.status(404).json({ success: false, message: 'Shift not found' });
+
+    // Check for existing pending swap
+    const existCheck = await pool.query(
+      `SELECT id FROM staff_shift_swap_requests WHERE roster_entry_id=$1 AND status='pending'`,
+      [roster_entry_id]
+    );
+    if (existCheck.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Swap already pending for this shift' });
+    }
+
+    await pool.query(
+      `INSERT INTO staff_shift_swap_requests (operator_id, roster_entry_id, requesting_staff_id, target_staff_id, status)
+       VALUES ($1,$2,$3,$4,'pending')`,
+      [req.staffOperatorId, roster_entry_id, req.staffId, target_staff_id || null]
+    );
+    res.json({ success: true, message: 'Swap request submitted — awaiting boss approval' });
+  } catch (err) {
+    console.error('[StaffPortal] propose-swap error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to submit swap request' });
+  }
+});
 
 module.exports = router;

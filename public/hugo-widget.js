@@ -1,5 +1,9 @@
 /**
- * Hugo Widget v6.7 — NETWORK FRONT DOOR: two-path fork on landing pages
+ * Hugo Widget v6.9 — Business Type = Single Source of Truth (aligned all 10 sites to v=13)
+ *
+ * Business Type setting drives the persona label (Hugo-Pro / Hugo-Trade / Hugo-Pays).
+ * Widget reads window.POLSIACONFIG?.businessType on init — no domain detection.
+ * Label is injected as identity anchor in Hugo's system prompt.
  *
  * Greeting: "G'day! I'm Hugo. Do you need a tradie today — or do you want to join the PropOps network?"
  * PATH 1: "I need a tradie" → lead qualification funnel → saved to network_leads
@@ -8,7 +12,7 @@
  * v6.6 — VOICE FIX: never switch voices mid-conversation
  *
  * Drop on any page:
- *   <script src="/hugo-widget.js?v=13"></script>
+ *   <script src="/hugo-widget.js?v=14"></script>
  *
  * v6.6: VOICE CONSISTENCY FIX
  *   - Landing pages: NEVER fall back to browser speechSynthesis (prevents old-man voice)
@@ -59,11 +63,48 @@
   let isWaiting = false;
   let hasGreeted = false;
   let _widgetBusinessType = null; // set by dashboard via window.HugoWidget.setBusinessType()
+
+  // ─── Hugo label mapping (Business Type → persona label) ────────────────────
+  // Business Type is the SINGLE SOURCE OF TRUTH — no domain detection.
+  // Injected as identity anchor in Hugo's system prompt.
+  //
+  // Mapping:
+  //   'founder' → Hugo-Founder (founder/owner operator)
+  //   'real_estate' / 're_agent' → Hugo-Pro (RE Agent bucket)
+  //   'small_business' / 'pays' → Hugo-Pays (SB bucket)
+  //   DYNAMIC CATEGORY (dashboard only): "Painter" → "Hugo-Painter", "Plumber" → "Hugo-Plumber"
+  //     — comes from Settings → Business Type on operator dashboards
+  //     — landing pages use bucket labels (Hugo-Trade), NOT dynamic — _isDashboard gates this
+  //
+  // Landing page POLSIACONFIG uses BUCKET values (real_estate / trade / pays).
+  // Dashboard POLSIACONFIG uses ACTUAL CATEGORY names (Painter / Plumber / Electrician).
+  function getHugoLabel(bt) {
+    if (bt === 'founder') return 'Hugo-Founder';
+    if (bt === 'real_estate' || bt === 're_agent') return 'Hugo-Pro';
+    if (bt === 'small_business' || bt === 'pays') return 'Hugo-Pays';
+    if (bt && typeof bt === 'string' && bt.length > 0 && bt.length < 40) {
+      // Dynamic category: "Painter" → "Hugo-Painter", "Plumber" → "Hugo-Plumber"
+      // ONLY apply to dashboard (_isDashboard=true). Landing pages use bucket labels.
+      // Guard by checking _isDashboard since getHugoLabel doesn't take that param.
+      if (_isDashboard) {
+        var catCapitalized = bt.charAt(0).toUpperCase() + bt.slice(1).toLowerCase();
+        return 'Hugo-' + catCapitalized;
+      }
+    }
+    return 'Hugo-Trade'; // landing page or unknown bucket → Hugo-Trade
+  }
+  function getHugoLabelFromDomain() {
+    var h = window.location.hostname || '';
+    if (h.includes('hugopays.pro')) return 'Hugo-Pays';
+    if (h === 'propops.pro' || h === 'www.propops.pro') return 'Hugo-Pro';
+    return 'Hugo-Trade';
+  }
   // Dashboard operator context — set by window.HugoWidget.setOperatorContext()
   // Injected into every chat call so Hugo knows WHO he's talking to on the dashboard.
   let _operatorName = null;
   let _operatorEmail = null;
   let _operatorTrade = null;
+  let _operatorId = null; // operator_id for backend profile lookup (tech_notes, etc.)
   // Flag: are we running inside the operator dashboard?
   let _isDashboard = false;
   // Voice conversation mode — true when user's last input was via mic
@@ -1512,12 +1553,21 @@
     // Speech bubble greeting — shows after 3s, auto-hides after 12s
     setTimeout(() => {
       if (isOpen) return; // Don't show if chat already open
+      // Domain-aware greeting text
+      const hostname = window.location.hostname || '';
+      let bubbleText = "G\u2019day! Need a tradie \u2014 or want to join the network? I\u2019m Hugo \ud83e\udd19";
+      if (hostname.includes('propops.pro') && !hostname.includes('hugopays')) {
+        bubbleText = "G\u2019day! Need help with property management or inspections? I\u2019m Hugo \ud83e\udd19";
+      } else if (hostname.includes('hugopays.pro')) {
+        bubbleText = "G\u2019day! Need help with invoicing, rostering, or payroll? I\u2019m Hugo \ud83e\udd19";
+      }
+      // propops.trade keeps the default tradie copy above
       const bubble = document.createElement('div');
       bubble.id = 'hugo-widget-bubble';
       bubble.innerHTML = `
         <button class="hw-bubble-close" aria-label="Dismiss">&times;</button>
         <div class="hw-bubble-name">Hugo</div>
-        <div>G\u2019day! Need a tradie \u2014 or want to join the network? I\u2019m Hugo \ud83e\udd19</div>
+        <div>${bubbleText}</div>
       `;
       bubble.addEventListener('click', (e) => {
         if (e.target.classList.contains('hw-bubble-close')) {
@@ -1639,47 +1689,57 @@
   // ─── Greeting ────────────────────────────────────────────────────────────────
   function sendGreeting() {
     var msg, spokenMsg;
+    // Determine Hugo's label: POLSIACONFIG businessType first, domain fallback second.
+    // Label must match the persona brain Hugo fires (Hugo-Pro / Hugo-Trade / Hugo-Pays).
+    var hugoLabel;
+    if (_widgetBusinessType) {
+      hugoLabel = getHugoLabel(_widgetBusinessType);
+    } else {
+      hugoLabel = getHugoLabelFromDomain();
+    }
 
     // Dashboard greeting: trade-specific, knows the operator context
     if (_isDashboard) {
       var tradeLabel = _operatorTrade || (_widgetBusinessType && _widgetBusinessType !== 'real_estate' ? _widgetBusinessType.replace(/_/g, ' ') : null);
       var operatorFirstName = _operatorName ? _operatorName.split(' ')[0] : null;
-      if (_widgetBusinessType === 'pays') {
-        // PAYS dashboard — V3 employee persona greeting, NOT a help desk bot.
-        // Hugo is staff who showed up for work — greets the boss by name and reports status.
+      if (hugoLabel === 'Hugo-Founder') {
+        // Founder dashboard — operations manager mode
+        var founderGreet = operatorFirstName ? "G'day " + operatorFirstName + "!" : "G'day!";
+        msg = founderGreet + " I\u2019m " + hugoLabel + " \u2014 your PropOps operations manager. What\u2019s on the agenda today? \ud83e\udd81";
+        spokenMsg = founderGreet + " I'm " + hugoLabel + ", your PropOps operations manager. What's on the agenda today?";
+      } else if (hugoLabel === 'Hugo-Pays') {
+        // PAYS dashboard — payroll/rostering/invoicing persona.
+        // Hugo is staff who showed up for work — greets the boss by name.
         var paysGreet = operatorFirstName ? "G'day " + operatorFirstName + "!" : "G'day boss!";
-        msg = paysGreet + " I\u2019m Hugo \u2014 your payroll brain. Ask me about staff, rosters, pay runs, invoices, super, or PAYG. I pull real data \u2014 no guessing. What do you need? \ud83d\udcbc";
-        spokenMsg = paysGreet + " I'm Hugo, your payroll brain. Ask me about staff, rosters, pay runs, or invoices. What do you need?";
-      } else if (tradeLabel && tradeLabel !== 'real_estate' && tradeLabel !== 'real estate') {
-        // Capitalise trade label
+        msg = paysGreet + " I\u2019m " + hugoLabel + " \u2014 your payroll brain. Ask me about staff, rosters, pay runs, invoices, super, or PAYG. I pull real data \u2014 no guessing. What do you need? \ud83d\udcbc";
+        spokenMsg = paysGreet + " I'm " + hugoLabel + ", your payroll brain. Ask me about staff, rosters, pay runs, or invoices. What do you need?";
+      } else if (tradeLabel && _widgetBusinessType !== 'real_estate' && _widgetBusinessType !== 're_agent') {
+        // Dynamic trade dashboard (Painter, Plumber, Electrician, etc.) — label matches Settings Category
         tradeLabel = tradeLabel.charAt(0).toUpperCase() + tradeLabel.slice(1).toLowerCase();
         var nameGreet = operatorFirstName ? "G'day " + operatorFirstName + "!" : "G'day!";
-        msg = nameGreet + " I\u2019m Hugo \u2014 your PropOps AI for " + tradeLabel + ". I can help with dashboard questions, walk you through setup, or show you what I'd say to your customers. What do you need? \ud83e\udd19";
-        spokenMsg = nameGreet + " I'm Hugo, your PropOps AI for " + tradeLabel + ". How can I help?";
+        msg = nameGreet + " I\u2019m " + hugoLabel + " \u2014 your PropOps AI for " + tradeLabel + ". I can help with dashboard questions, walk you through setup, or show you what I'd say to your customers. What do you need? \ud83e\udd19";
+        spokenMsg = nameGreet + " I'm " + hugoLabel + ", your PropOps AI for " + tradeLabel + ". How can I help?";
       } else {
-        // RE dashboard or unknown
+        // RE agent dashboard
         var nameGreet2 = operatorFirstName ? "G'day " + operatorFirstName + "!" : "G'day!";
-        msg = nameGreet2 + " I\u2019m Hugo \u2014 your PropOps AI. Need help with your dashboard, property enquiries, or want to see what I'd say to a customer? Just ask. \ud83e\udd19";
-        spokenMsg = nameGreet2 + " I'm Hugo, your PropOps AI. How can I help?";
+        msg = nameGreet2 + " I\u2019m " + hugoLabel + " \u2014 your PropOps AI. Need help with your dashboard, property enquiries, or want to see what I'd say to a customer? Just ask. \ud83e\udd19";
+        spokenMsg = nameGreet2 + " I'm " + hugoLabel + ", your PropOps AI. How can I help?";
       }
     } else {
-      // Public widget (landing pages) — Network Front Door greeting
+      // Public widget (landing pages) — persona matches Business Type setting.
       // Hugo opens with the two-path fork: need a tradie, or want to join?
-      // RE domain gets its own persona; all other visitors get the network front door.
-      var isREDomain = window.location.hostname === 'propops.pro' || window.location.hostname === 'www.propops.pro';
-      if (isREDomain && (!_widgetBusinessType || _widgetBusinessType === 'real_estate')) {
-        // propops.pro RE agent landing page
-        msg = "G'day! I'm Hugo \u2014 PropOps' AI for real estate. Need help with property management, buyer enquiries, or inspections? Just tell me what you need and I'll sort it out. \ud83e\udd19";
-        spokenMsg = "G'day! I'm Hugo, PropOps' AI for real estate. Need help with property management, buyer enquiries, or inspections? Just tell me what you need and I'll sort it out.";
-      } else if (_widgetBusinessType === 'pays') {
-        // hugopays.pro — invoicing, rostering & payroll persona
-        msg = "G\u2019day! I\u2019m Hugo \u2014 your AI for invoicing, rostering, and payroll. Got questions about GST invoices, staff scheduling, payment chasing, or pay runs? Fire away. \ud83d\udcb0";
-        spokenMsg = "G'day! I'm Hugo, your AI for invoicing, rostering, and payroll. Got questions about invoices, staff scheduling, or pay runs? Fire away.";
+      if (hugoLabel === 'Hugo-Pro') {
+        // RE agent landing page (propops.pro with RE business type)
+        msg = "G'day! I'm " + hugoLabel + " \u2014 PropOps' AI for real estate. Need help with property management, buyer enquiries, or inspections? Just tell me what you need and I'll sort it out. \ud83e\udd19";
+        spokenMsg = "G'day! I'm " + hugoLabel + ", PropOps' AI for real estate. Need help with property management, buyer enquiries, or inspections? Just tell me what you need and I'll sort it out.";
+      } else if (hugoLabel === 'Hugo-Pays') {
+        // Hugo.Pays landing page — invoicing, rostering & payroll persona
+        msg = "G\u2019day! I\u2019m " + hugoLabel + " \u2014 your AI for invoicing, rostering, and payroll. Got questions about GST invoices, staff scheduling, payment chasing, or pay runs? Fire away. \ud83d\udcb0";
+        spokenMsg = "G'day! I'm " + hugoLabel + ", your AI for invoicing, rostering, and payroll. Got questions about invoices, staff scheduling, or pay runs? Fire away.";
       } else {
-        // propops.trade (and propops.pro with tradie context) — Network Front Door
-        // "G'day! I'm Hugo. Do you need a tradie today — or do you want to join the PropOps network?"
-        msg = "G\u2019day! I\u2019m Hugo. Do you need a tradie today \u2014 or do you want to join the PropOps network? \ud83e\udd19";
-        spokenMsg = "G'day! I'm Hugo. Do you need a tradie today — or do you want to join the PropOps network?";
+        // Hugo-Trade — Network Front Door for tradie landing pages
+        msg = "G\u2019day! I\u2019m " + hugoLabel + ". Do you need a tradie today \u2014 or do you want to join the PropOps network? \ud83e\udd19";
+        spokenMsg = "G'day! I'm " + hugoLabel + ". Do you need a tradie today — or do you want to join the PropOps network?";
       }
     }
     addMessage('hugo', msg);
@@ -1759,16 +1819,43 @@
         if (_widgetBusinessType) body.business_type = _widgetBusinessType;
         // Pass hostname for brain service domain-aware routing
         body.hostname = window.location.hostname;
+
+        // ── Anchor 1: Landing page WHERE ─────────────────────────────────────────
+        // Tell Hugo which page he's on so he knows his persona + product context.
+        body.page_url = window.location.href;
+        // Extract meaningful visible text: heading, hero, CTAs. Keep it short.
+        body.page_text = (function () {
+          var parts = [];
+          var h1 = document.querySelector('h1');
+          if (h1 && h1.innerText) parts.push(h1.innerText.trim().slice(0, 200));
+          var hero = document.querySelector('.hero, #hero, .hero-section, [class*="hero"]');
+          if (hero && hero.innerText) {
+            var heroText = hero.innerText.trim().replace(/\n+/g, ' ').slice(0, 300);
+            if (heroText) parts.push(heroText);
+          }
+          var ctas = document.querySelectorAll('a[href*="signup"], a[href*="sign-up"], a[href*="trial"], a[href*="start"], .cta-btn, .cta-button, button[class*="cta"]');
+          ctas.forEach(function (a) {
+            var t = (a.innerText || a.textContent || '').trim().slice(0, 80);
+            if (t && t.length > 3 && t.length < 80) parts.push(t);
+          });
+          return parts.slice(0, 5).join(' | ');
+        })();
+
+        // ── Anchor 2: Dashboard WHO (operator context) ───────────────────────────
+        // setOperatorContext() called by dashboard — always send operator_email + operator_id
+        // so Hugo knows who he represents AND can fetch operator profile (tech_notes, etc.).
+        if (_operatorEmail) body.operator_email = _operatorEmail;
+        if (_operatorName) body.operator_name = _operatorName;
+        if (_operatorTrade) body.operator_trade = _operatorTrade;
+        if (_operatorId) body.operator_id = _operatorId;
+
         // Pass visitor's preferred language (set by flag buttons on landing pages) — first message only
         if (!sessionId && window._hugoPreferredLang) {
           body.preferred_language = window._hugoPreferredLang;
         }
-        // Inject dashboard operator context so Hugo knows he's inside the dashboard
+        // Inject dashboard flag so Hugo knows he's inside the dashboard (vs landing page)
         if (_isDashboard) {
           body.dashboard_context = true;
-          if (_operatorName) body.operator_name = _operatorName;
-          if (_operatorEmail) body.operator_email = _operatorEmail;
-          if (_operatorTrade) body.operator_trade = _operatorTrade;
         }
 
         if (attempt > 0) {
@@ -1874,12 +1961,26 @@
 
   // ─── Init ────────────────────────────────────────────────────────────────────
   function init() {
-    hwLog('INIT', '=== Hugo Widget v6.6 starting (VOICE FIX: no browser fallback on landing pages) ===');
+    hwLog('INIT', '=== Hugo Widget v6.7 starting (Business Type = single source of truth) ===');
     hwLog('INIT', 'SpeechRecognition available: ' + !!(window.SpeechRecognition || window.webkitSpeechRecognition));
     hwLog('INIT', 'MediaRecorder available: ' + !!window.MediaRecorder);
     hwLog('INIT', 'speechSynthesis available: ' + !!window.speechSynthesis);
     hwLog('INIT', 'Secure context (HTTPS): ' + window.isSecureContext);
     hwLog('INIT', 'Location: ' + window.location.origin + window.location.pathname);
+
+    // Read Business Type from window.POLSIACONFIG (set by dashboard/Settings).
+    // This is the SINGLE SOURCE OF TRUTH — no domain detection fallback.
+    // Dashboard sets window.POLSIACONFIG = { businessType: 'plumber', ... }
+    // so Hugo fires as Hugo-Trade for tradies, Hugo-Pro for RE agents, Hugo-Pays for small biz.
+    if (window.POLSIACONFIG && window.POLSIACONFIG.businessType) {
+      _widgetBusinessType = window.POLSIACONFIG.businessType;
+      hwLog('CONFIG', 'Business type from window.POLSIACONFIG: ' + _widgetBusinessType + ' → label: ' + getHugoLabel(_widgetBusinessType));
+    } else {
+      // Fallback: derive from domain for backwards compat (old landing pages without POLSIACONFIG).
+      // This path will be deprecated once all pages set POLSIACONFIG.
+      var domainLabel = getHugoLabelFromDomain();
+      hwLog('CONFIG', 'No POLSIACONFIG — deriving from domain: ' + domainLabel);
+    }
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function () {
@@ -1902,8 +2003,9 @@
     setBusinessType: function(bt) {
       _widgetBusinessType = bt || null;
       hwLog('CONFIG', 'Business type set to: ' + (_widgetBusinessType || 'default'));
-      // Clear session so next open starts fresh with the correct persona
-      if (_widgetBusinessType && sessionId) {
+      // Always clear session when business type changes — ensures persona anchors at
+      // session start and doesn't flip mid-conversation. Clears on first call AND re-set.
+      if (sessionId) {
         sessionId = null;
         hasGreeted = false;
         const container = document.getElementById('hw-messages');
@@ -1912,14 +2014,15 @@
       }
     },
     // setOperatorContext — called by dashboard after loadCurrentUser() and initMode()
-    // Injects operator name, email, and trade into Hugo's context so he knows who he's
+    // Injects operator name, email, trade, and ID into Hugo's context so he knows who he's
     // talking to when running inside the dashboard (not on a landing page).
-    setOperatorContext: function(name, email, trade) {
+    setOperatorContext: function(name, email, trade, operatorId) {
       _operatorName = name || null;
       _operatorEmail = email || null;
       _operatorTrade = trade || null;
+      _operatorId = operatorId || null;
       _isDashboard = true;
-      hwLog('CONFIG', 'Operator context set — name:' + (_operatorName || 'none') + ', trade:' + (_operatorTrade || 'none'));
+      hwLog('CONFIG', 'Operator context set — name:' + (_operatorName || 'none') + ', trade:' + (_operatorTrade || 'none') + ', id:' + (_operatorId || 'none'));
       // Clear session so next open starts with dashboard-aware context
       if (sessionId) {
         sessionId = null;

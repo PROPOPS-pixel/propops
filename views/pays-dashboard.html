@@ -105,7 +105,7 @@
         .staff-table td { padding: 0.85rem 1rem; font-size: 0.875rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
         .staff-table tbody tr:last-child td { border-bottom: none; }
         .staff-table tbody tr:hover td { background: var(--surface-hover); }
-        .staff-name { font-weight: 600; color: var(--text-bright); }
+        .staff-name { font-weight: 600; color: var(--text-bright); text-transform: capitalize; }
         .staff-role { font-size: 0.78rem; color: var(--text-dim); margin-top: 1px; }
         .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
         .status-pill.active { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
@@ -161,7 +161,7 @@
         input:checked + .toggle-slider:before { transform: translateX(18px); }
 
         /* ── Map placeholder ── */
-        .map-container { height: 320px; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.03); border: 1px dashed var(--border); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0.5rem; }
+        .map-container { height: 400px; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.03); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0.5rem; }
         .map-container .map-placeholder-icon { font-size: 2.5rem; }
         .map-container .map-placeholder-text { font-size: 0.85rem; color: var(--text-dim); }
 
@@ -200,7 +200,7 @@
         .wv-table td { padding: 0.3rem 0.2rem; font-size: 0.72rem; border-bottom: 1px solid var(--border); vertical-align: top; position: relative; overflow: hidden; }
         .wv-table tr:last-child td { border-bottom: none; }
         .wv-staff-cell { width: 100px; padding: 0.4rem 0.5rem !important; }
-        .wv-staff-name { font-weight: 700; color: var(--text-bright); font-size: 0.75rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .wv-staff-name { font-weight: 700; color: var(--text-bright); font-size: 0.75rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: capitalize; }
         .wv-staff-rate { font-size: 0.65rem; color: var(--text-dim); }
         .wv-day-cell { min-height: 48px; cursor: pointer; border-left: 1px solid var(--border); transition: background 0.15s; }
         .wv-day-cell:hover { background: var(--surface-hover); }
@@ -234,13 +234,63 @@
         .wv-swap-info small { color: var(--text-dim); font-size: 0.72rem; }
         .wv-swap-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
 
-        /* ── Mobile ── */
+        /* ── Biz hours row ── */
+        .bh-row { display:grid;grid-template-columns:80px 1fr auto;gap:0.75rem;align-items:center;background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.85rem; }
+        .bh-row .bh-day { font-size:0.82rem;font-weight:600;color:var(--text); }
+        .bh-row .bh-times { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap; }
+        .bh-row .bh-staff { display:flex;gap:0.4rem;align-items:center;font-size:0.78rem;color:var(--text-dim);flex-wrap:wrap; }
+        .bh-staff input { width:44px; }
+
+        /* ── Penalty chip detail ── */
+        .penalty-badge { font-size:0.58rem;background:rgba(139,92,246,0.15);color:var(--purple);border:1px solid rgba(139,92,246,0.3);border-radius:3px;padding:1px 4px;display:inline-block; }
+
+        /* ── Leave request cards ── */
+        .leave-type-tag { font-size:0.7rem;font-weight:600;padding:2px 7px;border-radius:20px; }
+        .leave-type-tag.annual { background:rgba(59,130,246,0.15);color:var(--blue);border:1px solid rgba(59,130,246,0.2); }
+        .leave-type-tag.sick { background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.2); }
+        .leave-type-tag.carers { background:rgba(139,92,246,0.12);color:var(--purple);border:1px solid rgba(139,92,246,0.2); }
+        .leave-type-tag.personal { background:rgba(251,191,36,0.12);color:var(--pays);border:1px solid rgba(251,191,36,0.2); }
+
+        /* ── Mobile — Feature 10 ── */
         @media (max-width: 768px) {
             .pays-layout { padding: 7rem 0.75rem 3rem; }
             .pays-subnav .subnav-inner { padding: 0.3rem 0.75rem; gap: 0.1rem; }
             .subnav-item { font-size: 0.7rem; padding: 0.35rem 0.5rem; }
             .subnav-item .icon { font-size: 0.75rem; }
             .form-row { grid-template-columns: 1fr; }
+            /* Mobile roster: single column stack */
+            .wv-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .wv-table { min-width: 600px; }
+            /* Shift chips: full width on mobile */
+            .wv-shift-chip { font-size: 0.7rem; }
+            /* Stats: 2-col on mobile */
+            .pays-stats { grid-template-columns: repeat(2,1fr) !important; }
+            /* Section cards: tighter padding */
+            .section-card-body { padding: 0.75rem; }
+            /* Modal: full-screen on mobile */
+            .modal-box { max-width: 100%; margin: 0.5rem; }
+            /* Biz hours: stack */
+            .bh-row { grid-template-columns: 1fr; gap: 0.4rem; }
+            .bh-row .bh-times, .bh-row .bh-staff { flex-wrap: wrap; }
+            /* Analytics cards: 2-col */
+            #analyticsCards { grid-template-columns: repeat(2,1fr) !important; }
+            /* Compliance row: 1-col on small */
+            .compliance-row { grid-template-columns: 1fr; }
+            /* Staff table: scrollable */
+            #staffTableWrap, #rosterTableWrap, #payrunTableWrap, #invoiceTableWrap,
+            #leaveRequestsWrap, #swapRequestsWrap { overflow-x: auto; }
+            .staff-table { min-width: 560px; }
+            /* Nav actions: smaller */
+            .nav-back, .btn-logout-pays { font-size: 0.72rem; padding: 0.35rem 0.6rem; }
+            /* Section card header: wrap */
+            .section-card-header { flex-wrap: wrap; gap: 0.5rem; }
+            /* Tap targets: min 44px */
+            .btn-primary, .btn-secondary, .btn-danger { min-height: 44px; padding: 0.6rem 1rem; }
+            .subnav-item { min-height: 36px; }
+        }
+        @media (max-width: 480px) {
+            .pays-stats { grid-template-columns: 1fr 1fr !important; }
+            .pays-header-title { font-size: 1rem; }
         }
     </style>
 </head>
@@ -279,6 +329,21 @@
             </button>
             <button class="subnav-item" id="nav-invoices" onclick="showSection('invoices')">
                 <span class="icon">🧾</span> Invoices
+            </button>
+            <div class="subnav-divider"></div>
+            <button class="subnav-item" id="nav-leave" onclick="showSection('leave')">
+                <span class="icon">🌴</span> Leave
+                <span id="leaveBadgeNav" style="display:none;background:var(--pays);color:var(--midnight);border-radius:20px;font-size:0.55rem;padding:1px 5px;font-weight:800;margin-left:2px;"></span>
+            </button>
+            <button class="subnav-item" id="nav-swaps" onclick="showSection('swaps')">
+                <span class="icon">⇄</span> Swaps
+                <span id="swapsBadgeNav" style="display:none;background:var(--red);color:#fff;border-radius:20px;font-size:0.55rem;padding:1px 5px;font-weight:800;margin-left:2px;"></span>
+            </button>
+            <button class="subnav-item" id="nav-analytics" onclick="showSection('analytics')">
+                <span class="icon">📈</span> Analytics
+            </button>
+            <button class="subnav-item" id="nav-bizHours" onclick="showSection('bizHours')">
+                <span class="icon">🕐</span> Hours
             </button>
             <div class="subnav-divider"></div>
             <button class="subnav-item" id="nav-map" onclick="showSection('map')">
@@ -414,7 +479,10 @@
                     <div class="section-card">
                         <div class="section-card-header">
                             <div class="section-card-title">📆 Week View — Staff Roster + Pay</div>
-                            <button class="btn-primary" onclick="openAddShiftFromWeek()">+ Add Shift</button>
+                            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                                <button class="btn-secondary" onclick="generateRoster()" id="btnGenerateRoster" style="font-size:0.78rem;">🤖 Generate Roster</button>
+                                <button class="btn-primary" onclick="openAddShiftFromWeek()">+ Add Shift</button>
+                            </div>
                         </div>
                         <div class="section-card-body" style="padding-bottom:0;">
                             <div class="wv-header">
@@ -536,6 +604,128 @@
                                 <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading invoices…</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Leave Requests (Boss) ── -->
+            <div id="section-leave" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🌴 Leave Requests</div>
+                        <span style="font-size:0.78rem;color:var(--text-dim);">Staff submit requests via portal · you approve or decline here</span>
+                    </div>
+                    <div id="leaveRequestsWrap">
+                        <table class="staff-table" id="leaveRequestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Staff</th>
+                                    <th>Type</th>
+                                    <th>Dates</th>
+                                    <th>Days</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaveRequestsBody">
+                                <tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading leave requests…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Shift Swaps (Boss) ── -->
+            <div id="section-swaps" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">⇄ Shift Swap Requests</div>
+                        <span style="font-size:0.78rem;color:var(--text-dim);">Staff propose swaps via portal · approve here to reassign</span>
+                    </div>
+                    <div id="swapRequestsWrap">
+                        <table class="staff-table" id="swapRequestsTable">
+                            <thead>
+                                <tr>
+                                    <th>Requesting Staff</th>
+                                    <th>Target Staff</th>
+                                    <th>Shift</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="swapRequestsBody">
+                                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:2rem;">Loading swap requests…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Analytics Dashboard ── -->
+            <div id="section-analytics" style="display:none;">
+                <div class="pays-header-banner">
+                    <div>
+                        <div class="pays-header-title">📈 Analytics</div>
+                        <div class="pays-header-sub">Invoice funnel, staff utilization, payroll trends</div>
+                    </div>
+                </div>
+                <!-- Summary cards -->
+                <div class="pays-stats" id="analyticsCards" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="pays-stat"><div class="stat-label">Total Revenue</div><div class="stat-val green" id="analRevenue">—</div><div class="stat-sub">Paid invoices</div></div>
+                    <div class="pays-stat"><div class="stat-label">Outstanding</div><div class="stat-val" style="color:var(--red)" id="analOutstanding">—</div><div class="stat-sub">Sent + overdue</div></div>
+                    <div class="pays-stat"><div class="stat-label">Active Staff</div><div class="stat-val gold" id="analStaff">—</div><div class="stat-sub">Avg rate <span id="analAvgRate">—</span>/hr</div></div>
+                    <div class="pays-stat"><div class="stat-label">Upcoming Shifts</div><div class="stat-val" id="analShifts">—</div><div class="stat-sub">Scheduled roster</div></div>
+                </div>
+                <!-- Invoice funnel -->
+                <div class="section-card" style="margin-bottom:1rem;">
+                    <div class="section-card-header"><div class="section-card-title">🧾 Invoice Funnel</div></div>
+                    <div class="section-card-body">
+                        <div id="invoiceFunnel" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:stretch;">
+                            <div style="flex:1;min-width:120px;background:var(--midnight);border:1px solid var(--border);border-radius:8px;padding:0.75rem;text-align:center;">
+                                <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">Draft</div>
+                                <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text-dim);" id="funnelDraft">—</div>
+                            </div>
+                            <div style="display:flex;align-items:center;color:var(--text-dim);font-size:1.2rem;">→</div>
+                            <div style="flex:1;min-width:120px;background:var(--midnight);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:0.75rem;text-align:center;">
+                                <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin-bottom:4px;">Sent</div>
+                                <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:var(--blue);" id="funnelSent">—</div>
+                            </div>
+                            <div style="display:flex;align-items:center;color:var(--text-dim);font-size:1.2rem;">→</div>
+                            <div style="flex:1;min-width:120px;background:var(--midnight);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:0.75rem;text-align:center;">
+                                <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:4px;">Paid</div>
+                                <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:var(--green);" id="funnelPaid">—</div>
+                            </div>
+                            <div style="display:flex;align-items:center;color:var(--text-dim);font-size:0.8rem;">|</div>
+                            <div style="flex:1;min-width:120px;background:var(--midnight);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:0.75rem;text-align:center;">
+                                <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin-bottom:4px;">Overdue</div>
+                                <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:var(--red);" id="funnelOverdue">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Payroll cost trend -->
+                <div class="section-card">
+                    <div class="section-card-header"><div class="section-card-title">💵 Payroll Cost Trend (Last 6 Months)</div></div>
+                    <div class="section-card-body">
+                        <div id="payrollTrend" style="display:flex;gap:0.5rem;align-items:flex-end;height:120px;overflow-x:auto;padding-bottom:0.5rem;"></div>
+                        <p style="font-size:0.72rem;color:var(--text-dim);margin-top:0.5rem;">Gross wages per month from completed pay runs</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Business Hours Config ── -->
+            <div id="section-bizHours" style="display:none;">
+                <div class="section-card">
+                    <div class="section-card-header">
+                        <div class="section-card-title">🕐 Business Hours</div>
+                        <button class="btn-primary" onclick="saveBizHours()">Save Hours</button>
+                    </div>
+                    <div class="section-card-body">
+                        <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1.25rem;">Set your open hours and staffing targets per day. Used by AI Roster Generation.</p>
+                        <div id="bizHoursGrid" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+                        <span id="bizHoursSaveMsg" style="font-size:0.82rem;color:var(--green);margin-top:0.75rem;display:none;">✅ Saved</span>
                     </div>
                 </div>
             </div>
@@ -843,11 +1033,59 @@
         </div>
     </div>
 
-    <!-- ── Schedule Job Modal ── -->
+    <!-- ── Edit Staff Modal ── -->
+    <div class="modal-overlay" id="editStaffModal">
+        <div class="modal-box">
+            <div class="modal-title">Edit Staff Member</div>
+            <div class="modal-sub">Update details in-place — shift history and pay records are preserved.</div>
+            <input type="hidden" id="editStaffId">
+            <div class="settings-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" class="form-input" id="editStaffName" placeholder="e.g. Jordan Smith">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-input" id="editStaffRole" placeholder="e.g. Plumber">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Hourly Rate ($)</label>
+                        <input type="number" class="form-input" id="editStaffRate" placeholder="e.g. 35" min="0" step="0.50">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="editStaffPhone" placeholder="e.g. 0412 345 678">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email (for portal invite)</label>
+                    <input type="email" class="form-input" id="editStaffEmail" placeholder="e.g. jordan@example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">TFN Status</label>
+                    <select class="form-select form-input" id="editStaffTFN">
+                        <option value="provided">Provided</option>
+                        <option value="not_provided">Not provided</option>
+                        <option value="exemption">Exemption</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeModal('editStaffModal')">Cancel</button>
+                    <button class="btn-primary" onclick="saveEditStaff()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Schedule / Edit Shift Modal ── -->
     <div class="modal-overlay" id="addRosterModal">
         <div class="modal-box">
-            <div class="modal-title">Schedule a Job</div>
-            <div class="modal-sub">Assign a staff member to a job. Shows on the GPS map.</div>
+            <div class="modal-title" id="rosterModalTitle">Schedule a Job</div>
+            <div class="modal-sub" id="rosterModalSub">Assign a staff member to a job. Shows on the GPS map.</div>
+            <input type="hidden" id="rosterEditShiftId">
             <div class="settings-form">
                 <div class="form-group">
                     <label class="form-label">Staff Member *</label>
@@ -882,7 +1120,7 @@
                 </div>
                 <div class="modal-actions">
                     <button class="btn-secondary" onclick="closeModal('addRosterModal')">Cancel</button>
-                    <button class="btn-primary" onclick="saveNewRoster()">Schedule Job</button>
+                    <button class="btn-primary" id="rosterModalSaveBtn" onclick="saveRosterModal()">Schedule Job</button>
                 </div>
             </div>
         </div>
@@ -1011,7 +1249,7 @@
     // WHY: 'weekview' removed — now a tab inside 'rosters' (Bug #1617092)
     var _rosterTab = 'week'; // default to week view
     function showSection(name) {
-        var sections = ['overview', 'staff', 'rosters', 'payruns', 'invoices', 'map', 'setup', 'settings', 'export'];
+        var sections = ['overview', 'staff', 'rosters', 'payruns', 'invoices', 'leave', 'swaps', 'analytics', 'bizHours', 'map', 'setup', 'settings', 'export'];
         sections.forEach(function(s) {
             var el = document.getElementById('section-' + s);
             if (el) el.style.display = s === name ? '' : 'none';
@@ -1025,6 +1263,10 @@
         if (name === 'invoices') loadInvoices();
         if (name === 'map') loadMap();
         if (name === 'settings') loadSettingsData();
+        if (name === 'leave') loadLeaveRequests();
+        if (name === 'swaps') loadSwapRequests();
+        if (name === 'analytics') loadAnalytics();
+        if (name === 'bizHours') loadBizHours();
     }
 
     function switchRosterTab(tab) {
@@ -1131,14 +1373,16 @@
         }
         tbody.innerHTML = list.map(function(s) {
             return '<tr>'
-                + '<td><div class="staff-name">' + escHtml(s.name) + '</div><div class="staff-role">' + escHtml(s.role || '—') + '</div></td>'
+                + '<td><div class="staff-name">' + escHtml(s.name) + (s.email ? '' : ' <span title="No email — staff won\'t receive shift notifications" style="display:inline-block;background:#fef3c7;color:#92400e;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:4px;vertical-align:middle;cursor:help;">⚠ No email</span>') + '</div><div class="staff-role">' + escHtml(s.role || '—') + '</div></td>'
                 + '<td>$' + fmtNum(s.hourly_rate || 0) + '/hr</td>'
                 + '<td><span class="status-pill ' + (s.tfn_status === 'provided' ? 'active' : 'pending') + '">' + escHtml(s.tfn_status || 'pending') + '</span></td>'
                 + '<td>' + escHtml(s.phone || '—') + '</td>'
                 + '<td><span class="status-pill ' + (s.is_active ? 'active' : 'inactive') + '">' + (s.is_active ? 'Active' : 'Inactive') + '</span></td>'
-                + '<td style="display:flex;gap:0.4rem;align-items:center;">'
+                + '<td style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">'
                 + '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="previewAsStaff(' + s.id + ',\'' + escHtml(s.name) + '\')">👁 Preview</button>'
-                + (s.email ? '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="sendStaffInvite(' + s.id + ',\'' + escHtml(s.name) + '\')">✉ Invite</button>' : '')
+                + '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="openEditStaffModal(' + s.id + ')">✏️ Edit</button>'
+                + (s.email ? '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="sendStaffInvite(' + s.id + ',\'' + escHtml(s.name) + '\')">✉ Invite</button>' : '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="openEditStaffModal(' + s.id + ')">✉ Add Email</button>')
+                + (s.email ? '<button class="btn-secondary" style="font-size:0.72rem;padding:3px 8px;" onclick="sendMagicLink(' + s.id + ')">🔗 Magic Link</button>' : '')
                 + '<button class="btn-danger" onclick="deleteStaff(' + s.id + ')">Remove</button>'
                 + '</td>'
                 + '</tr>';
@@ -1152,36 +1396,54 @@
         openModal('addStaffModal');
     }
 
+    // WHY: phone duplicate check before saving — warns but doesn't block
+    function checkPhoneThenSave(phone, excludeId, onClear) {
+        if (!phone || !phone.trim()) { onClear(); return; }
+        var url = '/api/paydeck/staff/check-phone?phone=' + encodeURIComponent(phone.trim());
+        if (excludeId) url += '&exclude_id=' + excludeId;
+        fetch(url, { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.duplicate && d.existing_name) {
+                if (confirm('This phone number is already assigned to ' + d.existing_name + '. Continue anyway?')) {
+                    onClear();
+                }
+            } else {
+                onClear();
+            }
+        }).catch(function() { onClear(); }); // fail open — don't block saves
+    }
+
     function saveNewStaff() {
         var name = document.getElementById('newStaffName').value.trim();
         if (!name) { showToast('Name is required'); return; }
+        var phone = document.getElementById('newStaffPhone').value.trim() || null;
         var email = document.getElementById('newStaffEmail').value.trim() || null;
-        fetch('/api/paydeck/staff', {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: name,
-                role: document.getElementById('newStaffRole').value.trim() || null,
-                hourly_rate: parseFloat(document.getElementById('newStaffRate').value) || null,
-                phone: document.getElementById('newStaffPhone').value.trim() || null,
-                email: email,
-                tfn_status: document.getElementById('newStaffTFN').value
-            })
-        }).then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (!d.success) { showToast(d.message || 'Failed to add staff'); return; }
-            closeModal('addStaffModal'); loadStaff(); loadSummary();
-            // Auto-send portal invite if an email was provided
-            if (email && d.staff && d.staff.id) {
-                fetch('/api/paydeck/staff/' + d.staff.id + '/send-invite', { method: 'POST', credentials: 'include' })
-                    .then(function(r) { return r.json(); })
-                    .then(function(inv) {
-                        showToast(inv.success ? 'Staff added — invite sent to ' + email + '! ✉' : 'Staff added! (invite failed — resend manually)');
-                    }).catch(function() { showToast('Staff added! 👤'); });
-            } else {
-                showToast('Staff added! 👤');
-            }
-        }).catch(function() { showToast('Network error — try again'); });
+        checkPhoneThenSave(phone, null, function() {
+            fetch('/api/paydeck/staff', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    role: document.getElementById('newStaffRole').value.trim() || null,
+                    hourly_rate: parseFloat(document.getElementById('newStaffRate').value) || null,
+                    phone: phone,
+                    email: email,
+                    tfn_status: document.getElementById('newStaffTFN').value
+                })
+            }).then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) { showToast(d.message || 'Failed to add staff'); return; }
+                closeModal('addStaffModal'); loadStaff(); loadSummary();
+                if (email && d.staff && d.staff.id) {
+                    fetch('/api/paydeck/staff/' + d.staff.id + '/send-invite', { method: 'POST', credentials: 'include' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(inv) {
+                            showToast(inv.success ? 'Staff added — invite sent to ' + email + '! ✉' : 'Staff added! (invite failed — resend manually)');
+                        }).catch(function() { showToast('Staff added! 👤'); });
+                } else {
+                    showToast('Staff added! 👤');
+                }
+            }).catch(function() { showToast('Network error — try again'); });
+        });
     }
 
     function deleteStaff(id) {
@@ -1190,6 +1452,46 @@
             .then(function(r) { return r.json(); })
             .then(function(d) { if(d.success) { loadStaff(); showToast('Staff removed'); } })
             .catch(function() {});
+    }
+
+    function openEditStaffModal(staffId) {
+        var s = (state.staffList || []).find(function(x) { return x.id === staffId; });
+        if (!s) { showToast('Staff not found — reload and try again'); return; }
+        document.getElementById('editStaffId').value = s.id;
+        document.getElementById('editStaffName').value = s.name || '';
+        document.getElementById('editStaffRole').value = s.role || '';
+        document.getElementById('editStaffRate').value = s.hourly_rate || '';
+        document.getElementById('editStaffPhone').value = s.phone || '';
+        document.getElementById('editStaffEmail').value = s.email || '';
+        document.getElementById('editStaffTFN').value = s.tfn_status || 'not_provided';
+        openModal('editStaffModal');
+    }
+
+    function saveEditStaff() {
+        var id = document.getElementById('editStaffId').value;
+        var name = document.getElementById('editStaffName').value.trim();
+        if (!name) { showToast('Name is required'); return; }
+        var rate = parseFloat(document.getElementById('editStaffRate').value);
+        if (isNaN(rate) || rate < 0) { showToast('Enter a valid hourly rate'); return; }
+        var phone = document.getElementById('editStaffPhone').value.trim() || null;
+        checkPhoneThenSave(phone, id, function() {
+            fetch('/api/paydeck/staff/' + id, {
+                method: 'PUT', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    role: document.getElementById('editStaffRole').value.trim() || null,
+                    hourly_rate: rate,
+                    phone: phone,
+                    email: document.getElementById('editStaffEmail').value.trim() || null,
+                    tfn_status: document.getElementById('editStaffTFN').value
+                })
+            }).then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.success) { showToast(d.message || 'Failed to update staff'); return; }
+                closeModal('editStaffModal'); loadStaff(); showToast('Staff updated ✅');
+            }).catch(function() { showToast('Network error — try again'); });
+        });
     }
 
     // Boss preview — opens /pays/staff in a new tab impersonating a staff member.
@@ -1212,6 +1514,28 @@
             .catch(function() { showToast('Network error — try again'); });
     }
 
+    // Feature 5: Send magic link (no-password 60-day login link)
+    function sendMagicLink(staffId) {
+        fetch('/api/paydeck/staff/' + staffId + '/send-magic-link', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) { showToast('🔗 Magic link sent! Valid 60 days.'); }
+            else if (d.message && d.message.includes('24 hours')) {
+                if (confirm('Magic link already sent in last 24h. Send anyway?')) {
+                    fetch('/api/paydeck/staff/' + staffId + '/send-magic-link', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ force: true }),
+                    }).then(function(r2) { return r2.json(); }).then(function(d2) { showToast(d2.success ? '🔗 Magic link sent!' : (d2.message || 'Failed')); });
+                }
+            } else { showToast(d.message || 'Failed to send magic link'); }
+        })
+        .catch(function() { showToast('Network error'); });
+    }
+
     // ── Rosters ──────────────────────────────────────────────────────────────
     function loadRosters() {
         fetch('/api/paydeck/roster', { credentials: 'include' })
@@ -1230,7 +1554,7 @@
         }
         tbody.innerHTML = list.map(function(r) {
             var date = r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'}) : '—';
-            var time = r.start_time ? r.start_time.slice(0,5) : '';
+            var time = r.start_time ? formatTime12h(r.start_time) : '';
             return '<tr>'
                 + '<td>' + escHtml(r.staff_name || '—') + '</td>'
                 + '<td>' + escHtml(r.job_title || '—') + '</td>'
@@ -1243,8 +1567,14 @@
     }
 
     function openAddRosterModal() {
+        // Reset to add mode
+        document.getElementById('rosterEditShiftId').value = '';
+        document.getElementById('rosterModalTitle').textContent = 'Schedule a Job';
+        document.getElementById('rosterModalSub').textContent = 'Assign a staff member to a job. Shows on the GPS map.';
+        document.getElementById('rosterModalSaveBtn').textContent = 'Schedule Job';
         // Populate staff select
         var sel = document.getElementById('rosterStaffSelect');
+        sel.disabled = false;
         sel.innerHTML = '<option value="">Select staff…</option>';
         (state.staffList || []).forEach(function(s) {
             sel.innerHTML += '<option value="' + s.id + '">' + escHtml(s.name) + '</option>';
@@ -1258,28 +1588,48 @@
         openModal('addRosterModal');
     }
 
-    function saveNewRoster() {
+    function saveNewRoster() { saveRosterModal(); } // WHY: legacy call site — delegates to unified handler
+
+    function saveRosterModal() {
+        var editId = document.getElementById('rosterEditShiftId').value;
+        var isEdit = !!editId;
         var staffId = document.getElementById('rosterStaffSelect').value;
         var date = document.getElementById('rosterDate').value;
-        if (!staffId || !date) { showToast('Staff and date are required'); return; }
-        fetch('/api/paydeck/roster', {
-            method: 'POST', credentials: 'include',
+        var startTime = document.getElementById('rosterTime').value || null;
+        var endTime = document.getElementById('rosterEndTime').value || null;
+        if (!isEdit && (!staffId || !date)) { showToast('Staff and date are required'); return; }
+        if (isEdit && !date) { showToast('Date is required'); return; }
+        // WHY: Both times required — shifts with NULL times produce ghost entries and $0 pay
+        if (!startTime || !endTime) { showToast('Both start time and end time are required'); return; }
+        // WHY: Prevent ghost shifts where end is before start — causes negative pay and corrupts totals
+        if (startTime && endTime) {
+            var vSp = startTime.split(':').map(Number);
+            var vEp = endTime.split(':').map(Number);
+            if (vEp[0] * 60 + (vEp[1]||0) <= vSp[0] * 60 + (vSp[1]||0)) {
+                showToast('End time must be after start time');
+                return;
+            }
+        }
+        var payload = {
+            scheduled_date: date,
+            start_time: startTime,
+            end_time: endTime,
+            job_title: document.getElementById('rosterJobTitle').value.trim() || null,
+            job_address: document.getElementById('rosterAddress').value.trim() || null
+        };
+        if (!isEdit) payload.staff_id = parseInt(staffId);
+        var url = isEdit ? '/api/paydeck/roster/' + editId : '/api/paydeck/roster';
+        var method = isEdit ? 'PUT' : 'POST';
+        fetch(url, {
+            method: method, credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                staff_id: parseInt(staffId),
-                scheduled_date: date,
-                start_time: document.getElementById('rosterTime').value || null,
-                end_time: document.getElementById('rosterEndTime').value || null,
-                job_title: document.getElementById('rosterJobTitle').value.trim() || null,
-                job_address: document.getElementById('rosterAddress').value.trim() || null
-            })
+            body: JSON.stringify(payload)
         }).then(function(r) { return r.json(); })
         .then(function(d) {
-            if (!d.success) { showToast(d.message || 'Failed to schedule job'); return; }
-            closeModal('addRosterModal'); loadSummary(); showToast('Job scheduled! 📅');
-            // Refresh whichever roster tab is active
-            if (_rosterTab === 'week') wvLoad();
-            else loadRosters();
+            if (!d.success) { showToast(d.message || (isEdit ? 'Failed to update shift' : 'Failed to schedule job')); return; }
+            closeModal('addRosterModal'); loadSummary();
+            showToast(isEdit ? 'Shift updated ✅' : 'Job scheduled! 📅');
+            if (_rosterTab === 'week') wvLoad(); else loadRosters();
         }).catch(function() { showToast('Network error — try again'); });
     }
 
@@ -1432,25 +1782,31 @@
     }
 
     // ── GPS Map ──────────────────────────────────────────────────────────────
-    // WHY: Map always initialises with tiles (Sydney metro default). GPS pins come
-    // from staff_clock_events (real lat/lng), NOT random offsets around Sydney.
+    // WHY: Map pulls from ROSTER_ENTRIES for today — not just clock events.
+    // Old code only showed pins for staff_clock_events (phone GPS), so weekends
+    // and days with no clock-ins were blank. Now every rostered shift with an
+    // address gets a geocoded pin, colored by staff (matching week view palette).
     var leafletMap = null;
     var mapMarkers = [];
+    // WHY: same palette as week view — deterministic per staff_id
+    var MAP_COLORS = ['#3B82F6','#8B5CF6','#14B8A6','#F59E0B','#EF4444','#06B6D4'];
+    function mapStaffColor(staffId) { return MAP_COLORS[(staffId || 0) % MAP_COLORS.length]; }
+
     function loadMap() {
         var statusEl = document.getElementById('mapStatus');
         statusEl.textContent = 'Loading map…';
-        // Always init the map first — even with no data we show tiles
         ensureLeafletLoaded(function() {
             initMapTiles();
-            // Fetch real GPS clock events for today
+            // WHY: new endpoint returns today's roster with geocoded lat/lng
+            // Also fetch clock events as a secondary overlay
             var today = new Date().toISOString().split('T')[0];
             Promise.all([
-                fetch('/api/paydeck/clock-events?date=' + today, { credentials: 'include' }).then(function(r) { return r.json(); }),
-                fetch('/api/paydeck/roster?start_date=' + today + '&end_date=' + today, { credentials: 'include' }).then(function(r) { return r.json(); })
+                fetch('/api/paydeck/map/today', { credentials: 'include' }).then(function(r) { return r.json(); }),
+                fetch('/api/paydeck/clock-events?date=' + today, { credentials: 'include' }).then(function(r) { return r.json(); })
             ]).then(function(results) {
-                var events = (results[0].success && results[0].events) ? results[0].events : [];
-                var jobs = (results[1].success && results[1].roster) ? results[1].roster : [];
-                renderMapData(events, jobs);
+                var roster = (results[0].success && results[0].entries) ? results[0].entries : [];
+                var events = (results[1].success && results[1].events) ? results[1].events : [];
+                renderMapData(roster, events);
             }).catch(function() {
                 statusEl.textContent = 'Could not load map data';
             });
@@ -1469,31 +1825,54 @@
 
     function initMapTiles() {
         var mapEl = document.getElementById('paysMap');
-        // Clear placeholder content so Leaflet can render
         mapEl.innerHTML = '';
-        mapEl.style.height = '320px';
+        mapEl.style.height = '400px';
         if (!leafletMap) {
             leafletMap = L.map('paysMap').setView([-33.87, 151.21], 11);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(leafletMap);
         }
-        // Force Leaflet to recalculate after container resize
         setTimeout(function() { leafletMap.invalidateSize(); }, 200);
     }
 
-    function renderMapData(clockEvents, rosterJobs) {
-        // Clear existing markers
+    function renderMapData(rosterEntries, clockEvents) {
         mapMarkers.forEach(function(m) { leafletMap.removeLayer(m); });
         mapMarkers = [];
-
         var statusEl = document.getElementById('mapStatus');
-        // Remove the status overlay since map is now showing tiles
         statusEl.style.display = 'none';
-
-        // Plot real GPS pins from clock events (these have actual lat/lng)
-        var gpsEvents = clockEvents.filter(function(e) { return e.latitude && e.longitude; });
         var bounds = [];
 
-        gpsEvents.forEach(function(ev, i) {
+        // ── 1. Roster pins (job site addresses, staff-colored) ──
+        var pinnedEntries = rosterEntries.filter(function(e) { return e.geocoded_lat && e.geocoded_lng; });
+        pinnedEntries.forEach(function(entry) {
+            var lat = parseFloat(entry.geocoded_lat);
+            var lng = parseFloat(entry.geocoded_lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+            bounds.push([lat, lng]);
+            var color = mapStaffColor(entry.staff_id);
+            var initials = (entry.staff_name || 'S').split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0,2);
+            var icon = L.divIcon({
+                html: '<div style="background:' + color + ';color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.7rem;border:3px solid #0a0e1a;box-shadow:0 2px 8px rgba(0,0,0,0.4);">' + initials + '</div>',
+                iconSize: [32, 32], className: ''
+            });
+            var timeStr = '';
+            if (entry.start_time) {
+                timeStr = entry.start_time.slice(0,5);
+                if (entry.end_time) timeStr += '–' + entry.end_time.slice(0,5);
+            }
+            var popup = '<div style="min-width:180px;">'
+                + '<strong style="font-size:0.95rem;">' + escHtml(entry.staff_name || 'Staff') + '</strong>'
+                + (timeStr ? '<br><span style="font-size:0.85rem;">🕐 ' + timeStr + '</span>' : '')
+                + (entry.job_title ? '<br><span style="font-size:0.85rem;">🔧 ' + escHtml(entry.job_title) + '</span>' : '')
+                + '<br><span style="font-size:0.8rem;color:#666;">📍 ' + escHtml(entry.job_address || 'No address') + '</span>'
+                + (entry.staff_phone ? '<br><span style="font-size:0.8rem;">📱 ' + escHtml(entry.staff_phone) + '</span>' : '')
+                + '</div>';
+            var marker = L.marker([lat, lng], { icon: icon }).addTo(leafletMap).bindPopup(popup);
+            mapMarkers.push(marker);
+        });
+
+        // ── 2. Clock event overlay (green IN / red OUT circles) ──
+        var gpsEvents = (clockEvents || []).filter(function(e) { return e.latitude && e.longitude; });
+        gpsEvents.forEach(function(ev) {
             var lat = parseFloat(ev.latitude);
             var lng = parseFloat(ev.longitude);
             if (isNaN(lat) || isNaN(lng)) return;
@@ -1501,52 +1880,85 @@
             var color = ev.event_type === 'clock_in' ? '#22c55e' : '#ef4444';
             var label = ev.event_type === 'clock_in' ? 'IN' : 'OUT';
             var icon = L.divIcon({
-                html: '<div style="background:' + color + ';color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.65rem;border:2px solid #0a0e1a;">' + label + '</div>',
-                iconSize: [28, 28], className: ''
+                html: '<div style="background:' + color + ';color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.6rem;border:2px solid #0a0e1a;">' + label + '</div>',
+                iconSize: [24, 24], className: ''
             });
             var time = ev.occurred_at ? new Date(ev.occurred_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : '';
             var marker = L.marker([lat, lng], { icon: icon }).addTo(leafletMap)
-                .bindPopup('<strong>' + escHtml(ev.staff_name || 'Staff') + '</strong><br>' + label + ' at ' + time + (ev.job_title ? '<br>' + escHtml(ev.job_title) : '') + (ev.job_address ? '<br><small>' + escHtml(ev.job_address) + '</small>' : '') + (ev.geofence_ok === false ? '<br><span style="color:#ef4444;">⚠ Outside geofence</span>' : ''));
+                .bindPopup('<strong>' + escHtml(ev.staff_name || 'Staff') + '</strong><br>' + label + ' at ' + time);
             mapMarkers.push(marker);
         });
 
-        // Fit bounds if we have GPS pins
+        // ── 3. Fit bounds or show empty state ──
         if (bounds.length > 0) {
-            leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+            leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
         }
 
-        // Build the info list below the map
+        // ── 4. Build info list below map ──
         var jobsListEl = document.getElementById('todayJobsList');
-        if (gpsEvents.length === 0 && rosterJobs.length === 0) {
-            jobsListEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:0.85rem;">No GPS clock-ins or scheduled jobs for today. Staff GPS pins will appear here when they clock in.</div>';
+        if (rosterEntries.length === 0 && gpsEvents.length === 0) {
+            jobsListEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.9rem;">'
+                + '<div style="font-size:2rem;margin-bottom:0.5rem;">📋</div>'
+                + '<div style="font-weight:600;margin-bottom:0.25rem;">No shifts scheduled today</div>'
+                + '<div style="font-size:0.8rem;">Add a shift in the Roster tab to see job site pins on the map.</div>'
+                + '</div>';
             return;
         }
 
-        var html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
-        // GPS events first
+        var html = '';
+        // Staff color legend
+        var seenStaff = {};
+        rosterEntries.forEach(function(e) { if (!seenStaff[e.staff_id]) seenStaff[e.staff_id] = e.staff_name || 'Staff'; });
+        var staffIds = Object.keys(seenStaff);
+        if (staffIds.length > 0) {
+            html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">';
+            staffIds.forEach(function(sid) {
+                var c = mapStaffColor(parseInt(sid));
+                html += '<span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--text-dim);">'
+                    + '<span style="width:10px;height:10px;border-radius:50%;background:' + c + ';display:inline-block;"></span>'
+                    + escHtml(seenStaff[sid]) + '</span>';
+            });
+            html += '</div>';
+        }
+
+        // Roster entries
+        if (rosterEntries.length > 0) {
+            html += '<div style="font-size:0.72rem;color:var(--text-dim);font-weight:600;padding:0 0.25rem;margin-bottom:0.35rem;text-transform:uppercase;">Today\'s Rostered Shifts</div>';
+            html += '<div style="display:flex;flex-direction:column;gap:0.4rem;">';
+            rosterEntries.forEach(function(entry) {
+                var c = mapStaffColor(entry.staff_id);
+                var pinIcon = entry.geocoded_lat ? '📍' : '⚠️';
+                var timeStr = '';
+                if (entry.start_time) {
+                    timeStr = entry.start_time.slice(0,5);
+                    if (entry.end_time) timeStr += '–' + entry.end_time.slice(0,5);
+                }
+                html += '<div style="display:flex;gap:0.6rem;align-items:center;padding:0.5rem 0.65rem;background:var(--surface);border-radius:8px;border-left:3px solid ' + c + ';">'
+                    + '<div style="font-size:1rem;flex-shrink:0;">' + pinIcon + '</div>'
+                    + '<div style="flex:1;min-width:0;">'
+                    + '<div style="font-size:0.85rem;font-weight:600;color:var(--text-bright);text-transform:capitalize;">' + escHtml(entry.staff_name || 'Staff')
+                    + (timeStr ? ' <span style="font-weight:400;color:var(--text-dim);font-size:0.78rem;">' + timeStr + '</span>' : '') + '</div>'
+                    + '<div style="font-size:0.75rem;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+                    + escHtml(entry.job_title || 'Shift') + (entry.job_address ? ' — ' + escHtml(entry.job_address) : ' — No address')
+                    + '</div></div></div>';
+            });
+            html += '</div>';
+        }
+
+        // GPS clock events
         if (gpsEvents.length > 0) {
-            html += '<div style="font-size:0.75rem;color:var(--text-dim);font-weight:600;padding:0 0.25rem;">GPS CLOCK EVENTS TODAY</div>';
+            html += '<div style="font-size:0.72rem;color:var(--text-dim);font-weight:600;padding:0.6rem 0.25rem 0.35rem;text-transform:uppercase;">GPS Clock Events</div>';
+            html += '<div style="display:flex;flex-direction:column;gap:0.4rem;">';
             gpsEvents.forEach(function(ev) {
-                var color = ev.event_type === 'clock_in' ? '#22c55e' : '#ef4444';
-                var label = ev.event_type === 'clock_in' ? '🟢 Clock In' : '🔴 Clock Out';
+                var label = ev.event_type === 'clock_in' ? '🟢 IN' : '🔴 OUT';
                 var time = ev.occurred_at ? new Date(ev.occurred_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : '';
-                html += '<div style="display:flex;gap:0.75rem;align-items:center;padding:0.5rem 0.75rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);">'
-                    + '<div style="font-size:0.85rem;">' + label + '</div>'
-                    + '<div><div style="font-size:0.85rem;font-weight:600;color:var(--text-bright);">' + escHtml(ev.staff_name || 'Staff') + ' — ' + time + '</div>'
-                    + '<div style="font-size:0.75rem;color:var(--text-dim);">' + escHtml(ev.job_title || '') + (ev.job_address ? ' @ ' + escHtml(ev.job_address) : '') + '</div></div></div>';
+                html += '<div style="display:flex;gap:0.6rem;align-items:center;padding:0.4rem 0.65rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);">'
+                    + '<div style="font-size:0.8rem;font-weight:600;white-space:nowrap;">' + label + '</div>'
+                    + '<div style="font-size:0.8rem;color:var(--text-bright);">' + escHtml(ev.staff_name || 'Staff') + ' — ' + time + '</div></div>';
             });
+            html += '</div>';
         }
-        // Scheduled jobs (no GPS yet)
-        if (rosterJobs.length > 0) {
-            html += '<div style="font-size:0.75rem;color:var(--text-dim);font-weight:600;padding:0.5rem 0.25rem 0;">SCHEDULED JOBS TODAY</div>';
-            rosterJobs.forEach(function(j, i) {
-                html += '<div style="display:flex;gap:0.75rem;align-items:center;padding:0.5rem 0.75rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);">'
-                    + '<div style="background:var(--pays);color:var(--midnight);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.75rem;flex-shrink:0;">' + (i+1) + '</div>'
-                    + '<div><div style="font-size:0.85rem;font-weight:600;color:var(--text-bright);">' + escHtml(j.staff_name||'Staff') + ' — ' + escHtml(j.job_title||'Job') + '</div>'
-                    + '<div style="font-size:0.75rem;color:var(--text-dim);">' + escHtml(j.job_address||'No address') + (j.start_time ? ' · ' + j.start_time.slice(0,5) : '') + '</div></div></div>';
-            });
-        }
-        html += '</div>';
+
         jobsListEl.innerHTML = html;
     }
 
@@ -1649,9 +2061,15 @@
     }
 
     function downloadExport(type) {
+        // WHY: validate date range before downloading — start must be before end
+        var start = document.getElementById('exportStart').value;
+        var end   = document.getElementById('exportEnd').value;
+        if (start && end && start > end) {
+            showToast('Start date must be before end date');
+            return;
+        }
         var qs = getExportParams();
         var url = '/api/paydeck/export/' + type + qs;
-        // Trigger browser download by navigating to the CSV endpoint
         var a = document.createElement('a');
         a.href = url; a.download = ''; a.style.display = 'none';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1710,11 +2128,18 @@
             .catch(function() { previewEl.textContent = 'Failed to load preview.'; });
     }
 
+    // WHY: local date helper avoids UTC timezone shift from toISOString() (AEST +10 produced wrong dates)
+    function localDateStr(d) {
+        var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+        return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+    }
     function setExportFY() {
         var now = new Date();
         var fy = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
         document.getElementById('exportStart').value = fy + '-07-01';
-        document.getElementById('exportEnd').value   = (now < new Date(fy + 1, 5, 30) ? now.toISOString().split('T')[0] : (fy + 1) + '-06-30');
+        // WHY: end is either today (if FY in progress) or June 30 (if FY complete)
+        var fyEnd = new Date(fy + 1, 5, 30);
+        document.getElementById('exportEnd').value = now < fyEnd ? localDateStr(now) : (fy + 1) + '-06-30';
     }
 
     function setExportQtr() {
@@ -1726,14 +2151,14 @@
         else if (m <= 5)  qtr = { start: [now.getFullYear(), 3, 1],  end: [now.getFullYear(), 5,  30] };
         else if (m <= 8)  qtr = { start: [now.getFullYear(), 6, 1],  end: [now.getFullYear(), 8,  30] };
         else              qtr = { start: [now.getFullYear(), 9, 1],  end: [now.getFullYear(), 11, 31] };
-        document.getElementById('exportStart').value = new Date(qtr.start[0], qtr.start[1], qtr.start[2]).toISOString().split('T')[0];
-        document.getElementById('exportEnd').value   = new Date(qtr.end[0],   qtr.end[1],   qtr.end[2]).toISOString().split('T')[0];
+        document.getElementById('exportStart').value = localDateStr(new Date(qtr.start[0], qtr.start[1], qtr.start[2]));
+        document.getElementById('exportEnd').value   = localDateStr(new Date(qtr.end[0],   qtr.end[1],   qtr.end[2]));
     }
 
     function setExportMonth() {
         var now = new Date();
-        document.getElementById('exportStart').value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        document.getElementById('exportEnd').value   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        document.getElementById('exportStart').value = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+        document.getElementById('exportEnd').value   = localDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0));
     }
 
     // ── Week View ─────────────────────────────────────────────────────────────
@@ -1815,28 +2240,44 @@
             .catch(function() { showToast('Network error loading week view'); });
     }
 
-    // WHY: Compute daily net pay from shift hours × rate minus PAYG (proportional from weekly totals).
+    // WHY: Compute daily net pay from shift hours × rate minus PAYG and Super.
     // Holiday accrual = 7.69% of gross (4 weeks / 52 weeks), Sick leave accrual = 3.85% (10 days / 260 days).
+    // WHY: AU Fair Work penalty rates (MA000009 Hospitality, MA000024 General Construction).
+    // Sunday = 200% (double time) per s87 of the Fair Work Act.
+    var _AWARD_BONUS = { hospitality: { 0: 2.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0, 6: 1.25 }, construction: { 0: 2.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.50, 6: 1.75 } };
+
     function calcShiftPay(sh, staffRate, staffTotals) {
         var hrs = 0;
         if (sh.start_time && sh.end_time) {
             var sp = String(sh.start_time).split(':').map(Number);
             var ep = String(sh.end_time).split(':').map(Number);
             var mins = ep[0] * 60 + (ep[1]||0) - sp[0] * 60 - (sp[1]||0);
-            // WHY: If end < start (e.g. 09:00–05:00), assume 12h offset — common data-entry error
             if (mins <= 0) mins += 12 * 60;
-            hrs = mins / 60;
+            hrs = Math.max(0, mins / 60);
+        } else if (sh.start_time && !sh.end_time) {
+            hrs = 8;
         }
-        var gross = Math.round(hrs * staffRate * 100) / 100;
-        // Proportional PAYG: use staff weekly ratio if available
+        // Prefer server-computed gross_pay (penalty-correct from DB).
+        // Fall back to client-side computation using correct Sunday=2.0x multiplier.
+        var gross;
+        if (sh.gross_pay != null && sh.gross_pay > 0) {
+            gross = parseFloat(sh.gross_pay);
+        } else if (hrs > 0 && staffRate > 0) {
+            var dow = sh.scheduled_date ? ((new Date(sh.scheduled_date)).getDay() + 6) % 7 : 1;
+            var awardType = (sh.award_type || 'hospitality');
+            var mult = (_AWARD_BONUS[awardType] || _AWARD_BONUS.hospitality)[dow] || 1.0;
+            gross = Math.round(staffRate * mult * hrs * 100) / 100;
+        } else {
+            gross = 0;
+        }
         var payg = 0;
-        if (staffTotals && staffTotals.gross > 0) {
+        if (staffTotals && staffTotals.gross > 0 && staffTotals.payg > 0) {
             payg = Math.round(gross * (staffTotals.payg / staffTotals.gross) * 100) / 100;
         }
         var superAmt = Math.round(gross * 0.115 * 100) / 100;
         var holiday = Math.round(gross * 0.0769 * 100) / 100;
         var sick = Math.round(gross * 0.0385 * 100) / 100;
-        var net = Math.round((gross - payg) * 100) / 100;
+        var net = Math.round((gross - payg - superAmt) * 100) / 100;
         return { hours: Math.round(hrs * 100) / 100, gross: gross, payg: payg, super: superAmt, holiday: holiday, sick: sick, net: net };
     }
 
@@ -1890,6 +2331,8 @@
         }
 
         var bodyHtml = '';
+        // Rebuild shift map for edit lookups
+        _wvShiftMap = {};
         // Build legend for staff with shifts this week
         var legendStaff = [];
         d.staff.forEach(function(s) {
@@ -1909,8 +2352,15 @@
                     + 'onclick="wvCellClick(' + s.id + ',\'' + dt + '\',this)">';
                 if (dayShifts.length > 0) {
                     dayShifts.forEach(function(sh) {
-                        var timeStr = sh.start_time ? String(sh.start_time).slice(0,5) : '';
-                        if (sh.end_time) timeStr += '–' + String(sh.end_time).slice(0,5);
+                        _wvShiftMap[sh.id] = sh; // populate for edit modal lookup
+                        var timeStr = sh.start_time ? fixStartTime(sh.start_time) : '';
+                        if (sh.start_time && sh.end_time) {
+                            var dispEnd = fixDispTime(sh.start_time, sh.end_time);
+                            timeStr += '–' + (dispEnd || fixStartTime(sh.end_time));
+                        } else if (sh.start_time && !sh.end_time) {
+                            // WHY: Missing end_time — show time with warning and estimated pay (8h default).
+                            timeStr += '–?? (est)';
+                        }
                         var pay = calcShiftPay(sh, s.hourly_rate, s.totals);
                         runningGross += pay.gross;
                         var netLabel = pay.net > 0 ? ' · $' + pay.net.toFixed(0) + ' net' : '';
@@ -1926,6 +2376,7 @@
                             + '<span class="wv-chip-actions" onclick="event.stopPropagation();">'
                             + (sh.swap_offered ? '' : '<button class="wv-swap-btn" title="Swap" onclick="handleSwapShift(' + sh.id + ',\'' + escHtml(sh.job_title || '') + '\',' + sh.swap_offered + ')">⇄</button>')
                             + (sh.swap_offered ? '<button class="wv-swap-btn swap-active" title="Cancel swap" onclick="handleSwapShift(' + sh.id + ',\'' + escHtml(sh.job_title || '') + '\',true)">⇄</button>' : '')
+                            + '<button class="wv-swap-btn" title="Edit shift" onclick="openEditShiftModal(' + sh.id + ',' + s.id + ',\'' + escHtml(s.name) + '\')">✏</button>'
                             + '<button class="wv-del-btn" title="Delete" onclick="wvDeleteShift(' + sh.id + ')">×</button>'
                             + '</span>'
                             + '</div>'
@@ -1971,9 +2422,10 @@
         var footHtml = '<tr class="wv-team-row">'
             + '<td class="wv-staff-cell">TEAM TOTALS</td>';
         weekDates.forEach(function() { footHtml += '<td></td>'; });
-        // Team totals: hours + compact gross + net summary (no redundant separate PAYG/Super columns)
+        // Team totals: hours + gross + super + net
         footHtml += '<td class="wv-total-cell"><div class="wv-t-val">' + (tm.hours || 0) + 'h</div>'
             + '<div style="font-size:0.58rem;color:var(--text-dim);margin-top:1px;">$' + fmtNum(tm.gross || 0) + ' gross · $' + fmtNum(tm.net || 0) + ' net</div>'
+            + '<div style="font-size:0.58rem;color:var(--purple);margin-top:1px;">Super: $' + fmtNum(tm.super || 0) + '</div>'
             + '</td>'
             + '</tr>';
         document.getElementById('wvFoot').innerHTML = footHtml;
@@ -2007,30 +2459,43 @@
     }
 
     function wvRenderSwaps() {
-        fetch('/api/paydeck/swap-requests?status=pending', { credentials: 'include' })
+        // WHY: fetch both pending (awaiting volunteer) and accepted (awaiting boss approval) swaps
+        fetch('/api/paydeck/swap-requests', { credentials: 'include' })
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 var panel = document.getElementById('wvPendingSwapsPanel');
                 var list = document.getElementById('wvSwapList');
-                if (!d.success || !d.requests || d.requests.length === 0) {
+                // WHY: filter to only pending/accepted — approved/declined are history
+                var actionable = (d.requests || []).filter(function(sw) { return sw.status === 'pending' || sw.status === 'accepted'; });
+                if (!d.success || !actionable.length) {
                     panel.style.display = 'none';
                     return;
                 }
                 panel.style.display = '';
-                list.innerHTML = d.requests.map(function(sw) {
-                    var dt = sw.scheduled_date ? new Date(sw.scheduled_date + 'T00:00:00').toLocaleDateString('en-AU', {day:'numeric',month:'short'}) : '—';
+                list.innerHTML = actionable.map(function(sw) {
+                    // Strip any existing time component before appending — avoids "Invalid Date" when DB returns ISO timestamp like "2026-05-16T00:00:00.000Z"
+                    var ds = sw.scheduled_date ? String(sw.scheduled_date).split('T')[0] : '';
+                    var dt = ds ? new Date(ds + 'T00:00:00').toLocaleDateString('en-AU', {day:'numeric',month:'short'}) : '—';
                     var timeStr = sw.start_time ? sw.start_time.slice(0,5) : '';
                     if (sw.end_time) timeStr += '–' + sw.end_time.slice(0,5);
+                    // WHY: 3-step swap — show different actions based on whether a volunteer has accepted
+                    var hasTarget = !!sw.target_staff_id && !!sw.target_name;
+                    var isAccepted = sw.status === 'accepted';
+                    var swapLabel = hasTarget
+                        ? '<strong>' + escHtml(sw.requesting_name) + '</strong> → <strong>' + escHtml(sw.target_name) + '</strong>'
+                        : '<strong>' + escHtml(sw.requesting_name) + '</strong> offered swap';
+                    var statusLabel = hasTarget ? '' : ' <span style="color:#d97706;font-size:0.72rem;">(awaiting volunteer)</span>';
+                    var actions = hasTarget
+                        ? '<button class="btn-primary" style="font-size:0.75rem;padding:0.35rem 0.8rem;" onclick="wvReviewSwap(' + sw.id + ',\'approve\')">✓ Approve</button>'
+                          + '<button class="btn-danger" onclick="wvReviewSwap(' + sw.id + ',\'decline\')">✗ Decline</button>'
+                        : '<span style="font-size:0.75rem;color:#d97706;font-weight:500;">⏳ Awaiting volunteer</span>'
+                          + '<button class="btn-danger" style="margin-left:0.5rem;" onclick="wvReviewSwap(' + sw.id + ',\'decline\')">✗ Cancel</button>';
                     return '<div class="wv-swap-row">'
                         + '<div class="wv-swap-info">'
-                        + '<strong>' + escHtml(sw.requesting_name) + '</strong> offered swap'
-                        + (sw.target_name ? ' (taking: <strong>' + escHtml(sw.target_name) + '</strong>)' : ' (open)')
+                        + swapLabel + statusLabel
                         + '<br><small>' + escHtml(sw.job_title || 'Shift') + ' · ' + dt + (timeStr ? ' ' + timeStr : '') + '</small>'
                         + '</div>'
-                        + '<div class="wv-swap-actions">'
-                        + '<button class="btn-primary" style="font-size:0.75rem;padding:0.35rem 0.8rem;" onclick="wvReviewSwap(' + sw.id + ',\'approve\')">✓ Approve</button>'
-                        + '<button class="btn-danger" onclick="wvReviewSwap(' + sw.id + ',\'decline\')">✗ Decline</button>'
-                        + '</div>'
+                        + '<div class="wv-swap-actions">' + actions + '</div>'
                         + '</div>';
                 }).join('');
             }).catch(function() {});
@@ -2093,9 +2558,43 @@
         }
     }
 
+    // WHY: Shift chip edit button needs shift data; storing in a map avoids unsafe JSON
+    // inline in onclick attributes. Populated on each wvRender call.
+    var _wvShiftMap = {};
+
+    function openEditShiftModal(shiftId, staffId, staffName) {
+        var sh = _wvShiftMap[shiftId];
+        if (!sh) { showToast('Shift not found — reload and try again'); return; }
+        // Set modal to edit mode
+        document.getElementById('rosterEditShiftId').value = shiftId;
+        document.getElementById('rosterModalTitle').textContent = 'Edit Shift';
+        document.getElementById('rosterModalSub').textContent = 'Editing shift for ' + staffName + '. Staff and date are locked.';
+        document.getElementById('rosterModalSaveBtn').textContent = 'Save Changes';
+        // Staff select — show staff name read-only
+        var sel = document.getElementById('rosterStaffSelect');
+        sel.innerHTML = '<option value="' + staffId + '">' + escHtml(staffName) + '</option>';
+        sel.disabled = true;
+        // Date — read-only
+        var dateEl = document.getElementById('rosterDate');
+        dateEl.value = sh.scheduled_date ? String(sh.scheduled_date).split('T')[0] : '';
+        dateEl.readOnly = true;
+        // Times and job info — editable
+        document.getElementById('rosterTime').value = sh.start_time ? String(sh.start_time).slice(0,5) : '';
+        document.getElementById('rosterEndTime').value = sh.end_time ? String(sh.end_time).slice(0,5) : '';
+        document.getElementById('rosterJobTitle').value = sh.job_title || '';
+        document.getElementById('rosterAddress').value = sh.job_address || '';
+        openModal('addRosterModal');
+    }
+
     function openAddShiftFromWeek(staffId, date) {
+        // Reset modal to add mode
+        document.getElementById('rosterEditShiftId').value = '';
+        document.getElementById('rosterModalTitle').textContent = 'Schedule a Job';
+        document.getElementById('rosterModalSub').textContent = 'Assign a staff member to a job. Shows on the GPS map.';
+        document.getElementById('rosterModalSaveBtn').textContent = 'Schedule Job';
         // Reuse the roster modal, pre-filled if context given
         var sel = document.getElementById('rosterStaffSelect');
+        sel.disabled = false;
         sel.innerHTML = '<option value="">Select staff…</option>';
         (wvState.data && wvState.data.staff || []).forEach(function(s) {
             sel.innerHTML += '<option value="' + s.id + '"' + (s.id === staffId ? ' selected' : '') + '>' + escHtml(s.name) + '</option>';
@@ -2137,6 +2636,36 @@
     function fmtMoney(v) { var n = parseFloat(v || 0); return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
     function fmtNum(v) { var n = parseFloat(v || 0); return n % 1 === 0 ? n.toString() : n.toFixed(2); }
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    // WHY: Convert 24h "HH:MM" to "7:00 AM" format.
+    // Strip seconds from "HH:MM:SS", then format with 12h clock + AM/PM suffix.
+    function formatTime12h(raw) {
+        if (!raw) return '';
+        var parts = String(raw).split(':').map(Number);
+        var h = parts[0] || 0, m = parts[1] || 0;
+        var suffix = h >= 12 ? 'PM' : 'AM';
+        var displayH = h % 12;
+        if (displayH === 0) displayH = 12;
+        return displayH + ':' + String(m).padStart(2, '0') + ' ' + suffix;
+    }
+    // WHY: DB may store end time as AM (e.g. 05:00 when boss meant 17:00).
+    // Apply +12h correction when end <= start, then format as "3:30 PM".
+    function formatEndTime12h(startRaw, endRaw) {
+        if (!endRaw) return null;
+        var sp = String(startRaw).split(':').map(Number);
+        var ep = String(endRaw).split(':').map(Number);
+        var startMins = sp[0] * 60 + (sp[1] || 0);
+        var endMins   = ep[0] * 60 + (ep[1] || 0);
+        if (endMins <= startMins) endMins += 12 * 60; // apply PM correction
+        var h = Math.floor(endMins / 60) % 24;
+        var m = endMins % 60;
+        var suffix = h >= 12 ? 'PM' : 'AM';
+        var displayH = h % 12;
+        if (displayH === 0) displayH = 12;
+        return displayH + ':' + String(m).padStart(2, '0') + ' ' + suffix;
+    }
+    // Legacy names for backward compatibility with existing call sites
+    function fixDispTime(startRaw, endRaw) { return formatEndTime12h(startRaw, endRaw); }
+    function fixStartTime(raw) { return formatTime12h(raw); }
     function setStatVal(id, val) { var el = document.getElementById(id); if(el) el.textContent = val; }
     // WHY: toISOString() converts to UTC which shifts dates backward in AEST (+10).
     // This helper formats a Date as YYYY-MM-DD using LOCAL timezone — no UTC shift.
@@ -2151,15 +2680,286 @@
         var tbody = document.getElementById(tbodyId);
         if(tbody) tbody.innerHTML = '<tr><td colspan="'+cols+'" style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.85rem;">Could not load data — try refreshing.</td></tr>';
     }
+
+    // ── FEATURE 2: AI / Algorithmic Roster Generation ─────────────────────────
+    function generateRoster() {
+        var btn = document.getElementById('btnGenerateRoster');
+        if (btn) { btn.disabled = true; btn.textContent = '🤖 Generating…'; }
+        // Use current week start from wvState
+        var weekStart = (window.wvState && wvState.weekStart) ? wvState.weekStart : localDateStr(new Date());
+        fetch('/api/paydeck/roster/generate', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ week_start: weekStart }),
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (btn) { btn.disabled = false; btn.textContent = '🤖 Generate Roster'; }
+            if (!d.success) { showToast(d.message || 'Failed to generate roster'); return; }
+            showToast('✅ Generated ' + d.count + ' shifts (' + (d.source || 'algorithmic') + ')');
+            wvLoad();
+        })
+        .catch(function() {
+            if (btn) { btn.disabled = false; btn.textContent = '🤖 Generate Roster'; }
+            showToast('Could not generate roster');
+        });
+    }
+
+    // ── FEATURE 3: Leave Requests (Boss) ──────────────────────────────────────
+    function loadLeaveRequests() {
+        fetch('/api/paydeck/leave-requests', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var tbody = document.getElementById('leaveRequestsBody');
+            var pending = 0;
+            if (!d.success || !d.requests || d.requests.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:2rem;">No leave requests yet — staff submit via portal.</td></tr>';
+            } else {
+                tbody.innerHTML = d.requests.map(function(r) {
+                    if (r.status === 'pending') pending++;
+                    var typeClass = r.leave_type || 'annual';
+                    var actions = r.status === 'pending'
+                        ? '<button class="btn-primary" style="font-size:0.72rem;padding:3px 10px;margin-right:4px;" onclick="reviewLeave('+r.id+',\'approve\')">✅ Approve</button>'
+                          + '<button class="btn-danger" style="font-size:0.72rem;padding:3px 10px;" onclick="reviewLeave('+r.id+',\'decline\')">✗ Decline</button>'
+                        : '<span style="font-size:0.78rem;color:var(--text-dim);">'+escHtml(r.status)+'</span>';
+                    return '<tr>'
+                        + '<td>' + escHtml(r.staff_name || '—') + '</td>'
+                        + '<td><span class="leave-type-tag ' + typeClass + '">' + escHtml(r.leave_type) + '</span></td>'
+                        + '<td>' + escHtml(r.start_date ? r.start_date.toString().slice(0,10) : '—') + ' → ' + escHtml(r.end_date ? r.end_date.toString().slice(0,10) : '—') + '</td>'
+                        + '<td>' + (r.days_requested || '—') + '</td>'
+                        + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(r.reason || '—') + '</td>'
+                        + '<td><span class="status-pill ' + (r.status === 'approved' ? 'active' : r.status === 'declined' ? 'overdue' : 'pending') + '">' + escHtml(r.status) + '</span></td>'
+                        + '<td>' + actions + '</td>'
+                        + '</tr>';
+                }).join('');
+            }
+            // Update badge
+            var badge = document.getElementById('leaveBadgeNav');
+            if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? '' : 'none'; }
+        })
+        .catch(function() { showErrorInTable('leaveRequestsBody', 7); });
+    }
+
+    function reviewLeave(id, action) {
+        fetch('/api/paydeck/leave-requests/' + id + '/review', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action }),
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed'); return; }
+            showToast(action === 'approve' ? '✅ Leave approved' : '✗ Leave declined');
+            loadLeaveRequests();
+        }).catch(function() { showToast('Error reviewing leave'); });
+    }
+
+    // ── FEATURE 4: Shift Swaps (Boss) — 3-step workflow ────────────────────────
+    function loadSwapRequests() {
+        fetch('/api/paydeck/swap-requests', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var tbody = document.getElementById('swapRequestsBody');
+            var actionableCount = 0;
+            var items = d.requests || d.swaps || [];
+            if (!d.success || !items.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:2rem;">No swap requests yet.</td></tr>';
+            } else {
+                tbody.innerHTML = items.map(function(sw) {
+                    if (sw.status === 'pending' || sw.status === 'accepted') actionableCount++;
+                    var hasTarget = !!sw.target_staff_id && !!sw.target_name;
+                    var actions;
+                    if (sw.status === 'accepted' && hasTarget) {
+                        // Staff B accepted — boss can approve or decline
+                        actions = '<button class="btn-primary" style="font-size:0.72rem;padding:3px 10px;margin-right:4px;" onclick="reviewSwap('+sw.id+',\'approve\')">✅ Approve</button>'
+                          + '<button class="btn-danger" style="font-size:0.72rem;padding:3px 10px;" onclick="reviewSwap('+sw.id+',\'decline\')">✗ Decline</button>';
+                    } else if (sw.status === 'pending') {
+                        // Waiting for a volunteer — boss can only cancel
+                        actions = '<span style="font-size:0.72rem;color:#d97706;font-weight:500;">⏳ Awaiting volunteer</span>'
+                          + '<button class="btn-danger" style="font-size:0.72rem;padding:3px 10px;margin-left:6px;" onclick="reviewSwap('+sw.id+',\'decline\')">✗ Cancel</button>';
+                    } else {
+                        actions = '<span style="font-size:0.78rem;color:var(--text-dim);">'+escHtml(sw.status)+'</span>';
+                    }
+                    var targetDisplay = hasTarget ? escHtml(sw.target_name) : '<span style="color:#d97706;">Awaiting volunteer</span>';
+                    var statusClass = sw.status === 'approved' ? 'active' : sw.status === 'declined' ? 'overdue' : sw.status === 'accepted' ? 'pending' : 'pending';
+                    return '<tr>'
+                        + '<td style="text-transform:capitalize;">' + escHtml(sw.requesting_name || '—') + '</td>'
+                        + '<td style="text-transform:capitalize;">' + targetDisplay + '</td>'
+                        + '<td>' + escHtml(sw.job_title || '—') + '</td>'
+                        + '<td>' + (sw.scheduled_date ? (function() { var ds = String(sw.scheduled_date).split('T')[0]; return ds ? new Date(ds + 'T00:00:00').toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'}) : '—'; })() : '—') + '</td>'
+                        + '<td><span class="status-pill ' + statusClass + '">' + escHtml(sw.status) + '</span></td>'
+                        + '<td>' + actions + '</td>'
+                        + '</tr>';
+                }).join('');
+            }
+            var badge = document.getElementById('swapsBadgeNav');
+            if (badge) { badge.textContent = actionableCount; badge.style.display = actionableCount > 0 ? '' : 'none'; }
+        })
+        .catch(function() { showErrorInTable('swapRequestsBody', 6); });
+    }
+
+    function reviewSwap(id, action) {
+        fetch('/api/paydeck/swap-requests/' + id + '/review', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action }),
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) { showToast(d.message || 'Failed'); return; }
+            showToast(action === 'approve' ? '✅ Swap approved — shift reassigned' : '✗ Swap declined');
+            loadSwapRequests();
+        }).catch(function() { showToast('Error reviewing swap'); });
+    }
+
+    // ── FEATURE 9: Analytics ──────────────────────────────────────────────────
+    function loadAnalytics() {
+        fetch('/api/paydeck/analytics', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) return;
+            var a = d.analytics;
+            // Summary cards
+            var inv = a.invoices || {}; var staff = a.staff || {}; var roster = a.roster || {};
+            document.getElementById('analRevenue').textContent = fmtMoney(inv.total_revenue || 0);
+            document.getElementById('analOutstanding').textContent = fmtMoney(inv.outstanding || 0);
+            document.getElementById('analStaff').textContent = staff.active_staff || 0;
+            document.getElementById('analAvgRate').textContent = '$' + fmtNum(staff.avg_rate || 0);
+            document.getElementById('analShifts').textContent = roster.upcoming || 0;
+            // Invoice funnel
+            document.getElementById('funnelDraft').textContent = inv.draft_count || 0;
+            document.getElementById('funnelSent').textContent = inv.sent_count || 0;
+            document.getElementById('funnelPaid').textContent = inv.paid_count || 0;
+            document.getElementById('funnelOverdue').textContent = inv.overdue_count || 0;
+            // Payroll trend bar chart
+            var trend = a.payroll_trend || [];
+            var trendEl = document.getElementById('payrollTrend');
+            if (trend.length === 0) {
+                trendEl.innerHTML = '<p style="color:var(--text-dim);font-size:0.82rem;">No payroll data yet.</p>';
+            } else {
+                var maxGross = Math.max.apply(null, trend.map(function(t) { return parseFloat(t.gross) || 0; })) || 1;
+                var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                trendEl.innerHTML = trend.map(function(t) {
+                    var gross = parseFloat(t.gross) || 0;
+                    var pct = Math.round(gross / maxGross * 100);
+                    var mo = new Date(t.month);
+                    var label = months[mo.getUTCMonth()] + ' ' + mo.getUTCFullYear().toString().slice(2);
+                    return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:40px;">'
+                        + '<div style="font-size:0.62rem;color:var(--text-dim);">' + fmtMoney(gross) + '</div>'
+                        + '<div style="width:100%;background:rgba(251,191,36,0.25);border-radius:3px;overflow:hidden;height:80px;display:flex;align-items:flex-end;">'
+                        + '<div style="width:100%;height:' + pct + '%;background:var(--pays);border-radius:3px 3px 0 0;transition:height 0.4s;"></div>'
+                        + '</div>'
+                        + '<div style="font-size:0.62rem;color:var(--text-dim);">' + label + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+        })
+        .catch(function() { /* analytics load failure is non-fatal */ });
+    }
+
+    // ── FEATURE 7: Business Hours ─────────────────────────────────────────────
+    var _bizHoursData = [];
+    var DAY_NAMES_BH = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+    function loadBizHours() {
+        fetch('/api/paydeck/business-hours', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) return;
+            _bizHoursData = d.hours;
+            renderBizHours(d.hours);
+        })
+        .catch(function() {});
+    }
+
+    function renderBizHours(hours) {
+        var grid = document.getElementById('bizHoursGrid');
+        if (!grid) return;
+        grid.innerHTML = hours.map(function(h, i) {
+            var dayName = DAY_NAMES_BH[h.day_of_week] || ('Day ' + h.day_of_week);
+            return '<div class="bh-row" data-dow="' + h.day_of_week + '">'
+                + '<div class="bh-day">' + dayName + '</div>'
+                + '<div class="bh-times">'
+                + '<label class="toggle" style="margin-right:6px;"><input type="checkbox" class="bh-open" ' + (h.is_open ? 'checked' : '') + '><span class="toggle-slider"></span></label>'
+                + '<span style="font-size:0.72rem;color:var(--text-dim);margin-right:8px;">' + (h.is_open ? 'Open' : 'Closed') + '</span>'
+                + '<input type="time" class="form-input bh-open-time" value="' + (h.open_time || '08:00') + '" style="width:100px;font-size:0.78rem;padding:0.3rem 0.5rem;">'
+                + '<span style="color:var(--text-dim);font-size:0.78rem;">–</span>'
+                + '<input type="time" class="form-input bh-close-time" value="' + (h.close_time || '17:00') + '" style="width:100px;font-size:0.78rem;padding:0.3rem 0.5rem;">'
+                + '</div>'
+                + '<div class="bh-staff">'
+                + '<span style="font-size:0.72rem;color:var(--text-dim);">Min:</span>'
+                + '<input type="number" class="form-input bh-min-staff" value="' + (h.min_staff || 1) + '" min="0" max="20" style="width:48px;font-size:0.78rem;padding:0.3rem 0.4rem;">'
+                + '<span style="font-size:0.72rem;color:var(--text-dim);">Ideal:</span>'
+                + '<input type="number" class="form-input bh-ideal-staff" value="' + (h.ideal_staff || 2) + '" min="0" max="20" style="width:48px;font-size:0.78rem;padding:0.3rem 0.4rem;">'
+                + '</div>'
+                + '</div>';
+        }).join('');
+        // Toggle label update
+        grid.querySelectorAll('.bh-open').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                var label = this.closest('.bh-times').querySelector('span');
+                if (label) label.textContent = this.checked ? 'Open' : 'Closed';
+            });
+        });
+    }
+
+    function saveBizHours() {
+        var rows = document.querySelectorAll('.bh-row');
+        var hours = [];
+        rows.forEach(function(row) {
+            var dow = parseInt(row.dataset.dow);
+            var isOpen = row.querySelector('.bh-open') && row.querySelector('.bh-open').checked;
+            var openTime = row.querySelector('.bh-open-time') && row.querySelector('.bh-open-time').value;
+            var closeTime = row.querySelector('.bh-close-time') && row.querySelector('.bh-close-time').value;
+            var minStaff = parseInt(row.querySelector('.bh-min-staff') && row.querySelector('.bh-min-staff').value) || 1;
+            var idealStaff = parseInt(row.querySelector('.bh-ideal-staff') && row.querySelector('.bh-ideal-staff').value) || 2;
+            hours.push({ day_of_week: dow, is_open: !!isOpen, open_time: openTime, close_time: closeTime, min_staff: minStaff, ideal_staff: idealStaff });
+        });
+        fetch('/api/paydeck/business-hours', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hours: hours }),
+        }).then(function(r) { return r.json(); })
+        .then(function(d) {
+            var msg = document.getElementById('bizHoursSaveMsg');
+            if (d.success) {
+                showToast('✅ Business hours saved');
+                if (msg) { msg.style.display = ''; setTimeout(function() { msg.style.display = 'none'; }, 2500); }
+            } else {
+                showToast(d.message || 'Failed to save');
+            }
+        })
+        .catch(function() { showToast('Error saving hours'); });
+    }
+
+    // ── Load leave + swap badge counts on init ────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch pending counts for badge display on subnav (non-blocking)
+        fetch('/api/paydeck/leave-requests', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var pending = d.requests ? d.requests.filter(function(r) { return r.status === 'pending'; }).length : 0;
+            var badge = document.getElementById('leaveBadgeNav');
+            if (badge && pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+        }).catch(function() {});
+
+        fetch('/api/paydeck/swap-requests', { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var pending = d.swaps ? d.swaps.filter(function(s) { return s.status === 'pending'; }).length : 0;
+            var badge = document.getElementById('swapsBadgeNav');
+            if (badge && pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+        }).catch(function() {});
+    });
     </script>
 
     <!-- Hugo Widget — real widget with Robot Boy avatar, voice, and mic -->
+    <script>
+    // pays dashboard → Hugo-Pays persona (invoicing, rostering, payroll)
+    window.POLSIACONFIG = { businessType: 'pays' };
+    </script>
     <script src="/hugo-widget.js?v=14"></script>
     <script>
-    // WHY: configure hugo-widget.js for the /pays dashboard context.
+    // configure hugo-widget.js for the /pays dashboard context.
     // setBusinessType('pays') → payroll persona greeting + routes to pays brain.
-    // setOperatorContext() → tells widget this is an authenticated dashboard (not landing page),
-    // which adjusts greeting style and uses cheaper browser TTS instead of server TTS.
+    // setOperatorContext() → tells widget this is an authenticated dashboard (not landing page).
     HugoWidget.setBusinessType('pays');
     HugoWidget.setOperatorContext(
         state.businessName || '',

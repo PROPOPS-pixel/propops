@@ -2566,7 +2566,7 @@
                         <div style="font-size:1.4rem;flex-shrink:0">📨</div>
                         <div style="flex:1;min-width:0">
                             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem">
-                                <span style="font-size:0.88rem;font-weight:600;color:var(--text-bright)">Gmail / Email Forwarding</span>
+                                <span style="font-size:0.88rem;font-weight:600;color:var(--text-bright)">Email Forwarding</span>
                                 <span id="gmailStatusBadge" style="font-size:0.72rem;padding:2px 8px;border-radius:20px;background:rgba(148,163,184,0.1);color:var(--text-dim);border:1px solid rgba(148,163,184,0.2)">Checking…</span>
                             </div>
                             <div id="gmailStatusText" style="font-size:0.78rem;color:var(--text-dim);line-height:1.4">Checking connection status…</div>
@@ -2576,29 +2576,24 @@
                         </div>
                     </div>
 
-                    <!-- Gmail setup guide (collapsed by default) -->
+                    <!-- Email setup info (collapsed by default) -->
                     <div id="gmailGuideBody" style="display:none;margin-top:0.6rem;padding:0.85rem 1rem;background:rgba(240,165,0,0.04);border:1px solid rgba(240,165,0,0.15);border-radius:10px">
-                        <div style="font-size:0.78rem;font-weight:600;color:var(--amber);margin-bottom:0.6rem">📋 How to connect Gmail</div>
-                        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.5rem">Your unique forwarding address:</div>
-                        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.85rem">
-                            <div id="integrationsForwardingEmail" style="font-family:monospace;font-size:0.82rem;color:var(--amber);background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.2);border-radius:6px;padding:5px 10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Loading…</div>
-                            <button onclick="copyIntegrationsEmail()" style="font-size:0.75rem;padding:5px 10px;background:var(--amber);color:var(--midnight);border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:inherit;flex-shrink:0">Copy</button>
-                        </div>
+                        <div style="font-size:0.78rem;font-weight:600;color:var(--amber);margin-bottom:0.6rem">✅ Email Forwarding — Auto-Configured</div>
                         <div style="display:flex;flex-direction:column;gap:0.5rem">
                             <div style="display:flex;gap:0.5rem;align-items:flex-start">
-                                <span style="min-width:20px;height:20px;background:rgba(240,165,0,0.15);border:1px solid rgba(240,165,0,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:var(--amber);flex-shrink:0;margin-top:1px">1</span>
-                                <span style="font-size:0.78rem;color:var(--text-dim)">Open <strong style="color:var(--text)">Gmail → Settings (⚙) → See all settings → Forwarding and POP/IMAP</strong></span>
+                                <span style="min-width:20px;height:20px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:#22c55e;flex-shrink:0;margin-top:1px">✓</span>
+                                <span style="font-size:0.78rem;color:var(--text-dim)">Email forwarding is already configured via your domain registrar <strong style="color:var(--text)">(Porkbun)</strong></span>
                             </div>
                             <div style="display:flex;gap:0.5rem;align-items:flex-start">
-                                <span style="min-width:20px;height:20px;background:rgba(240,165,0,0.15);border:1px solid rgba(240,165,0,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:var(--amber);flex-shrink:0;margin-top:1px">2</span>
-                                <span style="font-size:0.78rem;color:var(--text-dim)">Click <strong style="color:var(--text)">Add a forwarding address</strong> → paste the address above → verify the confirmation email</span>
+                                <span style="min-width:20px;height:20px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:#22c55e;flex-shrink:0;margin-top:1px">✓</span>
+                                <span style="font-size:0.78rem;color:var(--text-dim)">All emails to your domains <strong style="color:var(--text)">(propops.pro, propops.trade, hugopays.pro)</strong> automatically forward to your intake email</span>
                             </div>
                             <div style="display:flex;gap:0.5rem;align-items:flex-start">
-                                <span style="min-width:20px;height:20px;background:rgba(240,165,0,0.15);border:1px solid rgba(240,165,0,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:var(--amber);flex-shrink:0;margin-top:1px">3</span>
-                                <span style="font-size:0.78rem;color:var(--text-dim)">Go to <strong style="color:var(--text)">Filters and Blocked Addresses → Create a new filter</strong>. In "From", enter your portal's notification email. Action: <strong style="color:var(--text)">Forward to</strong> your PropOps address</span>
+                                <span style="min-width:20px;height:20px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:#22c55e;flex-shrink:0;margin-top:1px">✓</span>
+                                <span style="font-size:0.78rem;color:var(--text-dim)"><strong style="color:var(--text)">Hugo reads your inbox automatically every 5 minutes</strong> — no manual Gmail filter setup required</span>
                             </div>
                         </div>
-                        <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-dim)">Once forwarding is live, the Gmail status above will show 🟢 Connected automatically.</div>
+                        <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-dim)">The status above shows 🟢 Connected when Hugo is actively reading your inbox.</div>
                     </div>
                 </div>
 
@@ -6856,11 +6851,15 @@
             (function syncHugoContext(tradeType, tradeLabel, retries) {
                 if (window.HugoWidget && typeof window.HugoWidget.setBusinessType === 'function') {
                     window.HugoWidget.setBusinessType(tradeType);
+                    // Also set POLSIACONFIG so widget reads it on future page loads
+                    window.POLSIACONFIG = window.POLSIACONFIG || {};
+                    window.POLSIACONFIG.businessType = tradeType;
                     // Inject full operator context (Part 2: dashboard awareness)
                     if (typeof window.HugoWidget.setOperatorContext === 'function') {
                         var opName = (currentUser && currentUser.name) || null;
                         var opEmail = (currentUser && currentUser.email) || null;
-                        window.HugoWidget.setOperatorContext(opName, opEmail, tradeLabel);
+                        var opId = (currentUser && currentUser.id) || null;
+                        window.HugoWidget.setOperatorContext(opName, opEmail, tradeLabel, opId);
                     }
                 } else if (retries > 0) {
                     setTimeout(function() { syncHugoContext(tradeType, tradeLabel, retries - 1); }, 200);
@@ -9197,7 +9196,7 @@
 </script>
 
 <!-- ─── Hugo self-hosted widget (voice + text) ─── -->
-<script src="/hugo-widget.js?v=10" defer></script>
+<script src="/hugo-widget.js?v=13" defer></script>
 
 <!-- Leaflet JS — CSS is in <head>; no SRI to avoid silent CDN hash-drift failures -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -10370,7 +10369,7 @@
 })();
 </script>
 <!-- ─── Hugo self-hosted widget (voice + text) ─── -->
-<script src="/hugo-widget.js?v=10" defer></script>
+<script src="/hugo-widget.js?v=13" defer></script>
 <!-- ─── Hugo Self-Monitoring Panel JS ───────────────────────────── -->
 <script>
 (function () {

@@ -18,6 +18,49 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
 });
 
+// ── Geocoding helper (OpenStreetMap Nominatim) ────────────────────────────────
+// WHY: GPS Map pins need lat/lng from job addresses. Nominatim is free; we cache
+// results on the roster_entry row so each address is only geocoded once.
+// Rate limit: 1 req/sec (Nominatim policy) — acceptable for roster save flow.
+const https = require('https');
+async function geocodeAddress(address) {
+  if (!address || !address.trim()) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address.trim())}`;
+  return new Promise((resolve) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'HugoPays/1.0 (propops.pro)' } }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const results = JSON.parse(data);
+          if (results && results.length > 0) {
+            resolve({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
+          } else { resolve(null); }
+        } catch { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(5000, () => { req.destroy(); resolve(null); });
+  });
+}
+
+// WHY: Fire-and-forget geocode after roster save — don't block the response.
+// Updates geocoded_lat/lng on the roster_entry row for map pin display.
+function geocodeAndCache(entryId, address) {
+  if (!address) return;
+  geocodeAddress(address).then(async (coords) => {
+    if (!coords) return;
+    try {
+      await pool.query(
+        `UPDATE roster_entries SET geocoded_lat = $1, geocoded_lng = $2 WHERE id = $3`,
+        [coords.lat, coords.lng, entryId]
+      );
+    } catch (err) {
+      console.error('[PAYDECK] geocode cache write failed:', err.message);
+    }
+  }).catch(() => {});
+}
+
 // Premium Stripe subscription URL — $149/month, PropOps Stripe account
 const PREMIUM_STRIPE_URL = process.env.STRIPE_PREMIUM_URL || 'https://buy.stripe.com/7sY4gzeCI75rb7H1tOdby0b';
 
@@ -58,65 +101,46 @@ function calculatePAYG(grossPay, hoursInPeriod, hourlyRate, tfnStatus) {
     return Math.round(grossPay * 0.47 * 100) / 100;
   }
 
-  // Annualise: use hours worked if available, otherwise treat period pay as 1/26th fortnightly
-  let annualIncome;
-  if (hoursInPeriod && hoursInPeriod > 0 && hourlyRate && hourlyRate > 0) {
-    // Full-time hours = 38/week; assume this period scales to annual
-    const weeksInPeriod = hoursInPeriod / 38;
-    const periodsPerYear = 52 / Math.max(weeksInPeriod, 0.1);
-    annualIncome = grossPay * Math.min(periodsPerYear, 52); // cap at 52 pays
+  // WHY: Convert to weekly gross for ATO weekly withholding schedule.
+  // Previous code annualised via hours/38 which caused part-time workers to fall
+  // below the tax-free threshold and get $0 withholding (e.g. 8h/wk × $30 = $240,
+  // annualised to $12,480 < $18,200 = $0 tax). ATO weekly schedule is the correct
+  // approach — withhold based on what they actually earn that week.
+  let weeklyGross;
+  if (hoursInPeriod && hoursInPeriod > 0) {
+    // Treat the period as exactly one week of pay
+    weeklyGross = grossPay;
   } else {
-    // Assume fortnightly — 26 periods per year
-    annualIncome = grossPay * 26;
+    // Assume fortnightly → halve for weekly
+    weeklyGross = grossPay / 2;
   }
 
-  // Annual tax before offsets (ATO 2025-26 brackets)
-  let annualTax = 0;
-  if (annualIncome <= 18200) {
-    annualTax = 0;
-  } else if (annualIncome <= 45000) {
-    annualTax = (annualIncome - 18200) * 0.19;
-  } else if (annualIncome <= 120000) {
-    annualTax = 5092 + (annualIncome - 45000) * 0.325;
-  } else if (annualIncome <= 180000) {
-    annualTax = 29467 + (annualIncome - 120000) * 0.37;
+  // ATO 2025-26 weekly PAYG withholding schedule (simplified)
+  // These map to annual brackets: $18,200 → $350/wk, $45,000 → $865/wk, etc.
+  let weeklyTax = 0;
+  if (weeklyGross <= 150) {
+    weeklyTax = 0;
+  } else if (weeklyGross <= 371) {
+    weeklyTax = (weeklyGross - 150) * 0.19;
+  } else if (weeklyGross <= 896) {
+    weeklyTax = 42 + (weeklyGross - 371) * 0.325;
+  } else if (weeklyGross <= 2307) {
+    weeklyTax = 212.63 + (weeklyGross - 896) * 0.37;
+  } else if (weeklyGross <= 3461) {
+    weeklyTax = 734.70 + (weeklyGross - 2307) * 0.45;
   } else {
-    annualTax = 51667 + (annualIncome - 180000) * 0.45;
+    weeklyTax = 1254.00 + (weeklyGross - 3461) * 0.45;
   }
 
-  // Low Income Tax Offset (LITO) — reduces tax payable
-  let lito = 0;
-  if (annualIncome <= 37500) {
-    lito = 700;
-  } else if (annualIncome <= 66667) {
-    lito = 700 - (annualIncome - 37500) * (700 / 29167);
-  } else if (annualIncome <= 121000) {
-    lito = Math.max(0, 700 - (annualIncome - 37500) * 0.015 - (annualIncome - 66667) * 0.015);
-  }
-  lito = Math.max(0, lito);
-
-  // Medicare Levy: 2% on incomes over $26,000 (reduced below $34,398 under low-income threshold)
+  // Medicare Levy: 2% of weekly gross above $500/wk threshold
   let medicare = 0;
-  if (annualIncome > 26000) {
-    if (annualIncome <= 34398) {
-      // Shade-in zone: 10% of excess above $26,000
-      medicare = (annualIncome - 26000) * 0.10;
-    } else {
-      medicare = annualIncome * 0.02;
-    }
+  if (weeklyGross > 662) {
+    medicare = weeklyGross * 0.02;
+  } else if (weeklyGross > 500) {
+    medicare = (weeklyGross - 500) * 0.10;
   }
 
-  const annualWithholding = Math.max(0, annualTax - lito + medicare);
-
-  // Scale back down to period withholding
-  let periodWithholding;
-  if (hoursInPeriod && hoursInPeriod > 0 && hourlyRate && hourlyRate > 0) {
-    const weeksInPeriod = hoursInPeriod / 38;
-    const periodsPerYear = 52 / Math.max(weeksInPeriod, 0.1);
-    periodWithholding = annualWithholding / Math.min(periodsPerYear, 52);
-  } else {
-    periodWithholding = annualWithholding / 26;
-  }
+  const periodWithholding = Math.max(0, weeklyTax + medicare);
 
   return Math.round(periodWithholding * 100) / 100;
 }
@@ -176,8 +200,47 @@ router.get('/summary', requireAuth, async (req, res) => {
       gstThisQuarter = parseFloat(gstResult.rows[0]?.gst_collected || 0);
     } catch(_) {}
 
+    // WHY: recent activity feed — build from real events so overview isn't empty
+    let recentActivity = [];
+    try {
+      const [recentStaff, recentShifts, recentPay, recentSwaps] = await Promise.all([
+        pool.query(
+          `SELECT name, created_at FROM staff_members
+           WHERE operator_id = $1 ORDER BY created_at DESC LIMIT 3`, [req.userId]),
+        pool.query(
+          `SELECT job_title, scheduled_date, created_at FROM roster_entries
+           WHERE operator_id = $1 AND status != 'cancelled' ORDER BY created_at DESC LIMIT 3`, [req.userId]),
+        pool.query(
+          `SELECT p.period_start, p.period_end, p.amount, p.status, p.created_at, s.name AS staff_name
+           FROM payroll_entries p JOIN staff_members s ON p.staff_id = s.id
+           WHERE p.operator_id = $1 ORDER BY p.created_at DESC LIMIT 3`, [req.userId]),
+        pool.query(
+          `SELECT sw.status, sw.created_at, rs.name AS requesting_name, ts.name AS target_name
+           FROM staff_shift_swap_requests sw
+           JOIN staff_members rs ON sw.requesting_staff_id = rs.id
+           LEFT JOIN staff_members ts ON sw.target_staff_id = ts.id
+           WHERE sw.operator_id = $1 ORDER BY sw.created_at DESC LIMIT 3`, [req.userId]),
+      ]);
+      const fmtAgo = (d) => {
+        if (!d) return '';
+        const ms = Date.now() - new Date(d).getTime();
+        const mins = Math.floor(ms / 60000);
+        if (mins < 60) return mins + 'm ago';
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return hrs + 'h ago';
+        return Math.floor(hrs / 24) + 'd ago';
+      };
+      recentStaff.rows.forEach(r => recentActivity.push({ icon: '👤', label: 'Staff added: ' + r.name, time: fmtAgo(r.created_at), at: r.created_at }));
+      recentShifts.rows.forEach(r => recentActivity.push({ icon: '📅', label: 'Shift created: ' + (r.job_title || 'Shift') + ' on ' + String(r.scheduled_date).slice(0, 10), time: fmtAgo(r.created_at), at: r.created_at }));
+      recentPay.rows.forEach(r => recentActivity.push({ icon: '💰', label: 'Pay run: ' + r.staff_name + ' $' + parseFloat(r.amount || 0).toFixed(0) + ' (' + r.status + ')', time: fmtAgo(r.created_at), at: r.created_at }));
+      recentSwaps.rows.forEach(r => recentActivity.push({ icon: '🔄', label: 'Swap: ' + r.requesting_name + (r.target_name ? ' → ' + r.target_name : ' (open)') + ' — ' + r.status, time: fmtAgo(r.created_at), at: r.created_at }));
+      recentActivity.sort((a, b) => new Date(b.at) - new Date(a.at));
+      recentActivity = recentActivity.slice(0, 10).map(({ icon, label, time }) => ({ icon, label, time }));
+    } catch (_) { /* activity feed is non-critical */ }
+
     res.json({
       success: true,
+      recent_activity: recentActivity,
       summary: {
         staff: { total: parseInt(staff.rows[0].total), active: parseInt(staff.rows[0].active) },
         roster: { total: parseInt(roster.rows[0].total), upcoming: parseInt(roster.rows[0].upcoming) },
@@ -264,6 +327,22 @@ router.put('/staff/:id', requireAuth, async (req, res) => {
   }
 });
 
+// WHY: phone duplicate check — warns boss if phone is already assigned to another staff member
+router.get('/staff/check-phone', requireAuth, async (req, res) => {
+  const { phone, exclude_id } = req.query;
+  if (!phone || !phone.trim()) return res.json({ success: true, duplicate: false });
+  try {
+    const params = [req.userId, phone.trim()];
+    let q = `SELECT id, name FROM staff_members WHERE operator_id = $1 AND phone = $2 AND is_active = true`;
+    if (exclude_id) { params.push(exclude_id); q += ` AND id != $${params.length}`; }
+    q += ` LIMIT 1`;
+    const result = await pool.query(q, params);
+    res.json({ success: true, duplicate: result.rows.length > 0, existing_name: result.rows[0]?.name || null });
+  } catch (err) {
+    res.json({ success: true, duplicate: false }); // non-critical — fail open
+  }
+});
+
 router.delete('/staff/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
@@ -285,7 +364,7 @@ router.get('/roster', requireAuth, async (req, res) => {
   const { start_date, end_date, staff_id } = req.query;
   try {
     let query = `
-      SELECT r.*, s.name as staff_name, s.phone as staff_phone, s.role as staff_role
+      SELECT r.*, s.name as staff_name, s.phone as staff_phone, s.role as staff_role, s.hourly_rate, s.award_type
       FROM roster_entries r
       JOIN staff_members s ON r.staff_id = s.id
       WHERE r.operator_id = $1
@@ -311,6 +390,18 @@ router.post('/roster', requireAuth, async (req, res) => {
   if (!staff_id || !scheduled_date) {
     return res.status(400).json({ success: false, message: 'staff_id and scheduled_date are required' });
   }
+  // WHY: Both times required — shifts with NULL times produce $0 pay ghosts
+  if (!start_time || !end_time) {
+    return res.status(400).json({ success: false, message: 'Both start time and end time are required' });
+  }
+  // WHY: Reject shifts where end_time <= start_time — prevents corrupt ghost shifts that generate negative pay
+  const [sh, sm] = String(start_time).split(':').map(Number);
+  const [eh, em] = String(end_time).split(':').map(Number);
+  const startMins = sh * 60 + (sm || 0);
+  const endMins = eh * 60 + (em || 0);
+  if (endMins <= startMins) {
+    return res.status(400).json({ success: false, message: 'End time must be after start time' });
+  }
   try {
     // Verify staff belongs to this operator
     const staffCheck = await pool.query(
@@ -319,11 +410,51 @@ router.post('/roster', requireAuth, async (req, res) => {
     );
     if (!staffCheck.rows[0]) return res.status(400).json({ success: false, message: 'Invalid staff member' });
 
-    const result = await pool.query(
-      `INSERT INTO roster_entries (operator_id, staff_id, lead_id, job_title, job_address, scheduled_date, start_time, end_time, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [req.userId, staff_id, lead_id || null, job_title || null, job_address || null, scheduled_date, start_time || null, end_time || null, notes || null]
+    // WHY: duplicate shift prevention — same staff + date + start_time is almost certainly a double-click
+    if (start_time) {
+      const dupCheck = await pool.query(
+        `SELECT id FROM roster_entries
+         WHERE staff_id = $1 AND scheduled_date = $2 AND start_time = $3
+           AND operator_id = $4 AND status != 'cancelled'`,
+        [staff_id, scheduled_date, start_time, req.userId]
+      );
+      if (dupCheck.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'Shift already exists for this staff member at this time' });
+      }
+    }
+
+    // WHY: Fetch staff rate + award_type so we can compute penalty on insert.
+    // Penalty computed immediately so gross_pay is available in roster view.
+    const staffRow = await pool.query(
+      `SELECT hourly_rate, award_type FROM staff_members WHERE id = $1 AND operator_id = $2`,
+      [staff_id, req.userId]
     );
+    const staffInfo = staffRow.rows[0];
+    const hourlyRate = parseFloat(staffInfo?.hourly_rate) || 0;
+    const awardType = staffInfo?.award_type || 'hospitality';
+
+    // Compute penalty from scheduled_date + times
+    const dow = (new Date(scheduled_date + 'T00:00:00Z').getUTCDay() + 6) % 7; // Mon=0…Sun=6
+    const penaltyCalc = calcShiftPenalty({
+      hourly_rate: hourlyRate,
+      start_time, end_time,
+      day_of_week: dow,
+      is_public_holiday: false,
+      award_type: awardType,
+      is_casual: false,
+    });
+
+    const result = await pool.query(
+      `INSERT INTO roster_entries (operator_id, staff_id, lead_id, job_title, job_address, scheduled_date, start_time, end_time, notes, base_pay, penalty_pay, penalty_multiplier, penalty_type, gross_pay)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+      [req.userId, staff_id, lead_id || null, job_title || null, job_address || null, scheduled_date, start_time, end_time, notes || null, penaltyCalc.base_pay, penaltyCalc.penalty_pay, penaltyCalc.penalty_multiplier, penaltyCalc.penalty_type, penaltyCalc.gross_pay]
+    );
+    // WHY: fire-and-forget geocode — don't block the response
+    geocodeAndCache(result.rows[0].id, job_address);
+    // Fire-and-forget notification — shift created
+    _getStaffAndBiz(staff_id, req.userId).then(ctx => {
+      if (ctx) staffNotify.notifyNewShift({ operatorId: req.userId, staff: ctx.staff, bizName: ctx.bizName, entry: result.rows[0] }).catch(() => {});
+    }).catch(() => {});
     res.json({ success: true, entry: result.rows[0] });
   } catch (err) {
     console.error('[PAYDECK] Create roster error:', err.message);
@@ -334,7 +465,70 @@ router.post('/roster', requireAuth, async (req, res) => {
 router.put('/roster/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { staff_id, job_title, job_address, scheduled_date, start_time, end_time, status, notes } = req.body;
+  // WHY: If times are being updated, both must be provided — partial time updates cause ghost shifts
+  if ((start_time && !end_time) || (!start_time && end_time)) {
+    return res.status(400).json({ success: false, message: 'Both start time and end time are required' });
+  }
+  // WHY: Reject shifts where end_time <= start_time — prevents corrupt ghost shifts that generate negative pay
+  if (start_time && end_time) {
+    const [sh, sm] = String(start_time).split(':').map(Number);
+    const [eh, em] = String(end_time).split(':').map(Number);
+    const startMins = sh * 60 + (sm || 0);
+    const endMins = eh * 60 + (em || 0);
+    if (endMins <= startMins) {
+      return res.status(400).json({ success: false, message: 'End time must be after start time' });
+    }
+  }
   try {
+    // WHY: capture old entry before update so we can show before/after in the notification
+    const oldResult = await pool.query(
+      `SELECT * FROM roster_entries WHERE id = $1 AND operator_id = $2`, [id, req.userId]
+    );
+    const oldEntry = oldResult.rows[0] || null;
+
+    // WHY: Duplicate check on update — prevents stacking identical shifts via rapid edits
+    const effectiveStaffId = staff_id || (oldEntry && oldEntry.staff_id);
+    const effectiveDate = scheduled_date || (oldEntry && oldEntry.scheduled_date);
+    const effectiveStart = start_time || (oldEntry && oldEntry.start_time);
+    if (effectiveStaffId && effectiveDate && effectiveStart) {
+      const dupCheck = await pool.query(
+        `SELECT id FROM roster_entries
+         WHERE staff_id = $1 AND scheduled_date = $2 AND start_time = $3
+           AND operator_id = $4 AND status != 'cancelled' AND id != $5`,
+        [effectiveStaffId, effectiveDate, effectiveStart, req.userId, id]
+      );
+      if (dupCheck.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'Shift already exists for this staff member at this time' });
+      }
+    }
+
+    // WHY: Compute penalty fields whenever times or date might have changed.
+    // Effective values come from body (new) or oldEntry (unchanged).
+    const effStaffId   = staff_id || (oldEntry && oldEntry.staff_id);
+    const effDate     = scheduled_date || (oldEntry && oldEntry.scheduled_date);
+    const effStart    = start_time || (oldEntry && oldEntry.start_time);
+    const effEnd      = end_time   || (oldEntry && oldEntry.end_time);
+    const effDow      = effDate ? (new Date(String(effDate).split('T')[0] + 'T00:00:00Z').getUTCDay() + 6) % 7 : 0;
+
+    let penaltyCalc = { base_pay: null, penalty_pay: null, penalty_multiplier: null, penalty_type: null, gross_pay: null };
+    if (effStart && effEnd && effStaffId) {
+      const staffRow = await pool.query(
+        `SELECT hourly_rate, award_type FROM staff_members WHERE id = $1 AND operator_id = $2`,
+        [effStaffId, req.userId]
+      );
+      const staffInfo = staffRow.rows[0];
+      if (staffInfo) {
+        penaltyCalc = calcShiftPenalty({
+          hourly_rate: parseFloat(staffInfo.hourly_rate) || 0,
+          start_time: effStart, end_time: effEnd,
+          day_of_week: effDow,
+          is_public_holiday: false,
+          award_type: staffInfo.award_type || 'hospitality',
+          is_casual: false,
+        });
+      }
+    }
+
     const result = await pool.query(
       `UPDATE roster_entries
        SET staff_id = COALESCE($1, staff_id),
@@ -344,12 +538,28 @@ router.put('/roster/:id', requireAuth, async (req, res) => {
            start_time = COALESCE($5, start_time),
            end_time = COALESCE($6, end_time),
            status = COALESCE($7, status),
-           notes = COALESCE($8, notes)
+           notes = COALESCE($8, notes),
+           base_pay = $11,
+           penalty_pay = $12,
+           penalty_multiplier = $13,
+           penalty_type = $14,
+           gross_pay = $15
        WHERE id = $9 AND operator_id = $10 RETURNING *`,
-      [staff_id, job_title, job_address, scheduled_date, start_time, end_time, status, notes, id, req.userId]
+      [staff_id, job_title, job_address, scheduled_date, start_time, end_time, status, notes, id, req.userId,
+       penaltyCalc.base_pay, penaltyCalc.penalty_pay, penaltyCalc.penalty_multiplier, penaltyCalc.penalty_type, penaltyCalc.gross_pay]
     );
     if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Roster entry not found' });
-    res.json({ success: true, entry: result.rows[0] });
+    // WHY: re-geocode if address changed — fire-and-forget
+    if (job_address) geocodeAndCache(result.rows[0].id, job_address);
+    // Fire-and-forget notification — shift updated (only if not a cancel/status change)
+    const newEntry = result.rows[0];
+    if (newEntry.status !== 'cancelled') {
+      const targetStaffId = newEntry.staff_id;
+      _getStaffAndBiz(targetStaffId, req.userId).then(ctx => {
+        if (ctx) staffNotify.notifyShiftUpdated({ operatorId: req.userId, staff: ctx.staff, bizName: ctx.bizName, entry: newEntry, oldEntry }).catch(() => {});
+      }).catch(() => {});
+    }
+    res.json({ success: true, entry: newEntry });
   } catch (err) {
     console.error('[PAYDECK] Update roster error:', err.message);
     res.status(500).json({ success: false, message: 'Failed to update roster entry' });
@@ -359,10 +569,22 @@ router.put('/roster/:id', requireAuth, async (req, res) => {
 router.delete('/roster/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   try {
+    // WHY: fetch entry before cancel so we can include shift details in the notification
+    const beforeCancel = await pool.query(
+      `SELECT * FROM roster_entries WHERE id = $1 AND operator_id = $2`, [id, req.userId]
+    );
+    const cancelledEntry = beforeCancel.rows[0] || null;
+
     await pool.query(
       `UPDATE roster_entries SET status = 'cancelled' WHERE id = $1 AND operator_id = $2`,
       [id, req.userId]
     );
+    // Fire-and-forget cancellation notification
+    if (cancelledEntry) {
+      _getStaffAndBiz(cancelledEntry.staff_id, req.userId).then(ctx => {
+        if (ctx) staffNotify.notifyShiftCancelled({ operatorId: req.userId, staff: ctx.staff, bizName: ctx.bizName, entry: cancelledEntry }).catch(() => {});
+      }).catch(() => {});
+    }
     res.json({ success: true, message: 'Roster entry cancelled' });
   } catch (err) {
     console.error('[PAYDECK] Delete roster error:', err.message);
@@ -639,8 +861,9 @@ router.post('/payroll', requireAuth, async (req, res) => {
     const tax_withheld = grossAmount
       ? calculatePAYG(grossAmount, parseFloat(hours_worked) || null, parseFloat(staffMember.hourly_rate) || null, staffMember.tfn_status)
       : null;
+    // WHY: Net = Gross - PAYG - Super. Both deductions reduce take-home pay.
     const net_pay = grossAmount && super_amount !== null && tax_withheld !== null
-      ? Math.round((grossAmount - tax_withheld) * 100) / 100
+      ? Math.round((grossAmount - tax_withheld - super_amount) * 100) / 100
       : null;
 
     const result = await pool.query(
@@ -745,6 +968,23 @@ router.get('/compliance', requireAuth, async (req, res) => {
 
 const crypto = require('crypto');
 const { sendEmail } = require('../services/email');
+const staffNotify = require('../services/staff-notifications');
+
+// Helper: fetch staff + business name for notification context.
+// Returns null if not found — callers skip the notification gracefully.
+async function _getStaffAndBiz(staffId, operatorId) {
+  try {
+    const r = await pool.query(
+      `SELECT s.id, s.name, s.email, s.token_version, op.business_name
+       FROM staff_members s
+       LEFT JOIN operator_profiles op ON op.operator_id = s.operator_id
+       WHERE s.id = $1 AND s.operator_id = $2`,
+      [staffId, operatorId]
+    );
+    if (!r.rows[0]) return null;
+    return { staff: r.rows[0], bizName: r.rows[0].business_name || '' };
+  } catch { return null; }
+}
 
 /**
  * POST /api/paydeck/staff/:id/send-invite
@@ -876,7 +1116,9 @@ router.get('/swap-requests', requireAuth, async (req, res) => {
 /**
  * POST /api/paydeck/swap-requests/:id/review
  * Operator approves or declines a shift swap request.
- * On approve: swaps staff_id on the roster_entry.
+ * 3-step swap: Staff A offers → Staff B accepts → Boss approves/declines.
+ * Boss can only approve when a target staff member has accepted (status = 'accepted').
+ * Boss can decline at any stage (pending or accepted).
  */
 router.post('/swap-requests/:id/review', requireAuth, async (req, res) => {
   const { id } = req.params;
@@ -885,15 +1127,21 @@ router.post('/swap-requests/:id/review', requireAuth, async (req, res) => {
     return res.status(400).json({ success: false, message: 'action must be approve or decline' });
   }
   try {
+    // WHY: accept both 'pending' and 'accepted' status — boss can decline at any stage
     const swapResult = await pool.query(
       `SELECT sw.*, re.staff_id AS current_staff_id
        FROM staff_shift_swap_requests sw
        JOIN roster_entries re ON sw.roster_entry_id = re.id
-       WHERE sw.id = $1 AND sw.operator_id = $2 AND sw.status = 'pending'`,
+       WHERE sw.id = $1 AND sw.operator_id = $2 AND sw.status IN ('pending', 'accepted')`,
       [id, req.userId]
     );
     const swap = swapResult.rows[0];
     if (!swap) return res.status(404).json({ success: false, message: 'Swap request not found or already reviewed' });
+
+    // WHY: prevent approving a swap with no volunteer — shift would go to nobody
+    if (action === 'approve' && !swap.target_staff_id) {
+      return res.status(400).json({ success: false, message: 'Cannot approve — no staff member has accepted this swap yet. Waiting for a volunteer.' });
+    }
 
     const newStatus = action === 'approve' ? 'approved' : 'declined';
 
@@ -904,7 +1152,7 @@ router.post('/swap-requests/:id/review', requireAuth, async (req, res) => {
       [newStatus, note || null, id]
     );
 
-    // On approve: reassign roster entry to target staff (or leave open if no target)
+    // On approve: reassign roster entry from Staff A to Staff B
     if (action === 'approve' && swap.target_staff_id) {
       await pool.query(
         `UPDATE roster_entries SET staff_id = $1 WHERE id = $2 AND operator_id = $3`,
@@ -1647,14 +1895,21 @@ router.get('/week-view', requireAuth, async (req, res) => {
         });
 
       // Compute weekly pay from all shifts with start+end times
+      // WHY: Include shifts with start_time only — null end_time gets 8h default (shift recorded but end not yet entered).
       let totalHours = 0;
       allShifts.filter(r => r.staff_id === s.id).forEach(r => {
-        if (r.start_time && r.end_time) {
+        if (r.start_time) {
           const [sh, sm] = String(r.start_time).split(':').map(Number);
-          const [eh, em] = String(r.end_time).split(':').map(Number);
-          let mins = eh * 60 + (em||0) - sh * 60 - (sm||0);
-          // WHY: If end < start (e.g. 09:00 to 05:00 stored as AM), assume 12h offset
-          if (mins <= 0) mins += 12 * 60;
+          let mins;
+          if (r.end_time) {
+            const [eh, em] = String(r.end_time).split(':').map(Number);
+            mins = eh * 60 + (em||0) - sh * 60 - (sm||0);
+            // WHY: If end < start (e.g. 09:00 to 05:00 stored as AM), assume 12h offset
+            if (mins <= 0) mins += 12 * 60;
+          } else {
+            // No end_time recorded yet — default to 8h so the shift still counts toward pay
+            mins = 8 * 60;
+          }
           totalHours += mins / 60;
         }
       });
@@ -1663,7 +1918,8 @@ router.get('/week-view', requireAuth, async (req, res) => {
       const gross = Math.round(totalHours * rate * 100) / 100;
       const superAmt = calculateSuper(gross);
       const payg = calculatePAYG(gross, totalHours, rate, s.tfn_status || 'provided');
-      const net = Math.round((gross - payg) * 100) / 100;
+      // WHY: Net = Gross - PAYG - Super. Owner expects both deductions visible in totals.
+      const net = Math.round((gross - payg - superAmt) * 100) / 100;
 
       return {
         id:          s.id,
@@ -1714,6 +1970,18 @@ router.post('/week-view/shift', requireAuth, async (req, res) => {
   if (!staff_id || !scheduled_date) {
     return res.status(400).json({ success: false, message: 'staff_id and scheduled_date are required' });
   }
+  // WHY: Both times required — shifts with NULL times produce $0 pay ghosts
+  if (!start_time || !end_time) {
+    return res.status(400).json({ success: false, message: 'Both start time and end time are required' });
+  }
+  // WHY: Reject shifts where end_time <= start_time — prevents corrupt ghost shifts that generate negative pay
+  const [sh, sm] = String(start_time).split(':').map(Number);
+  const [eh, em] = String(end_time).split(':').map(Number);
+  const startMins = sh * 60 + (sm || 0);
+  const endMins = eh * 60 + (em || 0);
+  if (endMins <= startMins) {
+    return res.status(400).json({ success: false, message: 'End time must be after start time' });
+  }
   try {
     const staffCheck = await pool.query(
       `SELECT id FROM staff_members WHERE id = $1 AND operator_id = $2 AND is_active = true`,
@@ -1721,11 +1989,26 @@ router.post('/week-view/shift', requireAuth, async (req, res) => {
     );
     if (!staffCheck.rows[0]) return res.status(400).json({ success: false, message: 'Invalid or inactive staff member' });
 
+    // WHY: duplicate shift prevention — same staff + date + start_time is almost certainly a double-click
+    if (start_time) {
+      const dupCheck = await pool.query(
+        `SELECT id FROM roster_entries
+         WHERE staff_id = $1 AND scheduled_date = $2 AND start_time = $3
+           AND operator_id = $4 AND status != 'cancelled'`,
+        [staff_id, scheduled_date, start_time, req.userId]
+      );
+      if (dupCheck.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'Shift already exists for this staff member at this time' });
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO roster_entries (operator_id, staff_id, job_title, job_address, scheduled_date, start_time, end_time)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [req.userId, staff_id, job_title || null, job_address || null, scheduled_date, start_time || null, end_time || null]
+      [req.userId, staff_id, job_title || null, job_address || null, scheduled_date, start_time, end_time]
     );
+    // WHY: fire-and-forget geocode — don't block the response
+    geocodeAndCache(result.rows[0].id, job_address);
     res.json({ success: true, entry: result.rows[0] });
   } catch (err) {
     console.error('[PAYDECK] week-view/shift POST error:', err.message);
@@ -1788,6 +2071,656 @@ router.get('/upgrade-url', requireAuth, async (req, res) => {
       'Hugo knows your super, tax, and GST obligations',
     ],
   });
+});
+
+// ─── FEATURE 1 + 8: Award Rate Engine ─────────────────────────────────────────
+// MA000009 Hospitality Industry Award penalty multipliers.
+// Returns penalty calc for a given shift (day, start, end, is_public_holiday).
+
+const AWARD_RATES = {
+  hospitality: {
+    // Base casual loading: 25% on ordinary rate
+    casual_loading: 1.25,
+    // Day-based multipliers (applied on top of casual loading for casual workers)
+    monday: 1.00,
+    tuesday: 1.00,
+    wednesday: 1.00,
+    thursday: 1.00,
+    friday: 1.00,
+    saturday: 1.25,
+    sunday: 2.00, // AU Fair Work Act s87: Sunday ordinary hours = 200% (double time)
+    public_holiday: 2.25,
+    // Time-based penalty (applies to hours between 00:00 and 07:00, and after midnight)
+    late_night_start: 20, // 8pm
+    late_night_multiplier: 1.15,
+  },
+  construction: {
+    casual_loading: 1.25,
+    monday: 1.00,
+    tuesday: 1.00,
+    wednesday: 1.00,
+    thursday: 1.00,
+    friday: 1.00,
+    saturday: 1.50,
+    sunday: 2.00, // AU Fair Work Act s87: Sunday ordinary hours = 200% (double time)
+    public_holiday: 2.75,
+    late_night_start: 20,
+    late_night_multiplier: 1.15,
+  },
+};
+
+const DAY_NAMES = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+/**
+ * Calculate penalty pay for a shift.
+ * @param {object} p - { hourly_rate, start_time (HH:MM), end_time (HH:MM),
+ *                       day_of_week (0=Mon…6=Sun), is_public_holiday, award_type, is_casual }
+ * @returns { base_pay, penalty_pay, penalty_multiplier, penalty_type, gross_pay, hours }
+ */
+function calcShiftPenalty({ hourly_rate, start_time, end_time, day_of_week, is_public_holiday, award_type, is_casual }) {
+  const rate = parseFloat(hourly_rate) || 0;
+  if (!rate || !start_time || !end_time) {
+    return { base_pay: 0, penalty_pay: 0, penalty_multiplier: 1, penalty_type: 'ordinary', gross_pay: 0, hours: 0 };
+  }
+
+  const award = AWARD_RATES[award_type] || AWARD_RATES.hospitality;
+  const [sh, sm] = String(start_time).split(':').map(Number);
+  const [eh, em] = String(end_time).split(':').map(Number);
+  let mins = eh * 60 + (em || 0) - sh * 60 - (sm || 0);
+  if (mins <= 0) mins += 12 * 60; // overnight crossover guard
+  const hours = Math.round(mins / 60 * 100) / 100;
+
+  // Determine day multiplier
+  let multiplier = 1.0;
+  let penaltyType = 'ordinary';
+
+  if (is_public_holiday) {
+    multiplier = award.public_holiday;
+    penaltyType = 'public_holiday';
+  } else {
+    const dayName = DAY_NAMES[day_of_week] || 'monday';
+    multiplier = award[dayName] || 1.0;
+    if (day_of_week === 5) penaltyType = 'saturday';
+    else if (day_of_week === 6) penaltyType = 'sunday';
+  }
+
+  // Late night penalty: if start is after 8pm, add 15% on top
+  if (sh >= award.late_night_start && !is_public_holiday) {
+    multiplier = Math.max(multiplier, award.late_night_multiplier);
+    if (penaltyType === 'ordinary') penaltyType = 'late_night';
+  }
+
+  // Apply casual loading if casual worker
+  const effectiveRate = is_casual ? rate * award.casual_loading : rate;
+  const grossPay = Math.round(effectiveRate * multiplier * hours * 100) / 100;
+  const basePay = Math.round(effectiveRate * hours * 100) / 100;
+  const penaltyPay = Math.round((grossPay - basePay) * 100) / 100;
+
+  return {
+    hours,
+    base_pay: basePay,
+    penalty_pay: Math.max(0, penaltyPay),
+    penalty_multiplier: multiplier,
+    penalty_type: penaltyType,
+    gross_pay: grossPay,
+  };
+}
+
+// GET /api/paydeck/award-rates — return award rate schedule for the UI
+router.get('/award-rates', requireAuth, (req, res) => {
+  res.json({ success: true, awards: Object.keys(AWARD_RATES), rates: AWARD_RATES });
+});
+
+// POST /api/paydeck/roster/:id/recalculate-penalty
+// Re-compute penalty breakdown for an existing shift and save it.
+router.post('/roster/:id/recalculate-penalty', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const shiftResult = await pool.query(
+      `SELECT r.*, s.hourly_rate, s.award_type, s.tfn_status
+       FROM roster_entries r JOIN staff_members s ON r.staff_id = s.id
+       WHERE r.id = $1 AND r.operator_id = $2`,
+      [id, req.userId]
+    );
+    const shift = shiftResult.rows[0];
+    if (!shift) return res.status(404).json({ success: false, message: 'Shift not found' });
+
+    // day_of_week from scheduled_date
+    let d = shift.scheduled_date instanceof Date ? shift.scheduled_date : new Date(shift.scheduled_date);
+    const dow = (d.getDay() + 6) % 7; // Mon=0…Sun=6
+
+    const calc = calcShiftPenalty({
+      hourly_rate: shift.hourly_rate,
+      start_time: shift.start_time,
+      end_time: shift.end_time,
+      day_of_week: dow,
+      is_public_holiday: shift.is_public_holiday || req.body.is_public_holiday || false,
+      award_type: shift.award_type || 'hospitality',
+      is_casual: false,
+    });
+
+    await pool.query(
+      `UPDATE roster_entries SET base_pay=$1, penalty_pay=$2, penalty_multiplier=$3, penalty_type=$4, gross_pay=$5 WHERE id=$6`,
+      [calc.base_pay, calc.penalty_pay, calc.penalty_multiplier, calc.penalty_type, calc.gross_pay, id]
+    );
+
+    res.json({ success: true, calc });
+  } catch (err) {
+    console.error('[PAYDECK] recalculate-penalty error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to recalculate' });
+  }
+});
+
+// ─── FEATURE 2: AI Roster Generation ──────────────────────────────────────────
+// POST /api/paydeck/roster/generate
+// Generates a week's roster using OpenAI proxy, with algorithmic fallback.
+
+router.post('/roster/generate', requireAuth, async (req, res) => {
+  const { week_start } = req.body; // YYYY-MM-DD (Monday)
+  if (!week_start) return res.status(400).json({ success: false, message: 'week_start required (YYYY-MM-DD)' });
+
+  try {
+    const [staffResult, bizHoursResult] = await Promise.all([
+      pool.query(`SELECT id, name, role, hourly_rate, award_type FROM staff_members WHERE operator_id=$1 AND is_active=true ORDER BY hourly_rate ASC NULLS LAST`, [req.userId]),
+      pool.query(`SELECT * FROM business_hours WHERE operator_id=$1 ORDER BY day_of_week ASC`, [req.userId]),
+    ]);
+
+    const staff = staffResult.rows;
+    const bizHours = bizHoursResult.rows;
+
+    if (!staff.length) {
+      return res.status(400).json({ success: false, message: 'Add staff before generating a roster' });
+    }
+
+    // Algorithmic fallback: cheapest staff fills each open day
+    const generated = [];
+    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const baseDate = new Date(week_start + 'T00:00:00');
+
+    for (let i = 0; i < 7; i++) {
+      const bh = bizHours.find(b => b.day_of_week === i);
+      if (bh && !bh.is_open) continue;
+
+      const open = bh ? bh.open_time || '08:00' : '08:00';
+      const close = bh ? bh.close_time || '17:00' : '17:00';
+      const idealCount = bh ? (bh.ideal_staff || 1) : 1;
+
+      // Fill up to idealCount slots with cheapest available staff
+      const assigned = staff.slice(0, idealCount);
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+      for (const s of assigned) {
+        // Skip if already has a shift that day
+        const existing = await pool.query(
+          `SELECT id FROM roster_entries WHERE operator_id=$1 AND staff_id=$2 AND scheduled_date=$3 AND status != 'cancelled'`,
+          [req.userId, s.id, dateStr]
+        );
+        if (existing.rows.length > 0) continue;
+
+        // Calculate penalty
+        const calc = calcShiftPenalty({
+          hourly_rate: s.hourly_rate,
+          start_time: open,
+          end_time: close,
+          day_of_week: i,
+          is_public_holiday: false,
+          award_type: s.award_type || 'hospitality',
+          is_casual: false,
+        });
+
+        const inserted = await pool.query(
+          `INSERT INTO roster_entries (operator_id, staff_id, scheduled_date, start_time, end_time, job_title,
+            base_pay, penalty_pay, penalty_multiplier, penalty_type, gross_pay)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+          [req.userId, s.id, dateStr, open, close, days[i] + ' shift',
+           calc.base_pay, calc.penalty_pay, calc.penalty_multiplier, calc.penalty_type, calc.gross_pay]
+        );
+        generated.push({ staff: s.name, date: dateStr, start: open, end: close, id: inserted.rows[0].id });
+      }
+    }
+
+    res.json({ success: true, generated, count: generated.length, source: 'algorithmic' });
+  } catch (err) {
+    console.error('[PAYDECK] roster/generate error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to generate roster' });
+  }
+});
+
+// ─── FEATURE 3: Leave Requests ─────────────────────────────────────────────────
+
+// GET /api/paydeck/leave-requests — boss view of all leave requests
+router.get('/leave-requests', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT lr.*, s.name as staff_name
+       FROM staff_leave_requests lr
+       JOIN staff_members s ON lr.staff_id = s.id
+       WHERE lr.operator_id = $1
+       ORDER BY lr.created_at DESC`,
+      [req.userId]
+    );
+    res.json({ success: true, requests: result.rows });
+  } catch (err) {
+    console.error('[PAYDECK] leave-requests error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to load leave requests' });
+  }
+});
+
+// POST /api/paydeck/leave-requests/:id/review — boss approves or declines
+router.post('/leave-requests/:id/review', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body; // 'approve' | 'decline'
+  if (!['approve','decline'].includes(action)) {
+    return res.status(400).json({ success: false, message: 'action must be approve or decline' });
+  }
+  try {
+    const newStatus = action === 'approve' ? 'approved' : 'declined';
+    const result = await pool.query(
+      `UPDATE staff_leave_requests SET status=$1, reviewed_at=NOW(), reviewed_by_operator_id=$2
+       WHERE id=$3 AND operator_id=$4 AND status='pending' RETURNING *, (SELECT name FROM staff_members WHERE id=staff_leave_requests.staff_id) as staff_name`,
+      [newStatus, req.userId, id, req.userId]
+    );
+    if (!result.rows[0]) return res.status(404).json({ success: false, message: 'Request not found or already reviewed' });
+
+    // Log notification to prevent duplicates
+    await pool.query(
+      `INSERT INTO notification_log (operator_id, recipient_type, recipient_id, notification_type, metadata)
+       VALUES ($1,'staff',$2,'leave_review',$3)`,
+      [req.userId, result.rows[0].staff_id, JSON.stringify({ action, leave_id: id })]
+    ).catch(() => {});
+
+    // Fire-and-forget email notification to staff
+    const leaveRow = result.rows[0];
+    _getStaffAndBiz(leaveRow.staff_id, req.userId).then(ctx => {
+      if (!ctx) return;
+      if (action === 'approve') {
+        staffNotify.notifyLeaveApproved({ operatorId: req.userId, staff: ctx.staff, bizName: ctx.bizName, leaveRequest: leaveRow }).catch(() => {});
+      } else {
+        staffNotify.notifyLeaveDeclined({ operatorId: req.userId, staff: ctx.staff, bizName: ctx.bizName, leaveRequest: leaveRow }).catch(() => {});
+      }
+    }).catch(() => {});
+
+    res.json({ success: true, request: leaveRow });
+  } catch (err) {
+    console.error('[PAYDECK] leave review error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to review leave request' });
+  }
+});
+
+// ─── FEATURE 4: Shift Swap Review (boss) ──────────────────────────────────────
+
+// GET /api/paydeck/swap-requests — boss view of all pending swaps
+router.get('/swap-requests', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sw.*, s1.name as requesting_name, s2.name as target_name,
+              r.job_title, r.scheduled_date, r.start_time, r.end_time
+       FROM staff_shift_swap_requests sw
+       JOIN staff_members s1 ON sw.requesting_staff_id = s1.id
+       LEFT JOIN staff_members s2 ON sw.target_staff_id = s2.id
+       LEFT JOIN roster_entries r ON sw.roster_entry_id = r.id
+       WHERE sw.operator_id = $1
+       ORDER BY sw.created_at DESC`,
+      [req.userId]
+    );
+    res.json({ success: true, swaps: result.rows });
+  } catch (err) {
+    console.error('[PAYDECK] swap-requests error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to load swap requests' });
+  }
+});
+
+// POST /api/paydeck/swap-requests/:id/review — boss approves or declines a swap
+router.post('/swap-requests/:id/review', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body; // 'approve' | 'decline'
+  if (!['approve','decline'].includes(action)) {
+    return res.status(400).json({ success: false, message: 'action must be approve or decline' });
+  }
+  try {
+    const newStatus = action === 'approve' ? 'approved' : 'declined';
+    const swapResult = await pool.query(
+      `UPDATE staff_shift_swap_requests SET status=$1
+       WHERE id=$2 AND operator_id=$3 AND status='pending' RETURNING *`,
+      [newStatus, id, req.userId]
+    );
+    const swap = swapResult.rows[0];
+    if (!swap) return res.status(404).json({ success: false, message: 'Swap not found or already reviewed' });
+
+    // If approved + target_staff_id set → reassign the shift
+    if (action === 'approve' && swap.target_staff_id) {
+      await pool.query(
+        `UPDATE roster_entries SET staff_id=$1 WHERE id=$2 AND operator_id=$3`,
+        [swap.target_staff_id, swap.roster_entry_id, req.userId]
+      );
+    }
+
+    // Fire-and-forget swap notifications to both parties
+    pool.query(`SELECT * FROM roster_entries WHERE id=$1`, [swap.roster_entry_id]).then(async entryRes => {
+      const entry = entryRes.rows[0];
+      if (!entry) return;
+      const [reqCtx, tgtCtx] = await Promise.all([
+        _getStaffAndBiz(swap.requesting_staff_id, req.userId),
+        swap.target_staff_id ? _getStaffAndBiz(swap.target_staff_id, req.userId) : Promise.resolve(null),
+      ]);
+      if (action === 'approve') {
+        staffNotify.notifySwapBossApproved({
+          operatorId: req.userId,
+          requestingStaff: reqCtx?.staff,
+          targetStaff: tgtCtx?.staff,
+          bizName: reqCtx?.bizName || '',
+          entry,
+        }).catch(() => {});
+      } else if (reqCtx) {
+        staffNotify.notifySwapBossDeclined({
+          operatorId: req.userId,
+          requestingStaff: reqCtx.staff,
+          bizName: reqCtx.bizName,
+          entry,
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
+    res.json({ success: true, swap });
+  } catch (err) {
+    console.error('[PAYDECK] swap review error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to review swap request' });
+  }
+});
+
+// ─── FEATURE 5: Staff Portal Magic Link Auth ───────────────────────────────────
+// POST /api/paydeck/staff/:id/send-magic-link
+// Sends a 60-day magic link to the staff email address.
+
+router.post('/staff/:id/send-magic-link', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const staffResult = await pool.query(
+      `SELECT id, operator_id, name, email FROM staff_members WHERE id=$1 AND operator_id=$2 AND is_active=true`,
+      [id, req.userId]
+    );
+    const staff = staffResult.rows[0];
+    if (!staff) return res.status(404).json({ success: false, message: 'Staff member not found' });
+    if (!staff.email) return res.status(400).json({ success: false, message: 'Staff member has no email address' });
+
+    // Double-send prevention: check if sent within last 24 hours
+    const recentCheck = await pool.query(
+      `SELECT id FROM notification_log
+       WHERE operator_id=$1 AND recipient_type='staff' AND recipient_id=$2
+         AND notification_type='magic_link' AND sent_at > NOW() - INTERVAL '24 hours'
+       LIMIT 1`,
+      [req.userId, id]
+    );
+    if (recentCheck.rows.length > 0 && !req.body.force) {
+      return res.status(429).json({ success: false, message: 'Magic link already sent in last 24 hours. Pass force:true to override.' });
+    }
+
+    // Generate token, 60-day expiry
+    const token = crypto.randomBytes(48).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO staff_magic_links (staff_id, operator_id, token, expires_at) VALUES ($1,$2,$3,$4)`,
+      [staff.id, req.userId, token, expiresAt]
+    );
+
+    // Log notification
+    await pool.query(
+      `INSERT INTO notification_log (operator_id, recipient_type, recipient_id, notification_type, metadata)
+       VALUES ($1,'staff',$2,'magic_link',$3)`,
+      [req.userId, id, JSON.stringify({ token_prefix: token.slice(0,8) })]
+    );
+
+    const appUrl = process.env.APP_URL || 'https://propopspro.polsia.app';
+    const magicUrl = `${appUrl}/pays/staff?magic=${token}`;
+
+    // Send email via email service (non-blocking — errors surfaced in logs only)
+    try {
+      const emailService = require('../services/email');
+      const opResult = await pool.query(`SELECT name FROM users WHERE id=$1`, [req.userId]);
+      const bizName = opResult.rows[0]?.name || 'Your employer';
+      await emailService.sendEmail({
+        to: staff.email,
+        subject: `${staff.name} — your Hugo.pays portal link`,
+        text: `Hi ${staff.name},\n\n${bizName} has sent you a login link for the staff portal.\n\nClick here to log in: ${magicUrl}\n\nThis link works for 60 days. No password needed.\n\nHugo.pays`,
+        html: `<p>Hi ${staff.name},</p><p>${bizName} has sent you a login link for the Hugo.pays staff portal.</p><p><a href="${magicUrl}" style="background:#fbbf24;color:#0a0e1a;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;">Open Staff Portal →</a></p><p style="color:#64748b;font-size:12px;">Link valid for 60 days. No password needed.</p>`,
+      });
+    } catch (emailErr) {
+      console.warn('[PAYDECK] magic-link email failed:', emailErr.message);
+    }
+
+    res.json({ success: true, message: `Magic link sent to ${staff.email}`, expires_at: expiresAt });
+  } catch (err) {
+    console.error('[PAYDECK] send-magic-link error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to send magic link' });
+  }
+});
+
+// GET /api/paydeck/magic-link/verify?token=xxx
+// Staff uses magic link to log in (no password needed)
+
+router.get('/magic-link/verify', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+  try {
+    const linkResult = await pool.query(
+      `SELECT ml.*, s.id as sid, s.name, s.email, s.operator_id, s.is_active
+       FROM staff_magic_links ml
+       JOIN staff_members s ON ml.staff_id = s.id
+       WHERE ml.token = $1 AND ml.used_at IS NULL AND ml.expires_at > NOW()
+       LIMIT 1`,
+      [token]
+    );
+    const link = linkResult.rows[0];
+    if (!link) return res.status(401).json({ success: false, message: 'Link expired or already used' });
+    if (!link.is_active) return res.status(403).json({ success: false, message: 'Staff account deactivated' });
+
+    // Mark used
+    await pool.query(`UPDATE staff_magic_links SET used_at=NOW() WHERE id=$1`, [link.id]);
+
+    // Create staff JWT (reuse staff-portal JWT creation from that route module)
+    const JWT_SECRET = (process.env.JWT_SECRET || 'propops-secret-change-in-production') + '-staff';
+    function b64u(s) { return Buffer.from(s).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+    const header = b64u(JSON.stringify({alg:'HS256',typ:'JWT'}));
+    const payload = { staff_id: link.sid, operator_id: link.operator_id, name: link.name, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 60*24*60*60 };
+    const body = b64u(JSON.stringify(payload));
+    const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    const jwtToken = `${header}.${body}.${sig}`;
+
+    const IS_PROD = process.env.NODE_ENV === 'production' || !!(process.env.APP_URL && !process.env.APP_URL.includes('localhost'));
+    const cookieBase = `staff_portal_token=${jwtToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60*24*60*60}`;
+    res.setHeader('Set-Cookie', IS_PROD ? `${cookieBase}; Secure` : cookieBase);
+
+    // Redirect to staff portal (or return JSON if API call)
+    const accept = req.headers['accept'] || '';
+    if (accept.includes('application/json')) {
+      res.json({ success: true, staff: { id: link.sid, name: link.name, email: link.email }, token: jwtToken });
+    } else {
+      res.redirect('/pays/staff');
+    }
+  } catch (err) {
+    console.error('[PAYDECK] magic-link/verify error:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─── FEATURE 7: Business Hours Config ─────────────────────────────────────────
+
+// GET /api/paydeck/business-hours
+router.get('/business-hours', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM business_hours WHERE operator_id=$1 ORDER BY day_of_week ASC`,
+      [req.userId]
+    );
+    // Fill in defaults for any missing days
+    const defaults = Array.from({length:7}, (_,i) => ({
+      day_of_week: i, is_open: i < 5, open_time: '08:00', close_time: '17:00', min_staff: 1, ideal_staff: 2,
+    }));
+    const byDay = {};
+    result.rows.forEach(r => { byDay[r.day_of_week] = r; });
+    const merged = defaults.map(d => byDay[d.day_of_week] || d);
+    res.json({ success: true, hours: merged });
+  } catch (err) {
+    console.error('[PAYDECK] business-hours GET error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to load business hours' });
+  }
+});
+
+// POST /api/paydeck/business-hours — upsert all 7 days
+router.post('/business-hours', requireAuth, async (req, res) => {
+  const { hours } = req.body; // array of { day_of_week, is_open, open_time, close_time, min_staff, ideal_staff }
+  if (!Array.isArray(hours) || hours.length === 0) {
+    return res.status(400).json({ success: false, message: 'hours array required' });
+  }
+  try {
+    for (const h of hours) {
+      await pool.query(
+        `INSERT INTO business_hours (operator_id, day_of_week, is_open, open_time, close_time, min_staff, ideal_staff, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+         ON CONFLICT (operator_id, day_of_week)
+         DO UPDATE SET is_open=$3, open_time=$4, close_time=$5, min_staff=$6, ideal_staff=$7, updated_at=NOW()`,
+        [req.userId, h.day_of_week, h.is_open !== false, h.open_time || '08:00', h.close_time || '17:00', h.min_staff || 1, h.ideal_staff || 2]
+      );
+    }
+    res.json({ success: true, message: 'Business hours saved' });
+  } catch (err) {
+    console.error('[PAYDECK] business-hours POST error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to save business hours' });
+  }
+});
+
+// ─── FEATURE 9: Analytics Dashboard ───────────────────────────────────────────
+
+// GET /api/paydeck/analytics
+router.get('/analytics', requireAuth, async (req, res) => {
+  try {
+    const [invoiceStats, staffStats, payrollStats, rosterStats] = await Promise.all([
+      // Invoice funnel + trend
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE status='draft') as draft_count,
+          COUNT(*) FILTER (WHERE status='sent') as sent_count,
+          COUNT(*) FILTER (WHERE status='paid') as paid_count,
+          COUNT(*) FILTER (WHERE status='overdue') as overdue_count,
+          COALESCE(SUM(total_inc_gst) FILTER (WHERE status='paid'), 0) as total_revenue,
+          COALESCE(SUM(total_inc_gst) FILTER (WHERE status IN ('sent','overdue')), 0) as outstanding
+        FROM invoices WHERE operator_id=$1
+      `, [req.userId]),
+      // Staff utilization
+      pool.query(`
+        SELECT COUNT(*) as total_staff,
+               COUNT(*) FILTER (WHERE is_active=true) as active_staff,
+               COALESCE(AVG(hourly_rate), 0) as avg_rate
+        FROM staff_members WHERE operator_id=$1
+      `, [req.userId]),
+      // Payroll trend (last 6 months)
+      pool.query(`
+        SELECT
+          DATE_TRUNC('month', period_start) as month,
+          COALESCE(SUM(amount), 0) as gross,
+          COALESCE(SUM(super_amount), 0) as super_total,
+          COALESCE(SUM(tax_withheld), 0) as payg_total
+        FROM payroll_entries
+        WHERE operator_id=$1 AND period_start >= NOW() - INTERVAL '6 months'
+        GROUP BY DATE_TRUNC('month', period_start)
+        ORDER BY month ASC
+      `, [req.userId]),
+      // Roster: shifts by day + utilization
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE scheduled_date >= CURRENT_DATE) as upcoming,
+          COUNT(*) FILTER (WHERE scheduled_date < CURRENT_DATE AND status = 'completed') as completed,
+          COUNT(*) FILTER (WHERE status = 'scheduled') as scheduled,
+          COUNT(*) FILTER (WHERE scheduled_date = CURRENT_DATE) as today
+        FROM roster_entries WHERE operator_id=$1 AND status != 'cancelled'
+      `, [req.userId]),
+    ]);
+
+    res.json({
+      success: true,
+      analytics: {
+        invoices: invoiceStats.rows[0],
+        staff: staffStats.rows[0],
+        payroll_trend: payrollStats.rows,
+        roster: rosterStats.rows[0],
+      },
+    });
+  } catch (err) {
+    console.error('[PAYDECK] analytics error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to load analytics' });
+  }
+});
+
+// ─── UPGRADE endpoint — for base tier operators ───────────────────────────────
+
+router.get('/upgrade-url', requireAuth, async (req, res) => {
+  res.json({
+    success: true,
+    upgrade_url: PREMIUM_STRIPE_URL,
+    plan_name: 'PropOps Premium — Hugo + PAYDECK',
+    monthly_amount: 149,
+    features: [
+      'Full Hugo AI receptionist (calls, SMS, web chat)',
+      'Staff & roster management',
+      'Automated invoicing with Stripe payment links',
+      'Payroll tracking with super + PAYG compliance',
+      'Australian GST invoicing (10%)',
+      'Hugo knows your super, tax, and GST obligations',
+    ],
+  });
+});
+
+// ── GPS Map — Today's roster with geocoded pins ──────────────────────────────
+// WHY: The old GPS map only showed staff_clock_events (lat/lng from phone GPS).
+// On days with no clock-ins (weekends), the map was blank even though staff were
+// rostered. This endpoint returns roster_entries for today with geocoded coords.
+
+router.get('/map/today', requireAuth, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await pool.query(`
+      SELECT r.id, r.staff_id, r.job_title, r.job_address, r.scheduled_date,
+             r.start_time, r.end_time, r.status, r.geocoded_lat, r.geocoded_lng,
+             s.name AS staff_name, s.phone AS staff_phone, s.role AS staff_role
+      FROM roster_entries r
+      JOIN staff_members s ON r.staff_id = s.id
+      WHERE r.operator_id = $1
+        AND r.scheduled_date = $2
+        AND r.status != 'cancelled'
+      ORDER BY r.start_time ASC
+    `, [req.userId, today]);
+
+    const entries = result.rows;
+
+    // Geocode any entries that have an address but no cached coordinates.
+    // WHY: existing roster entries created before this feature won't have coords.
+    // Sequential geocoding respects Nominatim 1-req/sec policy.
+    const needsGeocode = entries.filter(e => e.job_address && !e.geocoded_lat);
+    for (const entry of needsGeocode) {
+      const coords = await geocodeAddress(entry.job_address);
+      if (coords) {
+        entry.geocoded_lat = coords.lat;
+        entry.geocoded_lng = coords.lng;
+        // Cache for next time — fire-and-forget
+        pool.query(
+          `UPDATE roster_entries SET geocoded_lat = $1, geocoded_lng = $2 WHERE id = $3`,
+          [coords.lat, coords.lng, entry.id]
+        ).catch(() => {});
+      }
+      // WHY: 1.1s delay between requests — Nominatim requires max 1 req/sec
+      if (needsGeocode.indexOf(entry) < needsGeocode.length - 1) {
+        await new Promise(r => setTimeout(r, 1100));
+      }
+    }
+
+    res.json({ success: true, entries });
+  } catch (err) {
+    console.error('[PAYDECK] map/today error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to load map data' });
+  }
 });
 
 module.exports = router;
