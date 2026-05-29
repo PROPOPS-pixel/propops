@@ -68,7 +68,7 @@ const { fetchContextIntelligence, formatIntelligencePrompt } = require('../servi
 
 // Hugo Eyes Phase 1: lead inbox context injection
 // Hugo Eyes Phase 2: operator analytics context injection
-const { injectInboxContext, buildAnalyticsContextBlock, injectClockContext, injectDashboardAnalytics, injectTechNotesContext, injectEmailInboxContext, injectKnowledgeBankContext } = require('../services/hugoBrainContext');
+const { injectInboxContext, buildAnalyticsContextBlock, injectClockContext, injectDashboardAnalytics, injectTechNotesContext, injectEmailInboxContext, injectKnowledgeBankContext } = require('../services/hugo-context-intelligence');
 const { recordLeadOutcome } = require('../services/analyticsService'); // Phase 4b: knowledge bank write loop
 const { flushCache: flushTechNotesCache } = require('../services/techNotesReader');
 const { flushCache: flushEmailInboxCache } = require('../services/emailInboxReader');
@@ -851,14 +851,14 @@ HUGO.PAYS PRICING REMINDER: $69/month (launch price till June 30 2026), $99/mont
   // Email inbox context (injected when operator asks about emails — NEVER hallucinate)
   // Note: emailInboxContext from the function parameter is the keyword-triggered fetch
   // (fetchEmailInboxContext above). emailInboxBackgroundContext is the always-injected
-  // block from hugoBrainContext.injectEmailInboxContext(). Both may coexist.
+  // block from hugo-context-intelligence.injectEmailInboxContext(). Both may coexist.
   if (emailInboxContext) {
     const inboxPrompt = formatEmailInboxContext(emailInboxContext);
     if (inboxPrompt) parts.push(inboxPrompt);
   }
 
   // Phase 4b: Leads inbox context — direct lead data for "show me recent leads" queries
-  // leadsInboxContext is the already-assembled prompt block from hugoBrainContext.injectInboxContext()
+  // leadsInboxContext is the already-assembled prompt block from hugo-context-intelligence.injectInboxContext()
   if (leadsInboxContext && typeof leadsInboxContext === 'string' && leadsInboxContext.trim().length > 0) {
     parts.push(leadsInboxContext);
   }
