@@ -23,6 +23,7 @@ const reAgent = require('../services/re-agent');
 const { RE_AGENT_SYSTEM_PROMPT } = require('../services/re-agent-prompt');
 const { getLandingPageContent } = require('../services/landing-page-sync');
 const { normalizePhone, findNetworkLeadByPhone } = require('../db/phone');
+const pool = require('../db/index');
 // File (global in Node 20+) used for STT audio upload
 
 const openai = new OpenAI();
