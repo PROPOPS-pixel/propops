@@ -86,7 +86,6 @@ const POLSIA_API_URL = process.env.POLSIA_API_URL || 'https://polsia.com/api/pro
 const POLSIA_OPENAI_URL = process.env.OPENAI_BASE_URL || 'https://polsia.com/ai/openai/v1';
 const POLSIA_API_KEY = process.env.POLSIA_API_KEY;
 
-const { pool } = require('../db/index');
 
 // ─── Phase 3C: Mismatch detection ────────────────────────────────────────────
 //
