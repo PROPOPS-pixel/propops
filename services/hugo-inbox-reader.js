@@ -114,6 +114,36 @@ async function processPortalEmail(operatorId, emailData, portalName) {
 }
 
 /**
+ * Poll and process company inbox emails.
+ * Called by startup.js AutoRead poller — routes emails to email-intake service.
+ *
+ * TODO: implement real inbox polling
+ * Current: stub returns empty stats.
+ *
+ * @param {function} inboundEmailProcessor - email-intake.processInboundEmail
+ * @param {string} systemToken - system auth token for API
+ * @returns {Promise<object>} { processed, skipped_dedup, skipped_loop, errors, disabled }
+ */
+async function pollAndProcessInbox(inboundEmailProcessor, systemToken) {
+  // TODO: implement real inbox polling
+  // 1. Connect to company email account (propopspro@polsia.app)
+  // 2. Fetch new unread emails
+  // 3. For each email, call inboundEmailProcessor(emailData, systemToken)
+  // 4. Track stats: processed, skipped (dedup), skipped (loop), errors
+  // 5. Log summary
+  // 6. Return stats object
+
+  console.log('[Hugo Inbox Reader] Stub: pollAndProcessInbox() — no emails processed');
+  return {
+    processed: 0,
+    skipped_dedup: 0,
+    skipped_loop: 0,
+    errors: 0,
+    disabled: false,
+  };
+}
+
+/**
  * AutoRead poller: check all connected operator portal accounts for new emails.
  * Called periodically (e.g., every 60 seconds) by startup.js.
  *
@@ -145,5 +175,6 @@ module.exports = {
   parseEmailToLead,
   saveLead,
   processPortalEmail,
+  pollAndProcessInbox,
   runAutoReadPoller,
 };
