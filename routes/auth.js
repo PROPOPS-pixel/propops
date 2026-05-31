@@ -27,7 +27,7 @@ const pool = new Pool({
 // Secure flag is set in production (Render is always HTTPS).
 const IS_PROD = process.env.NODE_ENV === 'production' || !!(process.env.APP_URL && !process.env.APP_URL.includes('localhost'));
 function sessionCookieHeader(token) {
-  const base = `propops_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+  const base = `propops_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}; Domain=.propops.pro`;
   return IS_PROD ? `${base}; Secure` : base;
 }
 
