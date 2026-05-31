@@ -80,7 +80,7 @@ router.post('/login', async (req, res) => {
 
     // Generate secure token (same format as email_tokens)
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 15 minutes
 
     // Store in email_tokens table — reuse the same table as operator magic links
     await pool.query(
@@ -90,8 +90,7 @@ router.post('/login', async (req, res) => {
     );
 
     // Build magic link URL — hardcode to guarantee correct domain
-    const magicUrl = `https://app.propops.pro/founder/magic?token=${token}`;
-
+    const magicUrl = `https://app.propops.pro/api/founder/magic?token=${token}`;
     // Send magic link email
     const emailResult = await sendEmail({
       to: user.email,
@@ -109,7 +108,7 @@ router.post('/login', async (req, res) => {
         </td></tr>
         <tr><td style="padding:40px;">
           <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Founder Dashboard Access</h1>
-          <p style="margin:0 0 24px;font-size:15px;color:#334155;line-height:1.6;">Click the button below to log in to your PropOps Founder Dashboard. This link expires in 15 minutes and can only be used once.</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#334155;line-height:1.6;">Click the button below to log in to your PropOps Founder Dashboard. This link expires in 24 hours and can only be used once.</p>
           <table cellpadding="0" cellspacing="0">
             <tr><td style="background:#0f172a;border-radius:8px;">
               <a href="${magicUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
@@ -128,7 +127,7 @@ router.post('/login', async (req, res) => {
 </body>
 </html>
       `.trim(),
-      text: `Founder Dashboard Access:\n\n${magicUrl}\n\nExpires in 15 minutes, single-use. If you didn't request this, ignore this email.\n\nPropOps Founder Dashboard`,
+      text: `Founder Dashboard Access:\n\n${magicUrl}\n\nexpires in 24 hours, single-use. If you didn't request this, ignore this email.\n\nPropOps Founder Dashboard`,
       tag: 'magic_link',
     });
 
