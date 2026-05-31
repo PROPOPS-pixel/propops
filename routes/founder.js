@@ -655,7 +655,7 @@ router.get('/me', async (req, res) => {
         email: row.email || req.founderEmail,
         phone: row.phone || row.mobile_number || '',
         role: row.role,
-        intake_email: 'hugopropops@gmail.com', // Platform constant — overrides stale DB value
+        intake_email: 'hugopropops@gmail.com', // Hugo funnel inbox — all leads forward here via Porkbun
       });
     }
   } catch (err) {
