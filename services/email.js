@@ -19,7 +19,7 @@ const http = require('http');
 const { Pool } = require('pg');
 
 const FROM_NAME = 'PropOps';
-const FROM_EMAIL = 'noreply@propops.pro';
+const FROM_EMAIL = 'hugo@propops.pro';
 
 // ─── DB pool for pending_emails fallback + settings lookup ──────────────────
 
