@@ -11,7 +11,7 @@ const MAGIC_LINK_EXPIRY_MINUTES = 15;
 const JWT_SECRET = process.env.JWT_SECRET || 'REDACTED';
 const APP_URL = process.env.APP_URL || 'https://propops.pro';
 
-// ─── DB pool ────────────────────────────────────────────────────────────────
+// ─── DB pool ──────────────────────────────────────────────────────────────────
 
 let _pool = null;
 function getPool() {
@@ -56,7 +56,7 @@ function verifyJWT(token) {
   }
 }
 
-// ─── User helpers ────────────────────────────────────────────────────────────
+// ─── User helpers ──────────────────────────────────────────────────────────────
 
 async function getUserByEmail(email) {
   const pool = getPool();
@@ -133,7 +133,7 @@ async function updateLastLogin(userId) {
   await pool.query('UPDATE users SET last_login = NOW(), updated_at = NOW() WHERE id = $1', [userId]);
 }
 
-// ─── Trial helpers ───────────────────────────────────────────────────────────
+// ─── Trial helpers ─────────────────────────────────────────────────────────────
 
 function getDaysLeft(trialEnd) {
   const diff = new Date(trialEnd) - new Date();
@@ -175,7 +175,7 @@ async function updateSubscriptionStatus(userId, status) {
   );
 }
 
-// ─── Password auth ───────────────────────────────────────────────────────────
+// ─── Password auth ───────────────────────────────────────────────���────────────
 
 /**
  * Hash a password using PBKDF2 (Node built-in, no external dep).
@@ -224,7 +224,7 @@ async function userHasPassword(userId) {
   return result.rows[0]?.has_password === true;
 }
 
-// ─── Password reset ─────────────────────────────────────────────────────
+// ─── Password reset ─────────────────────────────────────────────────────────
 
 const PASSWORD_RESET_EXPIRY_MINUTES = 60; // 1 hour
 
@@ -252,7 +252,8 @@ async function createPasswordResetToken(email) {
 
   const rawToken = crypto.randomBytes(32).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-  const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000);
+  // Convert Date to ISO string for consistent TIMESTAMPTZ handling
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
   // Invalidate any previous unused tokens for this user
   await pool.query(
@@ -293,12 +294,13 @@ async function verifyPasswordResetToken(rawToken) {
   return { userId: row.user_id, email: row.email };
 }
 
-// ─── Magic link auth ─────────────────────────────────────────────────────────
+// ─── Magic link auth ───────────────────────────────────────────────────────────
 
 async function createMagicLink(email) {
   const pool = getPool();
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000);
+  // Convert Date to ISO string for consistent TIMESTAMPTZ handling
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
   // Get or create user
   let user = await getUserByEmail(email);
