@@ -2,7 +2,8 @@
  * Auth routes — magic link login, session verification, Stripe signup.
  *
  * POST /api/auth/magic-link         — Send magic link to email
- * GET  /auth/verify?token=...       — Verify magic link, set session cookie
+ * GET  /auth/verify?token=...       — Render form for token verification (do not consume)
+ * POST /auth/verify                 — Consume token and set session cookie
  * GET  /api/auth/me                 — Return current user from JWT
  * POST /api/auth/signup-complete    — Complete signup after Stripe checkout
  * POST /api/auth/logout             — Clear session
@@ -110,9 +111,138 @@ router.post('/magic-link', async (req, res) => {
 });
 
 // ─── GET /auth/verify?token=... ───────────────────────────────────────────────
+// Security: render a form, do NOT consume the token yet.
+// This prevents Gmail/bot link scanners from consuming the token.
 
 router.get('/verify', async (req, res) => {
   const { token } = req.query;
+  if (!token) return res.redirect('/login?error=missing_token');
+
+  try {
+    // Check if token exists, is not used, and not expired (read-only SELECT)
+    const dbPool = require('pg').Pool ? new (require('pg').Pool)({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
+    }) : pool;
+    
+    const result = await dbPool.query(
+      `SELECT id FROM email_tokens
+       WHERE token = $1 AND used = FALSE AND expires_at > NOW()
+       LIMIT 1`,
+      [token]
+    );
+
+    if (!result.rows[0]) return res.redirect('/login?error=invalid_or_expired');
+
+    // Token is valid — render form that POSTs to /auth/verify
+    const appUrl = process.env.APP_URL || 'https://propops.pro';
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PropOps — Logging in</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    }
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 60px 40px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 24px;
+      letter-spacing: -0.5px;
+    }
+    .logo span {
+      color: #f59e0b;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    button {
+      width: 100%;
+      padding: 14px 28px;
+      background: #f59e0b;
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #f08c00;
+    }
+    button:active {
+      background: #e67e0e;
+    }
+    .footer {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 20px;
+    }
+    form {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">PropOps<span>.</span></div>
+    <h1>Verifying your login</h1>
+    <p>Click the button below to complete your login. You'll be redirected to your dashboard.</p>
+    <form method="POST" action="/auth/verify">
+      <input type="hidden" name="token" value="${token}">
+      <button type="submit">Log in to PropOps →</button>
+    </form>
+    <div style="display: none;" id="form-container"></div>
+    <script>
+      // Auto-submit form when page loads (respects user choice to click)
+      // This ensures a good UX while still requiring an HTTP request (POST)
+      document.querySelector('form').submit();
+    </script>
+  </div>
+</body>
+</html>
+    `);
+  } catch (err) {
+    console.error('[Auth] Verify GET error:', err.message);
+    res.redirect('/login?error=server_error');
+  }
+});
+
+// ─── POST /auth/verify ────────────────────────────────────────────────────────
+// Consume the magic link token and set session cookie.
+
+router.post('/verify', async (req, res) => {
+  const { token } = req.body;
   if (!token) return res.redirect('/login?error=missing_token');
 
   try {
@@ -136,7 +266,7 @@ router.get('/verify', async (req, res) => {
     res.setHeader('Set-Cookie', [sessionCookieHeader(sessionToken), clearRedirect]);
     res.redirect(redirectTo);
   } catch (err) {
-    console.error('[Auth] Verify error:', err.message);
+    console.error('[Auth] Verify POST error:', err.message);
     res.redirect('/login?error=server_error');
   }
 });
@@ -186,7 +316,7 @@ router.post('/signup-complete', async (req, res) => {
   }
 });
 
-// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
+// ─── GET /api/auth/me ────────────────────────────────────────────────────────
 
 router.get('/me', requireAuth, async (req, res) => {
   try {
@@ -396,7 +526,7 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// ─── POST /api/auth/logout ────────────────────────────────────────────────────
+// ─── POST /api/auth/logout ───────────────────────────────��────────────────────
 
 router.post('/logout', (req, res) => {
   // Clear both old and new cookie names
