@@ -307,7 +307,7 @@ async function createMagicLink(email) {
   }
 
   await pool.query(
-    `INSERT INTO magic_links (user_id, email, token, expires_at)
+    `INSERT INTO email_tokens (user_id, email, token, expires_at)
      VALUES ($1, $2, $3, $4)`,
     [user.id, email.toLowerCase(), token, expiresAt]
   );
@@ -319,7 +319,7 @@ async function verifyMagicLink(token) {
   const pool = getPool();
   const result = await pool.query(
     `SELECT ml.*, u.email, u.name, u.id as user_id
-     FROM magic_links ml
+     FROM email_tokens ml
      JOIN users u ON u.id = ml.user_id
      WHERE ml.token = $1 AND ml.used = FALSE AND ml.expires_at > NOW()`,
     [token]
@@ -328,7 +328,7 @@ async function verifyMagicLink(token) {
   if (!result.rows[0]) return null;
 
   const link = result.rows[0];
-  await pool.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [link.id]);
+  await pool.query('UPDATE email_tokens SET used = TRUE WHERE id = $1', [link.id]);
   await updateLastLogin(link.user_id);
 
   return link;
