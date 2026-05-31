@@ -655,7 +655,7 @@ router.get('/me', async (req, res) => {
         email: row.email || req.founderEmail,
         phone: row.phone || row.mobile_number || '',
         role: row.role,
-        intake_email: 'propopspro@polsia.app', // Platform constant — overrides stale DB value
+        intake_email: 'hugopropops@gmail.com', // Platform constant — overrides stale DB value
       });
     }
   } catch (err) {
@@ -663,7 +663,7 @@ router.get('/me', async (req, res) => {
     console.warn('[founder] /me propops_operators lookup failed:', err.message);
   }
   // Fallback: just return from users table
-  res.json({ success: true, is_founder: true, email: req.founderEmail, name: 'Founder', role: 'founder', phone: '', intake_email: 'propopspro@polsia.app' });
+  res.json({ success: true, is_founder: true, email: req.founderEmail, name: 'Founder', role: 'founder', phone: '', intake_email: 'hugopropops@gmail.com' });
 });
 
 // ─── Update founder profile ───────────────────────────────────────────────────
