@@ -63,8 +63,7 @@
             letter-spacing: 0.05em;
             margin-bottom: 6px;
         }
-        input[type="email"],
-        input[type="password"] {
+        input[type="email"] {
             width: 100%;
             padding: 11px 14px;
             background: #0f172a;
@@ -77,8 +76,7 @@
             transition: border-color 0.15s;
             margin-bottom: 16px;
         }
-        input[type="email"]:focus,
-        input[type="password"]:focus {
+        input[type="email"]:focus {
             border-color: #f59e0b;
         }
         input::placeholder { color: #475569; }
@@ -107,10 +105,15 @@
             margin-bottom: 16px;
             display: none;
         }
-        .divider {
-            border: none;
-            border-top: 1px solid #1e293b;
-            margin: 28px 0;
+        .success-box {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 0.85rem;
+            color: #86efac;
+            margin-bottom: 16px;
+            display: none;
         }
         .back-link {
             display: block;
@@ -131,6 +134,12 @@
             margin: 0 auto;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .form-container {
+            display: block;
+        }
+        .form-container.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -142,27 +151,42 @@
             Founder Access
         </div>
         <h1>PropOps Dashboard</h1>
-        <p class="subtitle">Private. Not for operators or customers.</p>
+        <p class="subtitle">Enter your email to receive a secure login link</p>
 
         <div class="error-box" id="errorBox"></div>
+        <div class="success-box" id="successBox"></div>
 
-        <form id="loginForm" autocomplete="on">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        <div class="form-container" id="formContainer">
+            <form id="loginForm" autocomplete="off">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
 
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
-
-            <button type="submit" id="submitBtn">
-                <span id="btnText">Sign in</span>
-                <div class="spinner" id="spinner"></div>
-            </button>
-        </form>
+                <button type="submit" id="submitBtn">
+                    <span id="btnText">Send Magic Link</span>
+                    <div class="spinner" id="spinner"></div>
+                </button>
+            </form>
+        </div>
 
         <a href="/" class="back-link" style="margin-top: 24px; display: block;">← Back to PropOps</a>
     </div>
 
     <script>
+        // Check URL for error messages
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorParam = urlParams.get('error');
+        if (errorParam) {
+            const errorBox = document.getElementById('errorBox');
+            const messages = {
+                'missing_token': 'No login token provided. Please request a new link.',
+                'invalid_or_expired': 'This link has expired or already been used. Please request a new one.',
+                'access_denied': 'Access denied. This email is not a founder account.',
+                'server_error': 'Server error. Please try again.'
+            };
+            errorBox.textContent = messages[errorParam] || 'An error occurred. Please try again.';
+            errorBox.style.display = 'block';
+        }
+
         // If already logged in as founder, go straight to dashboard
         (async () => {
             try {
@@ -177,13 +201,15 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
             const btn = document.getElementById('submitBtn');
             const btnText = document.getElementById('btnText');
             const spinner = document.getElementById('spinner');
             const errorBox = document.getElementById('errorBox');
+            const successBox = document.getElementById('successBox');
+            const formContainer = document.getElementById('formContainer');
 
             errorBox.style.display = 'none';
+            successBox.style.display = 'none';
             btn.disabled = true;
             btnText.style.display = 'none';
             spinner.style.display = 'block';
@@ -193,21 +219,24 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ email, password }),
+                    body: JSON.stringify({ email }),
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    window.location.replace('/founder');
+                    // Show success message
+                    successBox.textContent = `✓ Check your email — magic link sent to ${email}`;
+                    successBox.style.display = 'block';
+                    formContainer.classList.add('hidden');
                 } else {
-                    errorBox.textContent = data.message || 'Access denied';
+                    errorBox.textContent = data.message || 'Unable to send link. Please try again.';
                     errorBox.style.display = 'block';
                     btn.disabled = false;
                     btnText.style.display = 'block';
                     spinner.style.display = 'none';
                 }
             } catch (err) {
-                errorBox.textContent = 'Network error — try again';
+                errorBox.textContent = 'Network error — please try again';
                 errorBox.style.display = 'block';
                 btn.disabled = false;
                 btnText.style.display = 'block';
