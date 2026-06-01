@@ -23,7 +23,7 @@ function getPool() {
   return _pool;
 }
 
-// ─── Auth gate ────────────────────────────────────────────────────────────────
+// ─── Auth gate ───────────────────────���───────────────────────────────────[...]
 // Checks is_admin flag on the session user. Must be true for all founder endpoints.
 async function requireFounder(req, res, next) {
   const token = req.headers['x-session-token'] || req.cookies?.propops_session || req.cookies?.relio_session;
@@ -108,7 +108,7 @@ router.post('/login', async (req, res) => {
         </td></tr>
         <tr><td style="padding:40px;">
           <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">Founder Dashboard Access</h1>
-          <p style="margin:0 0 24px;font-size:15px;color:#334155;line-height:1.6;">Click the button below to log in to your PropOps Founder Dashboard. This link expires in 24 hours and can only be used once.</p>
+          <p style="margin:0 0 24px;font-size:15px;color:#334155;line-height:1.6;">Click the button below to log in to your PropOps Founder Dashboard. This link expires in 24 hours and can only be use[...]
           <table cellpadding="0" cellspacing="0">
             <tr><td style="background:#0f172a;border-radius:8px;">
               <a href="${magicUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;">
@@ -680,11 +680,20 @@ router.put('/me', async (req, res) => {
       [name || null, email || null, phone || null, userId]
     );
 
-    // Update propops_operators table if it exists
-    await getPool().query(
+    // Update propops_operators table if it exists; if row doesn't exist, insert
+    const updateResult = await getPool().query(
       `UPDATE propops_operators SET name = COALESCE($1, name), email = COALESCE($2, email), phone = COALESCE($3, phone), updated_at = NOW() WHERE role = 'founder'`,
       [name || null, email || null, phone || null]
     );
+
+    // If no row was updated, insert a new one
+    if (updateResult.rowCount === 0) {
+      await getPool().query(
+        `INSERT INTO propops_operators (user_id, name, email, phone, role, intake_email)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId, name || null, email || null, phone || null, 'founder', email || null]
+      );
+    }
 
     res.json({ success: true, message: 'Profile updated' });
   } catch (err) {
