@@ -69,10 +69,15 @@ if (CANONICAL_HOST) {
 // Health check (required for Render)
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
 
-// ─── API routes ���────────────────────────────────────────────────────────
+// ─── API routes ───────────────────────────────────────────────────────────
 app.use('/api/leads',         require('./routes/leads'));
 app.use('/api/email-intake',  require('./routes/email-intake'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
+
+// Gmail OAuth callback router — MUST mount BEFORE other /api/auth routes to avoid conflicts
+const { setupRouter, callbackRouter } = require('./routes/gmail-auth');
+app.use('/api/auth/callback', callbackRouter);
+app.use('/setup', setupRouter);
 
 const { router: authRouter } = require('./routes/auth');
 app.use('/api/auth', authRouter);
@@ -81,11 +86,6 @@ app.use('/auth',     authRouter);
 const { router: phoneAuthRouter } = require('./routes/phone-auth');
 app.use('/api/auth', phoneAuthRouter);
 app.use('/auth',     phoneAuthRouter);
-
-// Gmail OAuth setup routes — one-time authorization for Hugo's brain
-const { setupRouter, callbackRouter } = require('./routes/gmail-auth');
-app.use('/setup', setupRouter);
-app.use('/api/auth/callback', callbackRouter);
 
 app.use('/api/billing',       require('./routes/billing'));
 app.use('/api/settings',      require('./routes/settings'));
@@ -117,8 +117,8 @@ app.use('/api/founder',   require('./routes/founder'));
 app.get('/api/email/status', async (req, res) => {
   const { getPendingEmailCount } = require('./services/email');
   const pendingCount = await getPendingEmailCount();
-  const providers = { postmark: !!process.env.POSTMARK_SERVER_TOKEN, resend: !!process.env.RESEND_API_KEY, polsia_proxy: !!(process.env.POLSIA_API_KEY || process.env.POLSIA_API_TOKEN), polsia_ema };
-  res.json({ success: true, email_operational: providers.postmark || providers.resend || providers.polsia_proxy, providers, pending_emails: pendingCount, fix: (providers.postmark || providers.resend || providers.polsia_proxy) ? 'none' : 'set POSTMARK_SERVER_TOKEN or RESEND_API_KEY env var' });
+  const providers = { postmark: !!process.env.POSTMARK_SERVER_TOKEN, resend: !!process.env.RESEND_API_KEY, polsia_proxy: !!(process.env.POLSIA_API_KEY || process.env.POLSIA_API_TOKEN), polsia_ema: !!(process.env.POLSIA_EMAIL_API) };
+  res.json({ success: true, email_operational: providers.postmark || providers.resend || providers.polsia_proxy, providers, pending_emails: pendingCount, fix: (providers.postmark || providers.resend || providers.polsia_proxy) ? null : 'Set POSTMARK_SERVER_TOKEN or RESEND_API_KEY' });
 });
 
 app.post('/api/support/contact', async (req, res) => {
@@ -129,7 +129,7 @@ app.post('/api/support/contact', async (req, res) => {
   try {
     const { sendEmail } = require('./services/email');
     const safe = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    await sendEmail({ to: 'support@propops.pro', subject: `Support: ${name} (${email})`, html: `<p><strong>New support message</strong></p><p><strong>Name:</strong> ${safe(name)}</p><p><strong>Email:</strong> ${safe(email)}</p><p><strong>Message:</strong><br>${safe(message)}</p>` });
+    await sendEmail({ to: 'support@propops.pro', subject: `Support: ${name} (${email})`, html: `<p><strong>New support message</strong></p><p><strong>Name:</strong> ${safe(name)}</p><p><strong>Email:</strong> ${safe(email)}</p><p><strong>Message:</strong></p><p>${safe(message).replace(/\n/g, '<br>')}</p>` });
     res.json({ success: true, message: "We'll get back to you shortly." });
   } catch (err) {
     console.error('[Support] Contact form error:', err.message);
@@ -137,7 +137,7 @@ app.post('/api/support/contact', async (req, res) => {
   }
 });
 
-app.get('/api/widget', (req, res) => res.json({ success: true, embed_code: `<script src="${req.protocol}://${req.get('host')}/widget.js"><\/script>`, api_endpoint: `${req.protocol}://${req.get('host')}/api/email-intake` }));
+app.get('/api/widget', (req, res) => res.json({ success: true, embed_code: `<script src="${req.protocol}://${req.get('host')}/widget.js"><\/script>`, api_endpoint: `${req.protocol}://${req.get('host')}/api` }));
 
 // ─── Screenshot endpoint ──────────────────────────────────────────────────────
 const { _downloadToBuffer, _SS_CACHE } = require('./routes/admin');
@@ -147,9 +147,9 @@ pool.query(`CREATE TABLE IF NOT EXISTS site_settings (key VARCHAR(255) PRIMARY K
 
 app.get('/api/screenshot', async (req, res) => {
   if (fs.existsSync(_SS_CACHE)) {
-    try { const s = fs.statSync(_SS_CACHE); if (Date.now() - s.mtimeMs < _SS_MAX_AGE_MS && s.size > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.sendFile(_SS_CACHE); } } catch (e) { console.error('[Screenshot] Cache check failed:', e.message); }
+    try { const s = fs.statSync(_SS_CACHE); if (Date.now() - s.mtimeMs < _SS_MAX_AGE_MS && s.size > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.sendFile(_SS_CACHE); } } catch {}
   }
-  try { const r = await pool.query(`SELECT value FROM site_settings WHERE key = 'screenshot_b64'`); if (r.rows[0]?.value) { const b = Buffer.from(r.rows[0].value, 'base64'); if (b.length > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.send(b); } } } catch (e) { console.error('[Screenshot] DB fetch failed:', e.message); }
+  try { const r = await pool.query(`SELECT value FROM site_settings WHERE key = 'screenshot_b64'`); if (r.rows[0]?.value) { const b = Buffer.from(r.rows[0].value, 'base64'); if (b.length > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.send(b); } } } catch {}
   try {
     const url = `https://image.thum.io/get/png/width/1280/${(process.env.APP_URL || 'https://propopspro.polsia.app').replace(/\/$/, '')}/demo-preview.html`;
     const buf = await _downloadToBuffer(url);
@@ -165,7 +165,7 @@ app.get('/api/screenshot', async (req, res) => {
 app.get('/hugo-widget.js', (req, res) => { res.set('Cache-Control', 'no-cache, no-store, must-revalidate').set('Pragma', 'no-cache').set('Expires', '0'); res.sendFile(path.join(__dirname, 'public', 'hugo-widget.js')); });
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
-// ─── Pages ──────────────────────────────────────────────────────────
+// ─── Pages ────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   const isPays = req.hostname === 'hugopays.pro' || req.hostname === 'www.hugopays.pro';
   const isTrade = req.hostname === 'propops.trade' || req.hostname === 'www.propops.trade';
