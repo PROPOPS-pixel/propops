@@ -162,16 +162,6 @@ setupRouter.get('/gmail/success', (req, res) => {
 const callbackRouter = express.Router();
 
 callbackRouter.get('/google', async (req, res) => {
-  // Explicitly log req object to debug
-  if (!req || !req.query) {
-    console.error('[Gmail OAuth] CRITICAL: req or req.query is undefined', {
-      reqExists: !!req,
-      queryExists: req && !!req.query,
-      reqKeys: req ? Object.keys(req).slice(0, 10) : 'N/A'
-    });
-    return res.status(500).json({ error: 'Request object corrupted' });
-  }
-
   const { code, error } = req.query;
 
   if (error) {
@@ -180,7 +170,6 @@ callbackRouter.get('/google', async (req, res) => {
   }
 
   if (!code) {
-    console.warn('[Gmail OAuth] No authorization code received');
     return res.redirect('/setup/gmail');
   }
 
