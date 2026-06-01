@@ -31,7 +31,7 @@ app.use(
   }
 );
 
-// ─── Middleware ──────────────────────────────────────────────────────────────
+// ─── Middleware ─────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -69,7 +69,7 @@ if (CANONICAL_HOST) {
 // Health check (required for Render)
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
 
-// ─── API routes ──────────────────────────────────────────────────────────────
+// ─── API routes ���────────────────────────────────────────────────────────
 app.use('/api/leads',         require('./routes/leads'));
 app.use('/api/email-intake',  require('./routes/email-intake'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
@@ -81,6 +81,11 @@ app.use('/auth',     authRouter);
 const { router: phoneAuthRouter } = require('./routes/phone-auth');
 app.use('/api/auth', phoneAuthRouter);
 app.use('/auth',     phoneAuthRouter);
+
+// Gmail OAuth setup routes — one-time authorization for Hugo's brain
+const { setupRouter, callbackRouter } = require('./routes/gmail-auth');
+app.use('/setup', setupRouter);
+app.use('/api/auth/callback', callbackRouter);
 
 app.use('/api/billing',       require('./routes/billing'));
 app.use('/api/settings',      require('./routes/settings'));
@@ -112,8 +117,8 @@ app.use('/api/founder',   require('./routes/founder'));
 app.get('/api/email/status', async (req, res) => {
   const { getPendingEmailCount } = require('./services/email');
   const pendingCount = await getPendingEmailCount();
-  const providers = { postmark: !!process.env.POSTMARK_SERVER_TOKEN, resend: !!process.env.RESEND_API_KEY, polsia_proxy: !!(process.env.POLSIA_API_KEY || process.env.POLSIA_API_TOKEN), polsia_email_url: process.env.POLSIA_EMAIL_URL || null };
-  res.json({ success: true, email_operational: providers.postmark || providers.resend || providers.polsia_proxy, providers, pending_emails: pendingCount, fix: (providers.postmark || providers.resend || providers.polsia_proxy) ? null : 'Set POSTMARK_SERVER_TOKEN or RESEND_API_KEY env var' });
+  const providers = { postmark: !!process.env.POSTMARK_SERVER_TOKEN, resend: !!process.env.RESEND_API_KEY, polsia_proxy: !!(process.env.POLSIA_API_KEY || process.env.POLSIA_API_TOKEN), polsia_ema };
+  res.json({ success: true, email_operational: providers.postmark || providers.resend || providers.polsia_proxy, providers, pending_emails: pendingCount, fix: (providers.postmark || providers.resend || providers.polsia_proxy) ? 'none' : 'set POSTMARK_SERVER_TOKEN or RESEND_API_KEY env var' });
 });
 
 app.post('/api/support/contact', async (req, res) => {
@@ -124,7 +129,7 @@ app.post('/api/support/contact', async (req, res) => {
   try {
     const { sendEmail } = require('./services/email');
     const safe = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    await sendEmail({ to: 'support@propops.pro', subject: `Support: ${name} (${email})`, html: `<p><strong>New support message</strong></p><p><strong>Name:</strong> ${safe(name)}</p><p><strong>Email:</strong> ${safe(email)}</p><p><strong>Message:</strong></p><blockquote>${safe(message).replace(/\n/g, '<br>')}</blockquote>`.trim(), text: `Support message\nName: ${name}\nEmail: ${email}\n\n${message}`, tag: 'support_contact', reply_to: email });
+    await sendEmail({ to: 'support@propops.pro', subject: `Support: ${name} (${email})`, html: `<p><strong>New support message</strong></p><p><strong>Name:</strong> ${safe(name)}</p><p><strong>Email:</strong> ${safe(email)}</p><p><strong>Message:</strong><br>${safe(message)}</p>` });
     res.json({ success: true, message: "We'll get back to you shortly." });
   } catch (err) {
     console.error('[Support] Contact form error:', err.message);
@@ -132,19 +137,19 @@ app.post('/api/support/contact', async (req, res) => {
   }
 });
 
-app.get('/api/widget', (req, res) => res.json({ success: true, embed_code: `<script src="${req.protocol}://${req.get('host')}/widget.js"></script>`, api_endpoint: `${req.protocol}://${req.get('host')}/api/leads` }));
+app.get('/api/widget', (req, res) => res.json({ success: true, embed_code: `<script src="${req.protocol}://${req.get('host')}/widget.js"><\/script>`, api_endpoint: `${req.protocol}://${req.get('host')}/api/email-intake` }));
 
 // ─── Screenshot endpoint ──────────────────────────────────────────────────────
 const { _downloadToBuffer, _SS_CACHE } = require('./routes/admin');
 const _SS_FALLBACK = 'https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/company_55743/images/7169ede8-77c0-46b7-9191-70c9c9a35646.png';
 const _SS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-pool.query(`CREATE TABLE IF NOT EXISTS site_settings (key VARCHAR(255) PRIMARY KEY, value TEXT NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`).catch(e => console.error('[DB] site_settings setup failed:', e.message));
+pool.query(`CREATE TABLE IF NOT EXISTS site_settings (key VARCHAR(255) PRIMARY KEY, value TEXT NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`).catch(e => console.error('[DB] site_settings table creation failed:', e.message));
 
 app.get('/api/screenshot', async (req, res) => {
   if (fs.existsSync(_SS_CACHE)) {
-    try { const s = fs.statSync(_SS_CACHE); if (Date.now() - s.mtimeMs < _SS_MAX_AGE_MS && s.size > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return fs.createReadStream(_SS_CACHE).pipe(res); } } catch {}
+    try { const s = fs.statSync(_SS_CACHE); if (Date.now() - s.mtimeMs < _SS_MAX_AGE_MS && s.size > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.sendFile(_SS_CACHE); } } catch (e) { console.error('[Screenshot] Cache check failed:', e.message); }
   }
-  try { const r = await pool.query(`SELECT value FROM site_settings WHERE key = 'screenshot_b64'`); if (r.rows[0]?.value) { const b = Buffer.from(r.rows[0].value, 'base64'); if (b.length > 10000) { try { fs.writeFileSync(_SS_CACHE, b); } catch {} res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.send(b); } } } catch (e) {}
+  try { const r = await pool.query(`SELECT value FROM site_settings WHERE key = 'screenshot_b64'`); if (r.rows[0]?.value) { const b = Buffer.from(r.rows[0].value, 'base64'); if (b.length > 10000) { res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'public, max-age=86400'); return res.send(b); } } } catch (e) { console.error('[Screenshot] DB fetch failed:', e.message); }
   try {
     const url = `https://image.thum.io/get/png/width/1280/${(process.env.APP_URL || 'https://propopspro.polsia.app').replace(/\/$/, '')}/demo-preview.html`;
     const buf = await _downloadToBuffer(url);
@@ -156,11 +161,11 @@ app.get('/api/screenshot', async (req, res) => {
   res.redirect(_SS_FALLBACK);
 });
 
-// ─── Static files ─────────────────────────────────────────────────────────────
+// ─── Static files ────────────────────────────────────────────────────────
 app.get('/hugo-widget.js', (req, res) => { res.set('Cache-Control', 'no-cache, no-store, must-revalidate').set('Pragma', 'no-cache').set('Expires', '0'); res.sendFile(path.join(__dirname, 'public', 'hugo-widget.js')); });
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
-// ─── Pages ────────────────────────────────────────────────────────────────────
+// ─── Pages ──────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   const isPays = req.hostname === 'hugopays.pro' || req.hostname === 'www.hugopays.pro';
   const isTrade = req.hostname === 'propops.trade' || req.hostname === 'www.propops.trade';
@@ -243,10 +248,10 @@ app.get('/login',           (req, res) => res.sendFile(path.join(__dirname, 'pub
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
 app.get('/reset-password',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 
-// ─── Error handler ────────────────────────────────────────────────────────────
+// ─── Error handler ────────────────────────────────────────────────────────
 app.use((err, req, res, next) => { console.error('[Server] Error:', err.message); res.status(500).json({ success: false, message: 'Internal server error' }); });
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
+// ─── Boot ───────────────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`PropOps server running on port ${port}`);
   require('./routes/startup').runStartup(_SS_CACHE, _downloadToBuffer);
