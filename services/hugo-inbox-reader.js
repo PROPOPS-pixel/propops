@@ -1,16 +1,11 @@
 /**
  * Hugo Inbox Reader — Email parsing and lead extraction for operator portals.
  *
- * TODO: implement real inbox reading
- *
- * This service processes inbound emails from external job portals (Hipages, ServiceSeeking, etc.)
- * and converts them into structured lead objects for the operator dashboard.
- *
- * Expected to be called by the AutoRead poller in startup.js to continuously
- * monitor connected portals and sync new leads.
+ * Polls Gmail inbox for unread emails and processes them through the email intake pipeline.
  */
 
 const pool = require('../db/index');
+const { readEmails, isConnected } = require('../lib/gmail');
 
 /**
  * Fetch new unread emails from a specific operator portal connection.
@@ -114,33 +109,199 @@ async function processPortalEmail(operatorId, emailData, portalName) {
 }
 
 /**
+ * Mark a Gmail message as read via the Gmail API.
+ *
+ * @param {object} gmail - Gmail API client from getGmailClient()
+ * @param {string} messageId - Gmail message ID
+ * @returns {Promise<boolean>} true if successful, false otherwise
+ */
+async function markEmailAsRead(gmail, messageId) {
+  try {
+    await gmail.users.messages.modify({
+      userId: 'me',
+      id: messageId,
+      requestBody: {
+        removeLabelIds: ['UNREAD']
+      }
+    });
+    return true;
+  } catch (err) {
+    console.error(`[Hugo Inbox Reader] Failed to mark email ${messageId} as read:`, err.message);
+    return false;
+  }
+}
+
+/**
  * Poll and process company inbox emails.
  * Called by startup.js AutoRead poller — routes emails to email-intake service.
  *
- * TODO: implement real inbox polling
- * Current: stub returns empty stats.
+ * 1. Check if Gmail is connected
+ * 2. Fetch unread emails from Gmail inbox
+ * 3. For each email, call inboundEmailProcessor
+ * 4. Mark email as read after processing
+ * 5. Track stats: processed, skipped, errors
+ * 6. Log summary
+ * 7. Return stats object
  *
  * @param {function} inboundEmailProcessor - email-intake.processInboundEmail
  * @param {string} systemToken - system auth token for API
  * @returns {Promise<object>} { processed, skipped_dedup, skipped_loop, errors, disabled }
  */
 async function pollAndProcessInbox(inboundEmailProcessor, systemToken) {
-  // TODO: implement real inbox polling
-  // 1. Connect to company email account (propopspro@polsia.app)
-  // 2. Fetch new unread emails
-  // 3. For each email, call inboundEmailProcessor(emailData, systemToken)
-  // 4. Track stats: processed, skipped (dedup), skipped (loop), errors
-  // 5. Log summary
-  // 6. Return stats object
+  let gmailClient;
 
-  console.log('[Hugo Inbox Reader] Stub: pollAndProcessInbox() — no emails processed');
-  return {
+  try {
+    // Check Gmail connection first
+    const connected = await isConnected();
+    if (!connected) {
+      console.log('[Hugo Inbox Reader] Gmail not connected — skipping inbox poll. Visit /setup/gmail to authorize.');
+      return {
+        processed: 0,
+        skipped_dedup: 0,
+        skipped_loop: 0,
+        errors: 0,
+        disabled: true,
+      };
+    }
+
+    // Get Gmail client
+    const { getGmailClient } = require('../lib/gmail');
+    gmailClient = await getGmailClient();
+  } catch (err) {
+    console.error('[Hugo Inbox Reader] Failed to initialize Gmail client:', err.message);
+    return {
+      processed: 0,
+      skipped_dedup: 0,
+      skipped_loop: 0,
+      errors: 1,
+      disabled: false,
+    };
+  }
+
+  const stats = {
     processed: 0,
     skipped_dedup: 0,
     skipped_loop: 0,
     errors: 0,
     disabled: false,
   };
+
+  try {
+    // Fetch unread emails from inbox (max 20)
+    const emails = await readEmails('is:unread is:inbox', 20);
+
+    if (emails.length === 0) {
+      console.log('[Hugo Inbox Reader] No unread emails in inbox');
+      return stats;
+    }
+
+    console.log(`[Hugo Inbox Reader] Processing ${emails.length} unread email(s)`);
+
+    // Process each email
+    for (const emailMsg of emails) {
+      try {
+        // Fetch full email content (body)
+        const fullEmail = await gmailClient.users.messages.get({
+          userId: 'me',
+          id: emailMsg.id,
+          format: 'full'
+        });
+
+        const payload = fullEmail.data.payload || {};
+        const headers = payload.headers || [];
+        const getHeader = (name) => headers.find(h => h.name === name)?.value || '';
+
+        let bodyText = '';
+        let bodyHtml = '';
+
+        // Extract body from parts (handle multipart emails)
+        if (payload.parts) {
+          for (const part of payload.parts) {
+            if (part.mimeType === 'text/plain' && part.body?.data) {
+              bodyText = Buffer.from(part.body.data, 'base64').toString('utf-8');
+            } else if (part.mimeType === 'text/html' && part.body?.data) {
+              bodyHtml = Buffer.from(part.body.data, 'base64').toString('utf-8');
+            }
+          }
+        } else if (payload.body?.data) {
+          // Simple email (no parts)
+          bodyText = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        }
+
+        // Normalize email data into the format expected by processInboundEmail
+        const emailData = {
+          subject: getHeader('Subject'),
+          body_text: bodyText || emailMsg.snippet || '',
+          body_html: bodyHtml,
+          from_address: getHeader('From'),
+          to_address: getHeader('To'),
+        };
+
+        // Create a mock response object (processInboundEmail expects res.status().json())
+        let processingResult = null;
+        const mockRes = {
+          status: function(code) {
+            this.statusCode = code;
+            return this;
+          },
+          json: function(data) {
+            processingResult = data;
+            return this;
+          }
+        };
+
+        // Process the email through the intake pipeline
+        console.log(`[Hugo Inbox Reader] Processing email: "${emailData.subject}" from ${emailData.from_address}`);
+        
+        await inboundEmailProcessor(
+          systemToken,
+          emailData,
+          { gmail_message_id: emailMsg.id },
+          mockRes,
+          null // userId = null (system-scoped, not operator-scoped)
+        );
+
+        // Check result
+        if (processingResult?.success) {
+          stats.processed++;
+          console.log(`[Hugo Inbox Reader] ✓ Email processed: ${processingResult.message}`);
+        } else if (processingResult?.message?.includes('Duplicate')) {
+          stats.skipped_dedup++;
+          console.log(`[Hugo Inbox Reader] ⊘ Email skipped (duplicate): ${processingResult.message}`);
+        } else if (processingResult?.message?.includes('Anti-loop')) {
+          stats.skipped_loop++;
+          console.log(`[Hugo Inbox Reader] ⊘ Email skipped (anti-loop): ${processingResult.message}`);
+        } else {
+          stats.errors++;
+          console.error(`[Hugo Inbox Reader] ✗ Email processing failed: ${processingResult?.message || 'unknown error'}`);
+        }
+
+        // Mark email as read (regardless of processing result)
+        const marked = await markEmailAsRead(gmailClient, emailMsg.id);
+        if (marked) {
+          console.log(`[Hugo Inbox Reader] Marked email ${emailMsg.id} as read`);
+        }
+
+      } catch (emailErr) {
+        stats.errors++;
+        console.error(`[Hugo Inbox Reader] Error processing email ${emailMsg.id}:`, emailErr.message);
+      }
+    }
+
+    // Log summary
+    if (stats.processed > 0 || stats.errors > 0 || stats.skipped_loop > 0 || stats.skipped_dedup > 0) {
+      console.log(
+        `[Hugo Inbox Reader] Poll complete: processed=${stats.processed} dedup_skip=${stats.skipped_dedup} loop_skip=${stats.skipped_loop} errors=${stats.errors}`
+      );
+    }
+
+    return stats;
+
+  } catch (err) {
+    console.error('[Hugo Inbox Reader] Unexpected error during poll:', err.message);
+    stats.errors++;
+    return stats;
+  }
 }
 
 /**
