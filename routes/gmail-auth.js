@@ -103,7 +103,7 @@ setupRouter.get('/gmail/success', (req, res) => {
       <!DOCTYPE html>
       <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Setup Failed</title>
-        <style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;}.card{background:#1e293b;border-radius:16px;padding:48px;max-width:480px;text-align:center;}.icon{font-size:64px;margin-bottom:16px;}h1{font-size:24px;margin:0 0 12px;color:#f87171;}p{color:#94a3b8;line-height:1.6;margin:0 0 24px;}.err{background:rgba(248,113,113,0.1);border:1px solid #f87171;border-radius:8px;padding:16px;margin-bottom:24px;font-family:monospace;font-size:13px;color:#fca5a5;}a{display:inline-block;background:#f59e0b;color:#0f172a;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;}</style>
+        <style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;}.card{background:#1e293b;border-radius:20px;padding:56px 48px;max-width:520px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.4);}.icon{font-size:60px;margin-bottom:24px;display:block;}.card h1{font-size:28px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.5px;}.err{background:#7f1d1d;color:#fecaca;padding:16px;border-radius:8px;margin:24px 0;font-size:14px;}.card a{display:inline-block;background:#f59e0b;color:#0f172a;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:16px;margin-top:16px;}.card a:hover{background:#d97706;}</style>
       </head><body><div class="card"><div class="icon">❌</div><h1>Setup Failed</h1><div class="err">${error}</div><a href="/setup/gmail">Try Again →</a></div></body></html>
     `);
   }
@@ -162,6 +162,16 @@ setupRouter.get('/gmail/success', (req, res) => {
 const callbackRouter = express.Router();
 
 callbackRouter.get('/google', async (req, res) => {
+  // Explicitly log req object to debug
+  if (!req || !req.query) {
+    console.error('[Gmail OAuth] CRITICAL: req or req.query is undefined', {
+      reqExists: !!req,
+      queryExists: req && !!req.query,
+      reqKeys: req ? Object.keys(req).slice(0, 10) : 'N/A'
+    });
+    return res.status(500).json({ error: 'Request object corrupted' });
+  }
+
   const { code, error } = req.query;
 
   if (error) {
@@ -170,6 +180,7 @@ callbackRouter.get('/google', async (req, res) => {
   }
 
   if (!code) {
+    console.warn('[Gmail OAuth] No authorization code received');
     return res.redirect('/setup/gmail');
   }
 
