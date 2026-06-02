@@ -16,8 +16,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/gmail.send'
 ].join(' ');
 
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://propopspro.polsia.app/api/auth/callback/google';
-
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 // ─── Shared token exchange logic ───────────────────────────────────────────
 
 async function exchangeAndSaveTokens(code) {
@@ -162,6 +161,7 @@ setupRouter.get('/gmail/success', (req, res) => {
 const callbackRouter = express.Router();
 
 callbackRouter.get('/google', async (req, res) => {
+  console.log('CALLBACK DEBUG:', { hasReq: !!req, reqType: typeof req, hasQuery: req ? !!req.query : 'no req', queryValue: req ? req.query : 'no req', fullUrl: req ? req.originalUrl : 'no req' });
   const { code, error } = req.query;
 
   if (error) {
