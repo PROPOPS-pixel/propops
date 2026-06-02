@@ -21,7 +21,7 @@ const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
 async function exchangeAndSaveTokens(code) {
   const { google } = require('googleapis');
-  const { pool } = require('../db');
+  const pool = require('../db');
 
   const oauth2 = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
