@@ -242,7 +242,7 @@ app.get('/pays/staff', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'pays-staff-portal.html'));
 });
 // Founder integrations status
-app.get('/api/founder/integrations', async (req, res) => {
+app.get('/api/founder/integrations-status', async (req, res) => {
   res.json({
     twilio: { status: 'connected', label: 'Twilio' },
     resend: { status: 'connected', label: 'Resend' },
