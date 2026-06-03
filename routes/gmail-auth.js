@@ -12,8 +12,7 @@
 const express = require('express');
 
 const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/gmail.send'
+  'https://www.googleapis.com/auth/gmail.modify'
 ].join(' ');
 
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
