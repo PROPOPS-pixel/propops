@@ -241,7 +241,17 @@ app.get(['/pays', '/pays/settings'], (req, res) => {
 app.get('/pays/staff', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'pays-staff-portal.html'));
 });
-
+// Founder integrations status
+app.get('/api/founder/integrations', async (req, res) => {
+  res.json({
+    twilio: { status: 'connected', label: 'Twilio' },
+    resend: { status: 'connected', label: 'Resend' },
+    gmail: { status: 'connected', label: 'Gmail' },
+    stripe: { status: 'connected', label: 'Stripe' },
+    porkbun: { status: 'connected', label: 'Porkbun' },
+    render: { status: 'connected', label: 'Render' }
+  });
+});
 app.get('/checkout',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'checkout.html')));
 app.get('/signup/success',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'signup-success.html')));
 app.get('/login',           (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
