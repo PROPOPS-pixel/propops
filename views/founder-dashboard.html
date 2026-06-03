@@ -1817,48 +1817,44 @@
             var dotChar = s.status === 'connected' ? '🟢' : '🔴';
             var statusLabel = s.status === 'connected' ? 'Connected' : (s.status === 'error' ? 'Error' : 'Not Connected');
 
-            // Stats
-            var statsHtml = '<div class="integ-stats">';
-            (s.stats || []).forEach(function(stat) {
-              statsHtml += '<span class="integ-stat">' + esc(stat.label) + ': <strong>' + esc(String(stat.value)) + '</strong></span>';
+            // Stats — live_stats is pre-rendered HTML from backend
+          var statsHtml = s.live_stats || '';
+
+          // Links — with Groq key management button
+          var linksHtml = '<div class="integ-links">';
+
+          // Groq: Add Key / Update Key button
+          if (s.name === 'Greg') {
+            var groqBtn = s.status === 'connected'
+              ? '<button class="groq-key-btn" onclick="showGroqKeyInput(this, true)" style="background:#1a2a3a;color:#4af;border:1px solid #4af;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem">Update Key</button>'
+              : '<button class="groq-key-btn" onclick="showGroqKeyInput(this, false)" style="background:#2563eb;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem">Add Key</button>';
+            linksHtml += groqBtn;
+            linksHtml += '<div class="groq-key-form" style="display:none;margin-top:6px">';
+            linksHtml += '<input type="password" class="groq-key-input" placeholder="gsk_..." style="width:100%;padding:4px 8px;border:1px solid #333;border-radius:4px;background:#1a1a2e;color:#fff;font-size:0.85rem">';
+            linksHtml += '<div class="groq-key-error" style="color:#ff6b6b;font-size:0.68rem;margin-top:4px;display:none"></div>';
+            linksHtml += '<div style="margin-top:6px">';
+            linksHtml += '<button class="groq-key-save" onclick="submitGroqKey(this)" style="background:#2563eb;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem">Save</button>';
+            linksHtml += '<button onclick="hideGroqKeyInput(this)" style="background:transparent;color:#888;border:1px solid #333;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-left:6px">Cancel</button>';
+            linksHtml += '</div></div>';
+          }
+
+          // Link buttons from backend
+          if (s.links && s.links.length > 0) {
+            s.links.forEach(function(lnk) {
+              linksHtml += '<a href="' + esc(lnk.url) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(lnk.label) + '</a> ';
             });
-            statsHtml += '</div>';
+          } else if (s.link && s.link.url) {
+            linksHtml += '<a href="' + esc(s.link.url) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(s.link.label || 'Open') + '</a>';
+          }
 
-            // Links — with Groq key management button
-            var linksHtml = '<div class="integ-links">';
+          linksHtml += '</div>';
 
-            // Groq: Add Key / Update Key button
-            if (s.id === 'groq') {
-              var groqBtn = s.status === 'connected'
-                ? '<button class="groq-key-btn" onclick="showGroqKeyInput(this, true)" style="background:#1a2a3a;color:#4af;border:1px solid #2a4a6a;padding:4px 10px;border-radius:6px;font-size:0.72rem;cursor:pointer;margin-bottom:4px">Update Key</button>'
-                : '<button class="groq-key-btn" onclick="showGroqKeyInput(this, false)" style="background:#2563eb;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:0.72rem;cursor:pointer;margin-bottom:4px">Add Key</button>';
-              linksHtml += groqBtn;
-              // Inline key input (hidden by default, toggled by button)
-              linksHtml += '<div class="groq-key-form" style="display:none;margin-top:6px">';
-              linksHtml += '<input type="password" class="groq-key-input" placeholder="gsk_..." style="width:100%;padding:4px 8px;border-radius:6px;border:1px solid #2a4a6a;background:#0f1a26;color:#e0e0e0;font-size:0.72rem;box-sizing:border-box;outline:none" />';
-              linksHtml += '<div class="groq-key-error" style="color:#ff6b6b;font-size:0.68rem;margin-top:4px;display:none"></div>';
-              linksHtml += '<div style="margin-top:6px">';
-              linksHtml += '<button class="groq-key-save" onclick="submitGroqKey(this)" style="background:#2563eb;color:#fff;border:none;padding:3px 10px;border-radius:5px;font-size:0.68rem;cursor:pointer">Save</button>';
-              linksHtml += '<button onclick="hideGroqKeyInput(this)" style="background:transparent;color:#888;border:1px solid #333;padding:3px 8px;border-radius:5px;font-size:0.68rem;cursor:pointer;margin-left:5px">Cancel</button>';
-              linksHtml += '</div></div>';
-            }
-
-            if (s.link) {
-              linksHtml += '<a href="' + esc(s.link) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(s.link_label || 'Open →') + '</a>';
-            }
-            if (s.extra_links) {
-              s.extra_links.forEach(function(el) {
-                linksHtml += '<a href="' + esc(el.url) + '" target="_blank" rel="noopener" class="integ-open-btn">' + esc(el.label) + '</a>';
-              });
-            }
-            linksHtml += '</div>';
-
-            html += '<tr>';
-            html += '<td><div class="integ-name">' + esc(s.name) + '</div><div class="integ-desc">' + esc(s.description || '') + '</div></td>';
-            html += '<td>' + statsHtml + '</td>';
-            html += '<td><span class="' + dotClass + '" title="' + esc(statusLabel) + '">' + dotChar + '</span> <span style="font-size:0.75rem;color:var(--text-dim)">' + esc(statusLabel) + '</span></td>';
-            html += '<td>' + linksHtml + '</td>';
-            html += '</tr>';
+          html += '<tr>';
+          html += '<td><div class="integ-name">' + esc(s.name) + '</div><div class="integ-desc">' + esc(s.description || '') + '</div></td>';
+          html += '<td>' + statsHtml + '</td>';
+          html += '<td><span class="' + dotClass + '" title="' + esc(statusLabel) + '">' + dotChar + '</span> <span style="font-size:0.85rem">' + esc(statusLabel) + '</span></td>';
+          html += '<td>' + linksHtml + '</td>';
+          html += '</tr>';
           });
 
           html += '</tbody></table></div></div>';
