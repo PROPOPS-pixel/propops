@@ -74,6 +74,101 @@ app.use('/api/leads',         require('./routes/leads'));
 app.use('/api/email-intake',  require('./routes/email-intake'));
 app.use('/api/waitlist',      require('./routes/waitlist'));
 
+// —— Founder Integrations API ——
+app.get('/api/founder/integrations', async (req, res) => {
+  try {
+    const integrations = {
+      ai: {
+        greg: {
+          name: 'Greg',
+          description: "Hugo's AI brain (Llama 3.1 8B)",
+          status: 'connected',
+          details: {}
+        },
+        hosted: {
+          name: 'Hosted',
+          description: 'Chat model + action configuration',
+          status: 'connected',
+          details: {}
+        }
+      },
+      comms: {
+        twilio: {
+          name: 'Twilio',
+          description: 'Phone: ' + (process.env.TWILIO_PHONE_NUMBER || 'Not set'),
+          status: process.env.TWILIO_ACCOUNT_SID ? 'connected' : 'disconnected',
+          details: {}
+        },
+        resend: {
+          name: 'Resend',
+          description: 'Transactional email delivery',
+          status: process.env.RESEND_API_KEY ? 'connected' : 'disconnected',
+          details: {}
+        },
+        email: {
+          name: 'Email',
+          description: 'Email forwarding & auto-intake',
+          status: 'connected',
+          details: {}
+        },
+        call_forwarding: {
+          name: 'Call Forwarding',
+          description: 'Points to: operator',
+          status: process.env.TWILIO_ACCOUNT_SID ? 'connected' : 'disconnected',
+          details: {}
+        }
+      },
+      leads: {
+        hipages: {
+          name: 'Hipages',
+          description: 'Auto-detection via email intake',
+          status: 'connected',
+          details: {}
+        },
+        lead_portals: {
+          name: 'Lead Portals',
+          description: 'Email intake via Email Forwarding',
+          status: 'connected',
+          details: {}
+        }
+      },
+      billing: {
+        stripe: {
+          name: 'Stripe',
+          description: 'Subscriptions & billing (AUS)',
+          status: process.env.STRIPE_SECRET_KEY ? 'connected' : 'disconnected',
+          details: {}
+        }
+      },
+      infrastructure: {
+        analytics: {
+          name: 'Analytics',
+          description: 'Stats tracking',
+          status: 'connected',
+          details: {}
+        },
+        porkbun: {
+          name: 'Porkbun',
+          description: 'Domains: propops.pro, propops.trade',
+          status: 'connected',
+          details: {}
+        },
+        render: {
+          name: 'Render',
+          description: 'App hosting',
+          status: 'connected',
+          details: { health: 'Up' }
+        }
+      }
+    };
+
+    res.json({ success: true, integrations });
+  } catch (err) {
+    console.error('[Integrations API] Error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Gmail OAuth callback router — MUST mount BEFORE other /api/auth routes to avoid conflicts
 const { setupRouter, callbackRouter } = require('./routes/gmail-auth');
 app.use('/api/auth/callback', callbackRouter);
