@@ -231,6 +231,7 @@ app.use('/api/hugo',          require('./routes/hugo-network'));
 app.use('/api/hugo',          require('./routes/hugo-brain'));  // unified brain service
 app.use('/api/hugo',          require('./routes/hugo-scores')); // Hugo self-monitoring scores
 app.use('/api/hugo',          require('./routes/hugo-supervision')); // Hugo supervision loop (transcripts, training, performance)
+app.use('/api/hugo',          require('./routes/hugoDashboardAnalytics'));
 app.use('/api/supervision',   require('./routes/hugo-supervision')); // Supervision trigger + anomaly endpoints
 app.use('/api/hugo/emails',   require('./routes/hugo-emails')); // HUGO email inbox management
 app.use('/api/referrals',     require('./routes/referrals'));   // referral panels + service area map
@@ -245,6 +246,7 @@ const { router: adminRouter } = require('./routes/admin');
 app.use('/api/admin',     adminRouter);
 app.use('/api/dashboard', adminRouter); // hugo-insights at /api/dashboard/hugo-insights
 app.use('/api/founder',   require('./routes/founder'));
+app.use('/api/integrations', require('./routes/integrations'));
 
 // ─── Utility endpoints ────────────────────────────────────────────────────────
 app.get('/api/email/status', async (req, res) => {

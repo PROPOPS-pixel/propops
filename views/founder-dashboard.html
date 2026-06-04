@@ -1964,6 +1964,7 @@
     try {
       var res = await fetch('/api/integrations/groq/key', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key: raw }),
       });

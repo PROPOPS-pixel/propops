@@ -14,7 +14,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../db/index');
+const pool = require('../db/index');
 
 // In-process 1-minute cache — prevents query amplification on rapid calls.
 // Key: operatorId. Value: { timestamp, data }.
